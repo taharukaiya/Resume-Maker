@@ -36,6 +36,7 @@ export type RenderOptions = {
   baseUrl: string;
   agencyName: string;
   asset: (id: string) => string;
+  isImage?: (id: string) => boolean;
   siteId: string;
   appUrl: string;
 };
@@ -72,7 +73,7 @@ export function renderPortfolio(
       .filter(Boolean)
       .join(" — ");
   const entryHtml = (entry: Entry, type: string) =>
-    `<article class="entry"><div class="entry-header"><div>${entry.status ? `<p class="eyebrow">${e(entry.status.replace("-", " "))}</p>` : ""}<h3>${type === "publications" ? `<a href="${e(baseUrl)}/publications/${entry.id}">${e(entry.title)}</a>` : e(entry.title)}</h3>${entry.subtitle ? `<p class="meta">${e(entry.subtitle)}</p>` : ""}</div>${dateRange(entry) ? `<span class="entry-date">${e(dateRange(entry))}</span>` : ""}</div>${entry.authors ? `<p class="meta">${e(entry.authors)}</p>` : ""}<div class="entry-body">${paragraphs(entry.body)}</div>${entry.mediaId && /\.(webp|png|jpe?g)(\?|$)/i.test(asset(entry.mediaId)) ? `<img class="entry-image" src="${e(asset(entry.mediaId))}" alt="${e(entry.title)}" loading="lazy">` : ""}${
+    `<article class="entry"><div class="entry-header"><div>${entry.status ? `<p class="eyebrow">${e(entry.status.replace("-", " "))}</p>` : ""}<h3>${type === "publications" ? `<a href="${e(baseUrl)}/publications/${entry.id}">${e(entry.title)}</a>` : e(entry.title)}</h3>${entry.subtitle ? `<p class="meta">${e(entry.subtitle)}</p>` : ""}</div>${dateRange(entry) ? `<span class="entry-date">${e(dateRange(entry))}</span>` : ""}</div>${entry.authors ? `<p class="meta">${e(entry.authors)}</p>` : ""}<div class="entry-body">${paragraphs(entry.body)}</div>${entry.mediaId && (options.isImage?.(entry.mediaId) ?? /\.(webp|png|jpe?g)(\?|$)/i.test(asset(entry.mediaId))) ? `<img class="entry-image" src="${e(asset(entry.mediaId))}" alt="${e(entry.title)}" loading="lazy">` : ""}${
       entry.tags
         ? `<div class="tags">${entry.tags
             .split(",")
@@ -86,7 +87,7 @@ export function renderPortfolio(
       .filter((s) => s.visible)
       .map(
         (section, i) =>
-          `<section class="section" id="${section.id}"><div class="section-head"><span class="number">${String(i + 1).padStart(2, "0")}</span><h2>${e(section.title)}</h2></div><div class="section-content">${paragraphs(section.intro)}${section.type === "about" ? paragraphs(doc.profile.bio) : ""}${section.entries.map((entry) => entryHtml(entry, section.type)).join("")}${section.type === "contact" ? `${doc.profile.email ? `<a href="mailto:${e(doc.profile.email)}">${e(doc.profile.email)}</a>` : ""}<form class="contact-form" method="post" action="${e(options.appUrl)}/api/public/inquiry"><input type="hidden" name="siteId" value="${options.siteId}"><label class="honey" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><label>${e(doc.labels.name)}<input name="name" required maxlength="120" autocomplete="name"></label><label>${e(doc.labels.email)}<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>${e(doc.labels.message)}<textarea name="message" required maxlength="5000" rows="5"></textarea></label><button class="button" type="submit">${e(doc.labels.send)}</button></form>` : ""}</div></section>`,
+          `<section class="section" id="${section.id}"><div class="section-head"><span class="number">${String(i + 1).padStart(2, "0")}</span><h2>${e(section.title)}</h2></div><div class="section-content">${paragraphs(section.intro)}${section.type === "about" ? paragraphs(doc.profile.bio) : ""}${section.entries.map((entry) => entryHtml(entry, section.type)).join("")}${section.type === "contact" ? `${doc.profile.email ? `<a href="mailto:${e(doc.profile.email)}">${e(doc.profile.email)}</a>` : ""}<form class="contact-form" method="post" action="${e(options.appUrl)}/api/public/inquiry"><input type="hidden" name="siteId" value="${options.siteId}"><label class="honey" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><label>${e(doc.labels.name)}<input name="name" required maxlength="120" autocomplete="name"></label><label>${e(doc.labels.email)}<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>${e(doc.labels.message)}<textarea name="message" required minlength="10" maxlength="5000" rows="5"></textarea></label><button class="button" type="submit">${e(doc.labels.send)}</button></form>` : ""}</div></section>`,
       )
       .join("");
   const profile = doc.profile;

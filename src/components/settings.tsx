@@ -198,7 +198,8 @@ export function Settings() {
           <section className="panel">
             <h2>Connected services</h2>
             <p className="panel-description">
-              Actual connection configuration for this installation.
+              Configuration detected for this installation. Configured services
+              still need a successful live test before launch.
             </p>
             {integrations &&
               [
@@ -245,7 +246,7 @@ export function Settings() {
                     <strong>{item.name}</strong>
                     <p>{item.detail}</p>
                   </div>
-                  <Badge value={item.ready ? "connected" : "setup needed"} />
+                  <Badge value={item.ready ? "configured" : "setup needed"} />
                 </div>
               ))}
           </section>

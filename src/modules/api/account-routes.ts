@@ -139,7 +139,10 @@ export async function accountRoutes(
       email: !!process.env.EMAIL_FROM,
       storage: config().bucket ? "s3" : "local",
       scanner: !!process.env.CLAMAV_HOST,
-      database: config().databaseUrl ? "postgresql" : "embedded",
+      database:
+        config().databaseUrl || process.env.DATABASE_SECRET_ARN
+          ? "postgresql"
+          : "embedded",
       production: config().production,
     });
   }

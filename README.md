@@ -4,6 +4,8 @@ A multi-tenant academic portfolio application for a scholarship agency. Administ
 
 ## Start locally
 
+Start with the [completion checklist](docs/COMPLETION_CHECKLIST.md) for current blockers, manual account setup, and the acceptance walkthrough. Run `npm run doctor` while the app is running to diagnose local readiness.
+
 Install Node.js 24 LTS, then run from this directory:
 
 ```powershell

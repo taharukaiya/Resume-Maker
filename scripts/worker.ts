@@ -1,4 +1,4 @@
- import "dotenv/config";
+import "dotenv/config";
 import { assertProductionConfig } from "../src/lib/config";
 import { closeDb } from "../src/lib/db";
 import { processOneJob } from "../src/modules/jobs/worker";

@@ -244,6 +244,20 @@ describe.sequential(
           .status,
       ).toBe(409);
     });
+    it("keeps the dashboard name synchronized with the saved profile", async () => {
+      document.profile.name = "Renamed Researcher";
+      const saved = await request(`sites/${siteId}`, "PUT", {
+        document,
+        revision,
+      });
+      expect(saved.status).toBe(200);
+      revision = saved.data.revision;
+      expect(
+        (await request("sites")).data.sites.find(
+          (s: { id: string }) => s.id === siteId,
+        ).name,
+      ).toBe("Renamed Researcher");
+    });
     it("validates, optimizes, and isolates uploaded images", async () => {
       const image = await sharp({
         create: { width: 8, height: 8, channels: 3, background: "#234d3e" },
@@ -293,6 +307,63 @@ describe.sequential(
         ["sites", siteId, "media"],
       );
       expect(denied.status).toBe(403);
+      const invalid = structuredClone(document);
+      invalid.profile.cvId = uploaded.id;
+      expect(
+        (
+          await request(`sites/${siteId}`, "PUT", {
+            document: invalid,
+            revision,
+          })
+        ).status,
+      ).toBe(400);
+      const entry = emptyEntry();
+      entry.title = "Preview image";
+      entry.mediaId = uploaded.id;
+      document.pages.push({
+        id: randomUUID(),
+        slug: "research",
+        title: "Research detail",
+        description: "Current projects",
+        sections: [
+          {
+            id: randomUUID(),
+            type: "projects",
+            title: "Projects",
+            intro: "",
+            visible: true,
+            entries: [entry],
+          },
+        ],
+      });
+      const saved = await request(`sites/${siteId}`, "PUT", {
+        document,
+        revision,
+      });
+      expect(saved.status).toBe(200);
+      revision = saved.data.revision;
+      const preview = await handle(
+        new NextRequest(
+          `http://localhost:3000/api/sites/${siteId}/preview/research`,
+          { headers: { cookie: adminCookie } },
+        ),
+        ["sites", siteId, "preview", "research"],
+      );
+      expect(preview.status).toBe(200);
+      expect(preview.headers.get("x-robots-tag")).toContain("noindex");
+      const html = await preview.text();
+      expect(html).toContain('class="entry-image"');
+      expect(html).toContain(`/api/media/${uploaded.id}`);
+      expect(html).toContain(`/api/sites/${siteId}/preview/research`);
+      expect(html).not.toContain(`/p/`);
+      const missing = await handle(
+        new NextRequest(
+          `http://localhost:3000/api/sites/${siteId}/preview/missing`,
+          { headers: { cookie: adminCookie } },
+        ),
+        ["sites", siteId, "preview", "missing"],
+      );
+      expect(missing.status).toBe(404);
     });
     it("rejects an executable disguised as a PDF", async () => {
       const form = new FormData();

@@ -300,16 +300,25 @@ export async function portfolioRoutes(
       );
     }
     if (action === "preview" && method === "GET") {
+      const media = await database.query<{ id: string; mime: string }>(
+        "SELECT id,mime FROM media WHERE site_id=$1",
+        [id],
+      );
       const [agency] = await database.query<{ value: { name: string } }>(
         "SELECT value FROM settings WHERE key='agency'",
       );
-      const html = renderPortfolio(site.draft, {
-        baseUrl: `${config().appUrl}/p/${site.slug}`,
+      const rendered = renderPortfolio(site.draft, {
+        baseUrl: `${config().appUrl}/api/sites/${id}/preview`,
         agencyName: agency?.value.name || "Brilliancy Research",
         asset: (assetId) => `${config().appUrl}/api/media/${assetId}`,
+        isImage: (assetId) =>
+          !!media.find((m) => m.id === assetId)?.mime.startsWith("image/"),
         siteId: id,
         appUrl: config().appUrl,
-      })["index.html"];
+      });
+      const route = path.slice(3).join("/");
+      const html = rendered[route ? `${route}/index.html` : "index.html"];
+      invariant(html, 404, "Draft page not found.");
       return new Response(html, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",

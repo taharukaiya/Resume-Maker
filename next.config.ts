@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  distDir: process.env.BRILLIANCY_E2E === "true" ? ".next-e2e" : ".next",
   output: "standalone",
   poweredByHeader: false,
   devIndicators: false,

@@ -60,8 +60,8 @@ export async function saveDocument(
     );
     const assetIds = collectAssetIds(document);
     if (assetIds.length) {
-      const media = await tx.query<{ id: string }>(
-        "SELECT id FROM media WHERE site_id=$1",
+      const media = await tx.query<{ id: string; mime: string }>(
+        "SELECT id,mime FROM media WHERE site_id=$1",
         [id],
       );
       invariant(
@@ -69,16 +69,35 @@ export async function saveDocument(
         400,
         "A selected file does not belong to this portfolio.",
       );
+      for (const asset of [
+        document.profile.portraitId,
+        document.seo.socialImageId,
+      ]) {
+        invariant(
+          !asset ||
+            media.find((m) => m.id === asset)?.mime.startsWith("image/"),
+          400,
+          "Profile and social sharing images must be image files.",
+        );
+      }
+      invariant(
+        !document.profile.cvId ||
+          media.find((m) => m.id === document.profile.cvId)?.mime ===
+            "application/pdf",
+        400,
+        "The CV must be a PDF file.",
+      );
     }
     const next = revision + 1;
     await tx.query(
-      "UPDATE sites SET draft=$1,revision=$2,status=$3,updated_by=$4,updated_at=now() WHERE id=$5",
+      "UPDATE sites SET draft=$1,revision=$2,status=$3,updated_by=$4,updated_at=now(),name=$6 WHERE id=$5",
       [
         JSON.stringify(document),
         next,
         user.role === "client" ? "review" : "draft",
         user.id,
         id,
+        document.profile.name,
       ],
     );
     await tx.query(

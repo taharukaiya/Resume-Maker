@@ -16,13 +16,18 @@ export function AuthForm({
     [password, setPassword] = useState(""),
     [name, setName] = useState(""),
     [code, setCode] = useState(""),
-    [initialized, setInitialized] = useState(true),
+    [initialized, setInitialized] = useState<boolean | null>(null),
+    [statusError, setStatusError] = useState(""),
     [complete, setComplete] = useState(false),
     [agencyName, setAgencyName] = useState("Brilliancy Research");
   useEffect(() => {
     api<{ initialized: boolean }>("status")
       .then((s) => setInitialized(s.initialized))
-      .catch(() => {});
+      .catch(() =>
+        setStatusError(
+          "Cannot reach the workspace database. Check the server terminal or run npm run doctor.",
+        ),
+      );
   }, []);
   const titles = {
     login: "Welcome back.",
@@ -69,6 +74,19 @@ export function AuthForm({
           <h1>{titles[mode]}</h1>
           <p>{descriptions[mode]}</p>
           <Feedback {...feedback} />
+          {statusError && <Notice message={statusError} />}
+          {mode === "setup" && !complete && initialized === true && (
+            <Notice
+              tone="info"
+              message="Setup is already complete. Use Back to sign in below."
+            />
+          )}
+          {mode === "setup" && !complete && !params.get("token") && (
+            <Notice
+              tone="info"
+              message="Open the private link printed by npm run setup. This page needs the installation token in that link."
+            />
+          )}
           {complete ? (
             <>
               <Notice
@@ -194,7 +212,15 @@ export function AuthForm({
                   />
                 </Field>
               )}
-              <Button type="submit" busy={feedback.busy} variant="full">
+              <Button
+                type="submit"
+                busy={feedback.busy}
+                variant="full"
+                disabled={
+                  mode === "setup" &&
+                  (initialized !== false || !params.get("token"))
+                }
+              >
                 {mode === "login"
                   ? "Sign in to workspace"
                   : mode === "setup"
@@ -211,7 +237,7 @@ export function AuthForm({
               <div className="auth-links">
                 <Link href="/forgot">Forgot your password?</Link>
               </div>
-              {!initialized && (
+              {initialized === false && (
                 <Notice
                   tone="info"
                   message="This workspace needs its first administrator. Run npm run setup in the project folder and open the private setup link."
