@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.env*
+!.env.example
+cdk.out/
+.vscode/
+*.pem
+*.key
+.data/
+.test-data/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.DS_Store
+*.log

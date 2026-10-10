@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+*.pem
+*.key
+.data
+.test-data
+test-results
+playwright-report
+cdk.out
+coverage
+*.log

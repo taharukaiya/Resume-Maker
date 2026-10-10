@@ -1,0 +1,337 @@
+import { contrastRatio } from "@/lib/colors";
+import { z } from "zod";
+const short = z.string().trim().max(200);
+const url = z.union([
+  z.literal(""),
+  z
+    .url()
+    .max(2000)
+    .refine((v) => /^https?:\/\//.test(v), "Use an HTTP or HTTPS URL"),
+]);
+const asset = z.union([z.literal(""), z.uuid()]);
+const date = z
+  .string()
+  .max(10)
+  .refine((v) => {
+    if (!v) return true;
+    if (
+      !/^(19|20|21)\d{2}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$/.test(v)
+    )
+      return false;
+    if (v.length < 10) return true;
+    const [year, month, day] = v.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day)).getUTCDate() === day;
+  }, "Use a valid YYYY, YYYY-MM, or YYYY-MM-DD date");
+export const sectionTypes = [
+  "about",
+  "education",
+  "experience",
+  "publications",
+  "projects",
+  "awards",
+  "skills",
+  "contact",
+  "custom",
+] as const;
+export const entrySchema = z
+  .object({
+    id: z.uuid(),
+    title: short,
+    subtitle: short,
+    body: z.string().max(16000),
+    start: date,
+    end: date,
+    current: z.boolean(),
+    url,
+    mediaId: asset,
+    tags: z.string().max(500),
+    authors: z.string().max(1000),
+    doi: z.string().max(250),
+    status: z.enum([
+      "",
+      "published",
+      "accepted",
+      "preprint",
+      "submitted",
+      "in-progress",
+    ]),
+    abstractSource: z.enum(["", "original", "generated"]),
+  })
+  .strict();
+export const sectionSchema = z
+  .object({
+    id: z.uuid(),
+    type: z.enum(sectionTypes),
+    title: short,
+    visible: z.boolean(),
+    intro: z.string().max(10000),
+    entries: z.array(entrySchema).max(100),
+  })
+  .strict();
+export const defaultLabels = {
+  name: "Your name",
+  email: "Email address",
+  message: "Message",
+  send: "Send inquiry",
+  abstract: "Abstract",
+  summary: "Research summary",
+  summaryNote: "AI-assisted summary, reviewed before publication.",
+  readPublication: "Read publication",
+  downloadPaper: "Download paper",
+  viewResource: "View resource",
+  downloadFile: "Download file",
+  ongoing: "Present",
+  creditPrefix: "Portfolio by",
+  skip: "Skip to content",
+  receivedTitle: "Thank you for reaching out.",
+  receivedMessage: "Your message has been delivered to the portfolio team.",
+};
+const labelsSchema = z
+  .object(
+    Object.fromEntries(
+      Object.keys(defaultLabels).map((key) => [
+        key,
+        z.string().trim().min(1).max(300),
+      ]),
+    ) as Record<keyof typeof defaultLabels, z.ZodString>,
+  )
+  .strict();
+export const documentSchema = z
+  .object({
+    profile: z
+      .object({
+        name: short.min(1),
+        headline: short,
+        affiliation: short,
+        bio: z.string().max(10000),
+        location: short,
+        email: z.union([z.literal(""), z.email()]),
+        portraitId: asset,
+        cvId: asset,
+        links: z.array(z.object({ label: short, url })).max(20),
+      })
+      .strict(),
+    seo: z
+      .object({
+        title: z.string().max(160),
+        description: z.string().max(320),
+        socialImageId: asset,
+        language: z.enum(["en", "bn"]),
+        indexable: z.boolean(),
+      })
+      .strict(),
+    theme: z
+      .object({
+        style: z.enum(["editorial", "modern", "classic"]),
+        accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        background: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        font: z.enum(["serif", "sans"]),
+        width: z.enum(["standard", "wide"]),
+        roundness: z.enum(["sharp", "soft"]),
+        showAgencyCredit: z.boolean(),
+      })
+      .strict(),
+    navigation: z
+      .object({
+        siteTitle: short,
+        contactLabel: short,
+        cvLabel: short,
+        footer: z.string().max(1000),
+      })
+      .strict(),
+    labels: labelsSchema,
+    sections: z.array(sectionSchema).max(30),
+    pages: z
+      .array(
+        z
+          .object({
+            id: z.uuid(),
+            slug: z
+              .string()
+              .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+              .max(80),
+            title: short.min(1),
+            description: z.string().max(320),
+            sections: z.array(sectionSchema).max(20),
+          })
+          .strict(),
+      )
+      .max(20),
+  })
+  .strict()
+  .superRefine((doc, ctx) => {
+    if (contrastRatio(doc.theme.accent, doc.theme.background) < 4.5)
+      ctx.addIssue({
+        code: "custom",
+        path: ["theme", "accent"],
+        message:
+          "Choose an accent and background with sufficient contrast for readable links (at least 4.5:1).",
+      });
+    const ids = [...doc.sections, ...doc.pages.flatMap((p) => p.sections)]
+      .flatMap((s) => [s.id, ...s.entries.map((e) => e.id)])
+      .concat(doc.pages.map((p) => p.id));
+    if (new Set(ids).size !== ids.length)
+      ctx.addIssue({ code: "custom", message: "Content IDs must be unique." });
+    if (new Set(doc.pages.map((p) => p.slug)).size !== doc.pages.length)
+      ctx.addIssue({ code: "custom", message: "Page slugs must be unique." });
+    if (
+      doc.pages.some((p) =>
+        ["publications", "sitemap.xml", "robots.txt", "assets"].includes(
+          p.slug,
+        ),
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "This page address is reserved.",
+      });
+  });
+export type PortfolioDocument = z.infer<typeof documentSchema>;
+export type Section = z.infer<typeof sectionSchema>;
+export type Entry = z.infer<typeof entrySchema>;
+export const editableOptions = [
+  ["profile.name", "Name"],
+  ["profile.headline", "Headline"],
+  ["profile.affiliation", "Affiliation"],
+  ["profile.bio", "Biography"],
+  ["profile.location", "Location"],
+  ["profile.email", "Public email"],
+  ["profile.links", "Profile links"],
+  ["profile.portraitId", "Profile photo"],
+  ["profile.cvId", "CV"],
+  ...sectionTypes.map((type) => [
+    `sections.${type}`,
+    `${type[0].toUpperCase()}${type.slice(1)} sections`,
+  ]),
+] as const;
+export const allowedFieldsSchema = z
+  .array(z.enum(editableOptions.map((x) => x[0]) as [string, ...string[]]))
+  .max(editableOptions.length);
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object")
+    return `{${Object.keys(value)
+      .sort()
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`,
+      )
+      .join(",")}}`;
+  return JSON.stringify(value);
+}
+export function emptyDocument(name: string): PortfolioDocument {
+  return {
+    profile: {
+      name,
+      headline: "",
+      affiliation: "",
+      bio: "",
+      location: "",
+      email: "",
+      portraitId: "",
+      cvId: "",
+      links: [],
+    },
+    seo: {
+      title: "",
+      description: "",
+      socialImageId: "",
+      language: "en",
+      indexable: true,
+    },
+    theme: {
+      style: "editorial",
+      accent: "#174f43",
+      background: "#faf9f6",
+      font: "serif",
+      width: "standard",
+      roundness: "soft",
+      showAgencyCredit: true,
+    },
+    navigation: {
+      siteTitle: "",
+      contactLabel: "Get in touch",
+      cvLabel: "Download CV",
+      footer: "",
+    },
+    labels: { ...defaultLabels },
+    sections: [],
+    pages: [],
+  };
+}
+export function emptyEntry(): Entry {
+  return {
+    id: crypto.randomUUID(),
+    title: "",
+    subtitle: "",
+    body: "",
+    start: "",
+    end: "",
+    current: false,
+    url: "",
+    mediaId: "",
+    tags: "",
+    authors: "",
+    doi: "",
+    status: "",
+    abstractSource: "",
+  };
+}
+export function canEditDocument(
+  before: PortfolioDocument,
+  after: PortfolioDocument,
+  allowed: string[],
+) {
+  const normalized = structuredClone(after);
+  for (const key of allowed) {
+    if (key.startsWith("profile.")) {
+      const field = key.slice(8) as keyof PortfolioDocument["profile"];
+      (normalized.profile as Record<string, unknown>)[field] =
+        before.profile[field];
+    }
+  }
+  // Clients can edit existing permitted sections, but cannot add, remove, reorder, or change section identity/type.
+  if (before.sections.length !== after.sections.length) return false;
+  for (let i = 0; i < before.sections.length; i++) {
+    if (
+      before.sections[i].id !== after.sections[i].id ||
+      before.sections[i].type !== after.sections[i].type
+    )
+      return false;
+    if (allowed.includes(`sections.${before.sections[i].type}`))
+      normalized.sections[i] = before.sections[i];
+  }
+  return canonical(before) === canonical(normalized);
+}
+export function collectAssetIds(doc: PortfolioDocument) {
+  return [
+    ...new Set(
+      [
+        doc.profile.portraitId,
+        doc.profile.cvId,
+        doc.seo.socialImageId,
+        ...[...doc.sections, ...doc.pages.flatMap((p) => p.sections)].flatMap(
+          (s) => s.entries.map((e) => e.mediaId),
+        ),
+      ].filter(Boolean),
+    ),
+  ];
+}
+export function publicationIssues(doc: PortfolioDocument): string[] {
+  const issues: string[] = [];
+  for (const section of [
+    ...doc.sections,
+    ...doc.pages.flatMap((page) => page.sections),
+  ].filter((section) => section.visible)) {
+    if (!section.title.trim())
+      issues.push("Every visible section needs a heading.");
+    for (const entry of section.entries)
+      if (!entry.title.trim())
+        issues.push(
+          `An entry in ${section.title || "an unnamed section"} needs a title.`,
+        );
+  }
+  if (doc.profile.links.some((link) => link.url && !link.label.trim()))
+    issues.push("Every public profile link needs a label.");
+  return issues;
+}

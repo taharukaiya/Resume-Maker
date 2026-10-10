@@ -1,0 +1,410 @@
+import { config } from "@/lib/config";
+import { token } from "@/lib/crypto";
+import { db } from "@/lib/db";
+import { AppError, invariant } from "@/lib/errors";
+import { deleteObject, putObject } from "@/lib/storage";
+import { audit, requireAdmin, type User } from "@/modules/auth/service";
+import { upload, type Media } from "@/modules/media/service";
+import {
+  allowedFieldsSchema,
+  emptyDocument,
+  publicationIssues,
+} from "@/modules/portfolios/schema";
+import { getSite, saveDocument, type Site } from "@/modules/portfolios/service";
+import { syncCustomDomains } from "@/modules/publishing/cdn";
+import { renderPortfolio } from "@/modules/publishing/render";
+import { type ReleaseManifest } from "@/modules/publishing/service";
+import { NextRequest } from "next/server";
+import { randomUUID } from "node:crypto";
+import { resolveTxt } from "node:dns/promises";
+import { z } from "zod";
+import { body, idSchema, json, readLimited } from "./shared";
+
+export async function portfolioRoutes(
+  request: NextRequest,
+  path: string[],
+  database: Awaited<ReturnType<typeof db>>,
+  user: User,
+): Promise<Response | null> {
+  const route = path.join("/"),
+    method = request.method;
+  if (route === "sites" && method === "GET") {
+    const sites = await database.query<Site>(
+      `SELECT s.id,s.name,s.slug,s.revision,s.status,s.published_release_id,s.updated_at,s.created_at,u.name AS client_name FROM sites s LEFT JOIN users u ON s.client_id=u.id ${user.role === "client" ? "WHERE s.client_id=$1" : ""} ORDER BY s.updated_at DESC`,
+      user.role === "client" ? [user.id] : [],
+    );
+    return json({ sites });
+  }
+  if (route === "sites" && method === "POST") {
+    requireAdmin(user);
+    const input = z
+      .object({
+        name: z.string().trim().min(1).max(120),
+        slug: z
+          .string()
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+          .max(60),
+        clientId: z.union([z.literal(""), idSchema]).default(""),
+      })
+      .strict()
+      .parse(await body(request));
+    if (input.clientId) {
+      const users = await database.query(
+        "SELECT id FROM users WHERE id=$1 AND role='client' AND disabled=false",
+        [input.clientId],
+      );
+      invariant(users.length, 400, "Select an active client account.");
+    }
+    const id = randomUUID(),
+      document = emptyDocument(input.name);
+    await database.transaction(async (tx) => {
+      await tx.query(
+        "INSERT INTO sites(id,name,slug,client_id,draft,updated_by) VALUES($1,$2,$3,$4,$5,$6)",
+        [
+          id,
+          input.name,
+          input.slug,
+          input.clientId || null,
+          JSON.stringify(document),
+          user.id,
+        ],
+      );
+      await tx.query(
+        "INSERT INTO revisions(id,site_id,revision,document,author_id) VALUES($1,$2,1,$3,$4)",
+        [randomUUID(), id, JSON.stringify(document), user.id],
+      );
+      await audit(user.id, id, "portfolio.created", {}, tx);
+    });
+    return json({ id }, 201);
+  }
+  if (path[0] === "sites" && path[1]) {
+    const id = idSchema.parse(path[1]),
+      action = path[2] || "",
+      site = await getSite(user, id);
+    if (!action && method === "GET") {
+      const [published] = site.published_release_id
+        ? await database.query<{ document: unknown }>(
+            "SELECT document FROM releases WHERE id=$1 AND site_id=$2",
+            [site.published_release_id, id],
+          )
+        : [];
+      return json({
+        site,
+        publishedDocument: published?.document || null,
+        media: await database.query<Media>(
+          "SELECT id,site_id,filename,mime,bytes,summary,created_at FROM media WHERE site_id=$1 ORDER BY created_at DESC",
+          [id],
+        ),
+        jobs: await database.query(
+          "SELECT id,kind,status,error,created_at,finished_at FROM jobs WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
+          [id],
+        ),
+        releases: await database.query(
+          "SELECT id,revision,created_at FROM releases WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
+          [id],
+        ),
+      });
+    }
+    if (!action && method === "PUT") {
+      const input = z
+        .object({
+          document: z.unknown(),
+          revision: z.number().int().positive(),
+        })
+        .strict()
+        .parse(await body(request));
+      return json(await saveDocument(user, id, input.document, input.revision));
+    }
+    if (action === "permissions" && method === "PUT") {
+      requireAdmin(user);
+      const input = z
+        .object({
+          clientId: z.union([z.literal(""), idSchema]),
+          editableFields: allowedFieldsSchema,
+        })
+        .strict()
+        .parse(await body(request));
+      if (input.clientId) {
+        const [target] = await database.query(
+          "SELECT id FROM users WHERE id=$1 AND role='client' AND disabled=false",
+          [input.clientId],
+        );
+        invariant(target, 400, "Select an active client.");
+      }
+      await database.transaction(async (tx) => {
+        await tx.query(
+          "UPDATE sites SET client_id=$1,editable_fields=$2 WHERE id=$3",
+          [input.clientId || null, JSON.stringify(input.editableFields), id],
+        );
+        await audit(
+          user.id,
+          id,
+          "portfolio.permissions_updated",
+          { clientId: input.clientId, editableFields: input.editableFields },
+          tx,
+        );
+      });
+      return json({ ok: true });
+    }
+    if (action === "media" && method === "POST") {
+      const bytes = await readLimited(request, 21 * 1024 * 1024);
+      const form = await new Request(request.url, {
+        method: "POST",
+        headers: { "content-type": request.headers.get("content-type") || "" },
+        body: bytes,
+      }).formData();
+      const file = form.get("file");
+      invariant(file instanceof File, 400, "Select a file to upload.");
+      const purpose = z
+        .enum(["article", "cv", "image"])
+        .parse(form.get("purpose") || "article");
+      return json(await upload(user, id, file, purpose), 201);
+    }
+    if (action === "publish" && method === "POST") {
+      requireAdmin(user);
+      const input = z
+        .object({ revision: z.number().int().positive() })
+        .parse(await body(request));
+      const jobId = randomUUID();
+      await database.transaction(async (tx) => {
+        const [latest] = await tx.query<Site>(
+          "SELECT * FROM sites WHERE id=$1 FOR UPDATE",
+          [id],
+        );
+        invariant(
+          latest.revision === input.revision,
+          409,
+          "The draft changed. Review the latest version before publishing.",
+        );
+        const issues = publicationIssues(latest.draft);
+        invariant(!issues.length, 400, issues.join(" "));
+        const [agency] = await tx.query<{ value: { name: string } }>(
+          "SELECT value FROM settings WHERE key='agency'",
+        );
+        const [primaryDomain] = await tx.query<{ hostname: string }>(
+          "SELECT hostname FROM domains WHERE site_id=$1 AND activated_at IS NOT NULL AND distribution_id IS NOT NULL ORDER BY created_at LIMIT 1",
+          [id],
+        );
+        await tx.query(
+          "INSERT INTO jobs(id,site_id,kind,payload) VALUES($1,$2,'publish',$3)",
+          [
+            jobId,
+            id,
+            JSON.stringify({
+              document: latest.draft,
+              revision: latest.revision,
+              slug: latest.slug,
+              agencyName: agency?.value.name || "Brilliancy Research",
+              canonicalUrl: primaryDomain
+                ? `https://${primaryDomain.hostname}`
+                : `${config().appUrl}/p/${latest.slug}`,
+            }),
+          ],
+        );
+        await audit(
+          user.id,
+          id,
+          "portfolio.publish_requested",
+          { revision: latest.revision },
+          tx,
+        );
+      });
+      return json({ jobId }, 202);
+    }
+    if (action === "unpublish" && method === "POST") {
+      requireAdmin(user);
+      await database.transaction(async (tx) => {
+        await tx.query("SELECT id FROM sites WHERE id=$1 FOR UPDATE", [id]);
+        const running = await tx.query(
+          "SELECT id FROM jobs WHERE site_id=$1 AND kind='publish' AND status IN ('queued','running')",
+          [id],
+        );
+        invariant(
+          !running.length,
+          409,
+          "Wait for the publishing job to finish before unpublishing.",
+        );
+        await syncCustomDomains(tx, id, null);
+        await deleteObject(`sites/${site.slug}/live.json`);
+        await tx.query(
+          "UPDATE sites SET published_release_id=NULL,status='draft' WHERE id=$1",
+          [id],
+        );
+        await audit(user.id, id, "portfolio.unpublished", {}, tx);
+      });
+      return json({ ok: true });
+    }
+    if (action === "rollback" && method === "POST") {
+      requireAdmin(user);
+      const { releaseId } = z
+        .object({ releaseId: idSchema })
+        .parse(await body(request));
+      await database.transaction(async (tx) => {
+        await tx.query("SELECT id FROM sites WHERE id=$1 FOR UPDATE", [id]);
+        const running = await tx.query(
+          "SELECT id FROM jobs WHERE site_id=$1 AND kind='publish' AND status IN ('queued','running')",
+          [id],
+        );
+        invariant(
+          !running.length,
+          409,
+          "Wait for publishing to finish before restoring a release.",
+        );
+        const [release] = await tx.query<{ manifest: ReleaseManifest }>(
+          "SELECT manifest FROM releases WHERE id=$1 AND site_id=$2",
+          [releaseId, id],
+        );
+        invariant(release, 404, "Release not found.");
+        await syncCustomDomains(tx, id, release.manifest);
+        await putObject(
+          `sites/${site.slug}/live.json`,
+          JSON.stringify(release.manifest),
+          "application/json",
+        );
+        await tx.query(
+          "UPDATE sites SET published_release_id=$1,status='draft' WHERE id=$2",
+          [releaseId, id],
+        );
+        await audit(
+          user.id,
+          id,
+          "portfolio.release_restored",
+          { releaseId },
+          tx,
+        );
+      });
+      return json({ ok: true });
+    }
+    if (action === "history" && method === "GET")
+      return json({
+        revisions: await database.query(
+          "SELECT r.id,r.revision,r.created_at,u.name AS author FROM revisions r JOIN users u ON u.id=r.author_id WHERE r.site_id=$1 ORDER BY r.revision DESC LIMIT 100",
+          [id],
+        ),
+      });
+    if (action === "restore" && method === "POST") {
+      requireAdmin(user);
+      const input = z
+        .object({
+          revision: z.number().int(),
+          currentRevision: z.number().int(),
+        })
+        .parse(await body(request));
+      const [previous] = await database.query<{ document: unknown }>(
+        "SELECT document FROM revisions WHERE site_id=$1 AND revision=$2",
+        [id, input.revision],
+      );
+      invariant(previous, 404, "Revision not found.");
+      return json(
+        await saveDocument(user, id, previous.document, input.currentRevision),
+      );
+    }
+    if (action === "preview" && method === "GET") {
+      const [agency] = await database.query<{ value: { name: string } }>(
+        "SELECT value FROM settings WHERE key='agency'",
+      );
+      const html = renderPortfolio(site.draft, {
+        baseUrl: `${config().appUrl}/p/${site.slug}`,
+        agencyName: agency?.value.name || "Brilliancy Research",
+        asset: (assetId) => `${config().appUrl}/api/media/${assetId}`,
+        siteId: id,
+        appUrl: config().appUrl,
+      })["index.html"];
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+          "X-Robots-Tag": "noindex, nofollow",
+          "Content-Security-Policy":
+            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'self'; form-action 'none'; base-uri 'none'",
+        },
+      });
+    }
+    if (action === "export" && method === "GET")
+      return new Response(
+        JSON.stringify(
+          {
+            format: "brilliancy-portfolio-v1",
+            exportedAt: new Date().toISOString(),
+            site: { name: site.name, slug: site.slug, document: site.draft },
+            media: await database.query(
+              "SELECT id,filename,mime,bytes FROM media WHERE site_id=$1",
+              [id],
+            ),
+          },
+          null,
+          2,
+        ),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Disposition": `attachment; filename="${site.slug}.json"`,
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    if (action === "domains" && method === "GET") {
+      requireAdmin(user);
+      return json({
+        domains: await database.query(
+          "SELECT * FROM domains WHERE site_id=$1 ORDER BY created_at DESC",
+          [id],
+        ),
+      });
+    }
+    if (action === "domains" && method === "POST") {
+      requireAdmin(user);
+      const { hostname } = z
+        .object({
+          hostname: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .regex(
+              /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+            ),
+        })
+        .parse(await body(request));
+      const domainId = randomUUID();
+      await database.query(
+        "INSERT INTO domains(id,site_id,hostname,verification_token) VALUES($1,$2,$3,$4)",
+        [domainId, id, hostname, token()],
+      );
+      return json({ id: domainId }, 201);
+    }
+    if (action === "verify-domain" && method === "POST") {
+      requireAdmin(user);
+      const { domainId } = z
+        .object({ domainId: idSchema })
+        .parse(await body(request));
+      const [domain] = await database.query<{
+        hostname: string;
+        verification_token: string;
+      }>("SELECT * FROM domains WHERE id=$1 AND site_id=$2", [domainId, id]);
+      invariant(domain, 404, "Domain not found.");
+      let values: string[][] = [];
+      try {
+        values = await resolveTxt(`_brilliancy.${domain.hostname}`);
+      } catch {
+        throw new AppError(
+          400,
+          "The verification TXT record was not found. DNS changes can take time to appear.",
+        );
+      }
+      invariant(
+        values.some((v) => v.join("") === domain.verification_token),
+        400,
+        "The DNS verification token does not match.",
+      );
+      await database.query("UPDATE domains SET verified_at=now() WHERE id=$1", [
+        domainId,
+      ]);
+      await audit(user.id, id, "domain.verified", {
+        hostname: domain.hostname,
+      });
+      return json({ ok: true });
+    }
+  }
+
+  return null;
+}

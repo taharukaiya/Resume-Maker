@@ -1,0 +1,465 @@
+"use client";
+import type { Media } from "@/modules/media/service";
+import {
+  type Entry,
+  type Section,
+  emptyEntry,
+  sectionTypes,
+} from "@/modules/portfolios/schema";
+import {
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { Button, Field } from "./ui";
+export function SectionsEditor({
+  sections,
+  onChange,
+  media,
+  admin,
+  allowed,
+}: {
+  sections: Section[];
+  onChange: (sections: Section[]) => void;
+  media: Media[];
+  admin: boolean;
+  allowed: string[];
+}) {
+  function update(index: number, next: Section) {
+    onChange(sections.map((s, i) => (i === index ? next : s)));
+  }
+  function move(index: number, direction: number) {
+    const next = [...sections];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  }
+  return (
+    <>
+      <div className="section-title">
+        <div>
+          <h2>Build the story.</h2>
+          <p className="panel-description" style={{ marginBottom: 0 }}>
+            Arrange academic work into clear, considered sections.
+          </p>
+        </div>
+        {admin && (
+          <select
+            aria-label="Add section"
+            style={{ maxWidth: 200 }}
+            value=""
+            onChange={(e) => {
+              const type = e.target.value as Section["type"];
+              if (!type) return;
+              onChange([
+                ...sections,
+                {
+                  id: crypto.randomUUID(),
+                  type,
+                  title: type[0].toUpperCase() + type.slice(1),
+                  visible: true,
+                  intro: "",
+                  entries: [],
+                },
+              ]);
+            }}
+          >
+            <option value="">＋ Add a section</option>
+            {sectionTypes.map((type) => (
+              <option key={type} value={type}>
+                {type[0].toUpperCase() + type.slice(1)}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      {!sections.length && (
+        <div className="empty-state">
+          <h3>A story waiting to be told.</h3>
+          <p>
+            {admin
+              ? "Add a section to start shaping this portfolio."
+              : "Your administrator will add the sections for your portfolio."}
+          </p>
+        </div>
+      )}
+      {sections.map((section, index) => {
+        const editable = admin || allowed.includes(`sections.${section.type}`);
+        function change<K extends keyof Section>(key: K, value: Section[K]) {
+          update(index, { ...section, [key]: value });
+        }
+        return (
+          <details
+            className="section-editor"
+            key={section.id}
+            open={sections.length === 1 ? true : undefined}
+          >
+            <summary>
+              <GripVertical size={15} />
+              <strong>{section.title || "Untitled section"}</strong>
+              <span className="section-type">
+                {editable ? section.type : "Admin controlled"}
+              </span>
+              {admin && (
+                <span
+                  className="section-controls"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Move ${section.title} up`}
+                    disabled={index === 0}
+                    onClick={() => move(index, -1)}
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Move ${section.title} down`}
+                    disabled={index === sections.length - 1}
+                    onClick={() => move(index, 1)}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Remove ${section.title}`}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Remove the ${section.title} section from this draft?`,
+                        )
+                      )
+                        onChange(sections.filter((s) => s.id !== section.id));
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </span>
+              )}
+            </summary>
+            <div className="section-editor-body">
+              <div className="form-grid">
+                <Field label="Section heading">
+                  <input
+                    value={section.title}
+                    maxLength={200}
+                    disabled={!editable}
+                    onChange={(e) => change("title", e.target.value)}
+                  />
+                </Field>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={section.visible}
+                    disabled={!editable}
+                    onChange={(e) => change("visible", e.target.checked)}
+                  />{" "}
+                  Show on the website
+                </label>
+                <div className="full-span">
+                  <Field label="Introduction">
+                    <textarea
+                      rows={3}
+                      value={section.intro}
+                      maxLength={10000}
+                      disabled={!editable}
+                      onChange={(e) => change("intro", e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </div>
+              {section.type === "about" && (
+                <p className="panel-description" style={{ marginTop: 15 }}>
+                  The biography from Profile is displayed in this section.
+                </p>
+              )}
+              {section.type === "contact" && (
+                <p className="panel-description" style={{ marginTop: 15 }}>
+                  Includes the public email address and a contact form that
+                  delivers messages to your inbox.
+                </p>
+              )}
+              {section.entries.map((entry, entryIndex) => (
+                <EntryEditor
+                  key={entry.id}
+                  entry={entry}
+                  index={entryIndex}
+                  type={section.type}
+                  media={media}
+                  editable={editable}
+                  onChange={(next) =>
+                    change(
+                      "entries",
+                      section.entries.map((item, i) =>
+                        i === entryIndex ? next : item,
+                      ),
+                    )
+                  }
+                  onDelete={() =>
+                    change(
+                      "entries",
+                      section.entries.filter((item) => item.id !== entry.id),
+                    )
+                  }
+                  onMove={(direction) => {
+                    const next = [...section.entries],
+                      target = entryIndex + direction;
+                    if (target < 0 || target >= next.length) return;
+                    [next[entryIndex], next[target]] = [
+                      next[target],
+                      next[entryIndex],
+                    ];
+                    change("entries", next);
+                  }}
+                />
+              ))}
+              {editable && !["about", "contact"].includes(section.type) && (
+                <Button
+                  variant="secondary small"
+                  onClick={() =>
+                    change("entries", [...section.entries, emptyEntry()])
+                  }
+                >
+                  <Plus size={13} /> Add{" "}
+                  {section.type === "publications" ? "publication" : "entry"}
+                </Button>
+              )}
+            </div>
+          </details>
+        );
+      })}
+    </>
+  );
+}
+function EntryEditor({
+  entry,
+  index,
+  type,
+  media,
+  editable,
+  onChange,
+  onDelete,
+  onMove,
+}: {
+  entry: Entry;
+  index: number;
+  type: string;
+  media: Media[];
+  editable: boolean;
+  onChange: (entry: Entry) => void;
+  onDelete: () => void;
+  onMove: (direction: number) => void;
+}) {
+  function change<K extends keyof Entry>(key: K, value: Entry[K]) {
+    onChange({ ...entry, [key]: value });
+  }
+  return (
+    <div className="entry-editor">
+      <div className="spread" style={{ marginBottom: 15 }}>
+        <h4>{entry.title || `Entry ${index + 1}`}</h4>
+        {editable && (
+          <div className="row">
+            <button
+              className="icon-button"
+              aria-label="Move entry up"
+              onClick={() => onMove(-1)}
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label="Move entry down"
+              onClick={() => onMove(1)}
+            >
+              <ChevronDown size={14} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label="Remove entry"
+              onClick={() => {
+                if (window.confirm("Remove this entry from the draft?"))
+                  onDelete();
+              }}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="form-grid">
+        <div className="full-span">
+          <Field
+            label={type === "publications" ? "Publication title" : "Title"}
+          >
+            <input
+              value={entry.title}
+              maxLength={200}
+              disabled={!editable}
+              onChange={(e) => change("title", e.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="full-span">
+          <Field
+            label={
+              type === "publications"
+                ? "Journal or conference"
+                : "Institution, organization, or subtitle"
+            }
+          >
+            <input
+              value={entry.subtitle}
+              maxLength={200}
+              disabled={!editable}
+              onChange={(e) => change("subtitle", e.target.value)}
+            />
+          </Field>
+        </div>
+        <Field
+          label={type === "publications" ? "Publication date" : "Start date"}
+          hint="YYYY, YYYY-MM, or YYYY-MM-DD"
+        >
+          <input
+            value={entry.start}
+            maxLength={10}
+            disabled={!editable}
+            onChange={(e) => change("start", e.target.value)}
+          />
+        </Field>
+        <Field label="End date" hint="Leave blank for a single date.">
+          <input
+            value={entry.end}
+            maxLength={10}
+            disabled={!editable || entry.current}
+            onChange={(e) => change("end", e.target.value)}
+          />
+        </Field>
+        {type !== "publications" && (
+          <label className="check-row full-span">
+            <input
+              type="checkbox"
+              checked={entry.current}
+              disabled={!editable}
+              onChange={(e) => change("current", e.target.checked)}
+            />{" "}
+            Currently ongoing
+          </label>
+        )}
+        {type === "publications" && (
+          <>
+            <div className="full-span">
+              <Field label="Authors" hint="Separate author names with commas.">
+                <input
+                  value={entry.authors}
+                  maxLength={1000}
+                  disabled={!editable}
+                  onChange={(e) => change("authors", e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Publication status">
+              <select
+                value={entry.status}
+                disabled={!editable}
+                onChange={(e) =>
+                  change("status", e.target.value as Entry["status"])
+                }
+              >
+                <option value="">No status label</option>
+                <option value="published">Published</option>
+                <option value="accepted">Accepted</option>
+                <option value="preprint">Preprint</option>
+                <option value="submitted">Submitted</option>
+                <option value="in-progress">In progress</option>
+              </select>
+            </Field>
+            <Field label="Abstract source">
+              <select
+                value={entry.abstractSource}
+                disabled={!editable}
+                onChange={(e) =>
+                  change(
+                    "abstractSource",
+                    e.target.value as Entry["abstractSource"],
+                  )
+                }
+              >
+                <option value="">Not specified</option>
+                <option value="original">Author-written abstract</option>
+                <option value="generated">AI-assisted research summary</option>
+              </select>
+            </Field>
+            <div className="full-span">
+              <Field label="DOI">
+                <input
+                  value={entry.doi}
+                  maxLength={250}
+                  disabled={!editable}
+                  onChange={(e) => change("doi", e.target.value)}
+                />
+              </Field>
+            </div>
+          </>
+        )}
+        <div className="full-span">
+          <Field
+            label={
+              type === "publications"
+                ? "Abstract or research summary"
+                : "Description"
+            }
+            hint="Separate paragraphs with a blank line."
+          >
+            <textarea
+              rows={5}
+              value={entry.body}
+              maxLength={16000}
+              disabled={!editable}
+              onChange={(e) => change("body", e.target.value)}
+            />
+          </Field>
+        </div>
+        <Field label="External link">
+          <input
+            type="url"
+            value={entry.url}
+            maxLength={2000}
+            disabled={!editable}
+            onChange={(e) => change("url", e.target.value)}
+          />
+        </Field>
+        <Field label="Attached file">
+          <select
+            value={entry.mediaId}
+            disabled={!editable}
+            onChange={(e) => change("mediaId", e.target.value)}
+          >
+            <option value="">No file</option>
+            {media.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.filename}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="full-span">
+          <Field label="Keywords" hint="Separate keywords with commas.">
+            <input
+              value={entry.tags}
+              maxLength={500}
+              disabled={!editable}
+              onChange={(e) => change("tags", e.target.value)}
+            />
+          </Field>
+        </div>
+      </div>
+    </div>
+  );
+}

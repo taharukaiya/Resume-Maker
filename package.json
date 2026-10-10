@@ -1,0 +1,60 @@
+{
+  "name": "brilliancy-research-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "setup": "tsx scripts/setup.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "worker": "tsx scripts/worker.ts",
+    "domain:provision": "tsx scripts/domain-provision.ts",
+    "infra:synth": "cdk synth",
+    "infra:deploy": "cdk deploy --all",
+    "format": "prettier --write src scripts tests infra docs *.ts *.json *.md",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudfront": "^3.1149.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-secrets-manager": "^3.1149.0",
+    "@aws-sdk/client-sesv2": "^3.0.0",
+    "@electric-sql/pglite": "0.5.8",
+    "dotenv": "^17.0.0",
+    "file-type": "^21.0.0",
+    "lucide-react": "^0.468.0",
+    "next": "16.4.0",
+    "openai": "^6.0.0",
+    "otpauth": "^9.4.0",
+    "pdf-parse": "^2.4.0",
+    "pg": "^8.16.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "aws-cdk": "^2.1145.0",
+    "aws-cdk-lib": "^2.273.0",
+    "constructs": "^10.8.1",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
