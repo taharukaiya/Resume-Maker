@@ -44,6 +44,7 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   expect(created.status()).toBe(201);
   const { id } = await created.json();
   const doc = emptyDocument("Dr. Maya Rahman");
+  doc.navigation.layout = "single";
   doc.profile.headline =
     "Research at the intersection of climate, cities, and collective possibility.";
   doc.profile.affiliation = "Environmental Systems Research";

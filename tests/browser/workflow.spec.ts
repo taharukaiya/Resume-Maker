@@ -322,6 +322,7 @@ test("client invitation, permitted submission, files, private pages, and public 
     section,
     { ...section, id: crypto.randomUUID(), type: "contact", title: "Contact" },
   ];
+  data.site.draft.navigation.layout = "single";
   data.site.draft.profile.portraitId = data.media[0].id;
   data.site.draft.pages = [
     {
@@ -398,6 +399,7 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   expect(created.status()).toBe(201);
   const { id } = await created.json();
   const doc = emptyDocument("Dr. Amara Rahman");
+  doc.navigation.layout = "single";
   doc.profile.headline =
     "Exploring the connections between climate, cities, and human possibility.";
   doc.profile.affiliation = "Environmental Systems Research";
@@ -459,7 +461,8 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   };
   let revision = 1;
   for (const [i, style] of styles.entries()) {
-    const { name: paletteName, ...palette } = palettes[i === 4 ? 6 : i];
+    const { name: paletteName, ...palette } =
+      palettes[style.id === "folio" ? 6 : i % palettes.length];
     doc.theme = { ...doc.theme, ...palette, style: style.id };
     const saved = await page.request.put(`/api/sites/${id}`, {
       headers: { origin: "http://localhost:3100" },

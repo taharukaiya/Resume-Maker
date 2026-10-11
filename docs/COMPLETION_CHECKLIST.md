@@ -110,7 +110,7 @@ npx.cmd playwright show-report
 npm.cmd audit
 ```
 
-The browser server uses port 3100 and `.test-data/browser`; normal development uses port 3000 and `.data`. Both can now run at once. A browser test must not be started while another browser-test run is still active.
+The browser server uses port 3100 and a fresh `.test-data/browser-*` directory per run; normal development uses port 3000 and `.data`. This isolates test accounts, uploads, and login rate limits from earlier runs. Both servers can run at once. A browser test must not be started while another browser-test run is still active.
 
 Stop the normal development server with Ctrl+C before the production build, then restart it afterward:
 

@@ -91,6 +91,9 @@ export const sectionSchema = z
     type: z.enum(sectionTypes),
     title: short,
     visible: z.boolean(),
+    destination: z
+      .enum(["auto", "home", "about", "research", "contact"])
+      .optional(),
     intro: z.string().max(10000),
     entries: z.array(entrySchema).max(100),
   })
@@ -114,6 +117,8 @@ const baseLabels = {
   receivedMessage: "Your message has been delivered to the portfolio team.",
 };
 const interactionLabels = {
+  closeMenu: "Close menu",
+  viewPage: "Explore page",
   readMore: "Read full description",
   showLess: "Show less",
   explore: "Explore my work",
@@ -168,6 +173,8 @@ export const documentSchema = z
     theme: z
       .object({
         style: z.enum([
+          "lumen",
+          "archive",
           "editorial",
           "modern",
           "classic",
@@ -208,6 +215,45 @@ export const documentSchema = z
         contactLabel: short,
         cvLabel: short,
         footer: z.string().max(1000),
+        layout: z.enum(["pages", "single"]).optional(),
+        sectionOrder: z.enum(["academic", "manual"]).optional(),
+        homeLabel: short.min(1).optional(),
+        menuLabel: short.min(1).optional(),
+        pageSettings: z
+          .object({
+            about: z
+              .object({
+                title: short.min(1),
+                slug: z
+                  .string()
+                  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+                  .max(80),
+                description: z.string().max(320),
+              })
+              .optional(),
+            research: z
+              .object({
+                title: short.min(1),
+                slug: z
+                  .string()
+                  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+                  .max(80),
+                description: z.string().max(320),
+              })
+              .optional(),
+            contact: z
+              .object({
+                title: short.min(1),
+                slug: z
+                  .string()
+                  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+                  .max(80),
+                description: z.string().max(320),
+              })
+              .optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     labels: labelsSchema,
@@ -231,6 +277,33 @@ export const documentSchema = z
   })
   .strict()
   .superRefine((doc, ctx) => {
+    if (doc.navigation.layout !== "single") {
+      const addresses = ["about", "research", "contact"].map(
+        (key) =>
+          doc.navigation.pageSettings?.[key as "about" | "research" | "contact"]
+            ?.slug || key,
+      );
+      if (
+        new Set(addresses).size !== addresses.length ||
+        addresses.some((slug) =>
+          [
+            "publications",
+            "assets",
+            "fonts",
+            "index",
+            "index.html",
+            "sitemap.xml",
+            "robots.txt",
+          ].includes(slug),
+        )
+      )
+        ctx.addIssue({
+          code: "custom",
+          path: ["navigation", "pageSettings"],
+          message:
+            "Use different, unreserved addresses for About, Research, and Contact.",
+        });
+    }
     if (
       doc.theme.text &&
       contrastRatio(doc.theme.text, doc.theme.background) < 4.5
@@ -321,10 +394,11 @@ export function emptyDocument(name: string): PortfolioDocument {
       indexable: true,
     },
     theme: {
-      style: "editorial",
+      style: "lumen",
       accent: "#174f43",
       background: "#faf9f6",
-      font: "serif",
+      font: "manrope",
+      bodyFont: "dm-sans",
       width: "standard",
       roundness: "soft",
       showAgencyCredit: true,
@@ -380,7 +454,8 @@ export function canEditDocument(
   for (let i = 0; i < before.sections.length; i++) {
     if (
       before.sections[i].id !== after.sections[i].id ||
-      before.sections[i].type !== after.sections[i].type
+      before.sections[i].type !== after.sections[i].type ||
+      before.sections[i].destination !== after.sections[i].destination
     )
       return false;
     if (allowed.includes(`sections.${before.sections[i].type}`))

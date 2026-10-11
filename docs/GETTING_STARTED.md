@@ -90,7 +90,7 @@ successful extraction remains available. API usage is billed by OpenAI.
 
 ## 7. Portfolio design controls
 
-Open **Design** to choose Editorial, Studio, Archive, Aurora, Folio, Atlas,
+Open **Design** to choose Lumen, Archive, Editorial, Studio, Classic, Aurora, Folio, Atlas,
 Noir, or Horizon. Apply
 one of eight palettes or set the accent, background, body text and secondary
 colors yourself. Heading and body fonts are independent: Georgia, system sans,
@@ -99,10 +99,31 @@ There are also controls for heading scale, spacing, portrait shape, decoration,
 width and corners. The sidebar shows typography/color changes immediately;
 save and use Preview to inspect the full layout.
 
-For a complete coordinated design, choose **Atlas · Cobalt**, **Noir · Copper**,
+For a complete coordinated design, choose **Lumen · Sage**, **Archive · Oxblood**,
+**Atlas · Cobalt**, **Noir · Copper**,
 or **Horizon · Terracotta** at the top of Design. These presets set the layout,
 colors, fonts, portrait treatment, and motion together; every setting remains
 editable. They do not replace the researcher's content.
+
+Under **Pages → Website structure**, the default **Separate pages** layout creates
+focused Home, About, Research, and Contact destinations from your content. About
+contains biography, education, experience, awards, skills, and interests; Research
+contains publications and projects. Empty destinations are omitted, while Contact
+provides the inquiry form. Change page titles, addresses, and introductions here.
+Existing custom pages remain available; matching addresses combine their sections.
+You can switch to **One scrolling page** without losing content.
+
+Under **Academic sections**, **Academic order** places education before interests,
+even if education was added later or imported from a CV. Arrow controls switch to
+your own sequence; **Use academic order** restores the recommended sequence. Open
+a section's **Display on page** setting to place it on Home, About, Research, or
+Contact. Administrators control page placement and sequence; client permissions
+still govern which content they can edit.
+
+On phones, public portfolios use a hamburger menu with native browser open/close,
+outside-click dismissal, and Escape support. The editor uses an **Editing** selector
+and a keyboard-accessible workspace drawer. Save, preview, and publish to apply
+the new layout to an existing public portfolio; published releases are snapshots.
 
 Under **Motion & interaction**, choose Still, Subtle, or Expressive. You can also
 enable sticky navigation, expandable research descriptions, and an index linking

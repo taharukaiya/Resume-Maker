@@ -2038,3 +2038,222 @@ select:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Portfolio planning and comfortable editing on smaller screens. */
+.page-planner {
+  margin-bottom: 28px;
+}
+.page-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+.page-plan-card {
+  border: 1px solid var(--line);
+  padding: 22px;
+  border-radius: 14px;
+  background: var(--white);
+}
+.page-plan-card > .spread {
+  margin-bottom: 22px;
+  align-items: center;
+  gap: 12px;
+}
+.page-plan-card .field {
+  margin-top: 16px;
+}
+.page-plan-number {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  color: var(--accent);
+}
+.section-order-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+}
+.section-position {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--soft);
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.section-controls .icon-button {
+  min-width: 36px;
+  min-height: 36px;
+}
+.mobile-editor-tabs {
+  display: none;
+}
+.signature-looks {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.signature-look {
+  border-radius: 14px;
+}
+.sketch-lumen {
+  background: #eff3e8;
+}
+.sketch-lumen i {
+  border-radius: 40% 40% 4px 4px;
+  background: #819a87;
+}
+.sketch-archive {
+  background: #f2eade;
+  border-bottom: 2px solid #803c43;
+}
+.sketch-archive i {
+  background: #c7aaa4;
+  border-radius: 0;
+}
+.navigation-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  border: 0;
+  background: #16161977;
+  backdrop-filter: blur(4px);
+}
+@media (max-width: 1100px) {
+  .page-plan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    max-width: calc(100vw - 42px);
+    transition: transform 0.2s;
+    z-index: 50;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: none;
+  }
+  .workspace {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+  .mobile-menu,
+  .mobile-close {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .mobile-close {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+  }
+  .workspace-header {
+    padding: 0 20px;
+    height: 64px;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .workspace-status {
+    margin-left: auto;
+  }
+}
+@media (max-width: 640px) {
+  .workspace-main {
+    padding: 24px 16px;
+  }
+  .editor-heading {
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .editor-heading h1 {
+    font-size: 30px;
+  }
+  .editor-heading > .row {
+    width: 100%;
+  }
+  .editor-heading > .row > .button {
+    flex: 1;
+    justify-content: center;
+    min-height: 46px;
+  }
+  .tabs {
+    display: none;
+  }
+  .mobile-editor-tabs {
+    display: block;
+    margin: 20px 0;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .mobile-editor-tabs .field {
+    margin: 0;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  .section-editor > summary {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 10px;
+  }
+  .section-controls {
+    margin-left: auto;
+  }
+  .section-controls .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .section-editor-body {
+    padding: 18px;
+  }
+  .section-title {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .section-title > select {
+    max-width: 100% !important;
+  }
+  .section-order-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page-plan-card {
+    padding: 18px;
+  }
+  .signature-looks,
+  .composition-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .signature-look {
+    padding: 18px;
+  }
+  .composition-card {
+    padding: 14px;
+  }
+  .panel {
+    border-radius: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

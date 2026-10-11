@@ -49,6 +49,18 @@ export const fonts: Record<
 };
 export const styles = [
   {
+    id: "lumen",
+    name: "Lumen",
+    description:
+      "A crisp academic presence with generous space, a sculpted portrait, and focused page cards.",
+  },
+  {
+    id: "archive",
+    name: "Archive",
+    description:
+      "Warm editorial typography, fine rules, and a considered research journal aesthetic.",
+  },
+  {
     id: "editorial",
     name: "Editorial",
     description:
@@ -62,7 +74,7 @@ export const styles = [
   },
   {
     id: "classic",
-    name: "Archive",
+    name: "Classic",
     description:
       "A centered scholarly introduction with an understated, timeless rhythm.",
   },
@@ -98,6 +110,46 @@ export const styles = [
   },
 ] as const;
 export const signatureLooks = [
+  {
+    name: "Lumen · Sage",
+    theme: {
+      style: "lumen",
+      accent: "#245746",
+      background: "#fafbf7",
+      text: "#233a31",
+      secondary: "#d8e5bb",
+      font: "manrope",
+      bodyFont: "dm-sans",
+      decoration: "none",
+      portrait: "arch",
+      scale: "expressive",
+      roundness: "soft",
+      motion: "subtle",
+      researchIndex: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
+  {
+    name: "Archive · Oxblood",
+    theme: {
+      style: "archive",
+      accent: "#803c43",
+      background: "#faf6ef",
+      text: "#322d29",
+      secondary: "#dac6a5",
+      font: "cormorant-garamond",
+      bodyFont: "dm-sans",
+      decoration: "none",
+      portrait: "rectangle",
+      scale: "expressive",
+      roundness: "sharp",
+      motion: "subtle",
+      researchIndex: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
   {
     name: "Atlas · Cobalt",
     theme: {

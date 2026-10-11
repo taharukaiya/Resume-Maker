@@ -14,7 +14,14 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 import { api } from "./ui";
 import { BrandLogo } from "./brand-logo";
 import { NavigationLink } from "./navigation-link";
@@ -33,6 +40,55 @@ export function StudioShell({
     router = useRouter(),
     [open, setOpen] = useState(false),
     [logoutError, setLogoutError] = useState("");
+  const drawer = useRef<HTMLElement>(null);
+  const workspace = useRef<HTMLDivElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 900px)");
+    const update = () => {
+      setMobile(query.matches);
+      if (!query.matches) setOpen(false);
+    };
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!open || !mobile) return;
+    const previousOverflow = window.document.body.style.overflow;
+    window.document.body.style.overflow = "hidden";
+    if (workspace.current) workspace.current.inert = true;
+    drawer.current?.querySelector<HTMLButtonElement>(".mobile-close")?.focus();
+    function key(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+      }
+      if (event.key !== "Tab") return;
+      const elements = Array.from(
+        drawer.current?.querySelectorAll<HTMLElement>(
+          "a[href],button:not(:disabled)",
+        ) || [],
+      );
+      const first = elements[0],
+        last = elements[elements.length - 1];
+      if (event.shiftKey && window.document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && window.document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+    window.document.addEventListener("keydown", key);
+    return () => {
+      window.document.body.style.overflow = previousOverflow;
+      if (workspace.current) workspace.current.inert = false;
+      window.document.removeEventListener("keydown", key);
+      menuButton.current?.focus();
+    };
+  }, [open, mobile]);
   const links = [
     { url: "/studio", label: "Overview", icon: LayoutDashboard },
     { url: "/studio/portfolios", label: "Portfolios", icon: PanelsTopLeft },
@@ -48,8 +104,28 @@ export function StudioShell({
   return (
     <UserContext.Provider value={user}>
       <div className="studio">
-        <aside className={`sidebar ${open ? "open" : ""}`}>
-          <NavigationLink href="/studio" className="brand-lockup">
+        {open && mobile && (
+          <button
+            className="navigation-backdrop"
+            aria-label="Dismiss navigation"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+          />
+        )}
+        <aside
+          ref={drawer}
+          id="workspace-navigation"
+          className={`sidebar ${open ? "open" : ""}`}
+          inert={mobile && !open}
+          role={open && mobile ? "dialog" : undefined}
+          aria-modal={open && mobile ? true : undefined}
+          aria-label={open && mobile ? "Workspace navigation" : undefined}
+        >
+          <NavigationLink
+            href="/studio"
+            className="brand-lockup"
+            onNavigate={() => setOpen(false)}
+          >
             <BrandLogo />
           </NavigationLink>
           <button
@@ -131,12 +207,15 @@ export function StudioShell({
           </div>
           {logoutError && <p role="alert">{logoutError}</p>}
         </aside>
-        <div className="workspace">
+        <div ref={workspace} className="workspace">
           <header className="workspace-header">
             <button
+              ref={menuButton}
               className="mobile-menu icon-button"
               onClick={() => setOpen(true)}
               aria-label="Open navigation"
+              aria-expanded={open}
+              aria-controls="workspace-navigation"
             >
               <Menu />
             </button>

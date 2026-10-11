@@ -47,6 +47,7 @@ describe("Portfolio experience", () => {
     "renders $name with valid colors and no executable scripts",
     (look) => {
       const doc = emptyDocument("Researcher <script>unsafe()</script>");
+      doc.navigation.layout = "single";
       doc.theme = { ...doc.theme, ...look.theme };
       doc.sections = [
         {

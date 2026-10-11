@@ -6,27 +6,29 @@ import {
   emptyEntry,
   sectionTypes,
 } from "@/modules/portfolios/schema";
-import {
-  ChevronDown,
-  ChevronUp,
-  GripVertical,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { Button, Field } from "./ui";
 import { useConfirmation } from "./confirmation";
+import {
+  orderSections,
+  sectionDestination,
+} from "@/modules/portfolios/structure";
 export function SectionsEditor({
   sections,
   onChange,
   media,
   admin,
   allowed,
+  order = "manual",
+  placement = false,
 }: {
   sections: Section[];
-  onChange: (sections: Section[]) => void;
+  onChange: (sections: Section[], order?: "manual" | "academic") => void;
   media: Media[];
   admin: boolean;
   allowed: string[];
+  order?: "academic" | "manual";
+  placement?: boolean;
 }) {
   const confirm = useConfirmation();
   function update(index: number, next: Section) {
@@ -37,7 +39,7 @@ export function SectionsEditor({
     const target = index + direction;
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
-    onChange(next);
+    onChange(next, "manual");
   }
   return (
     <>
@@ -45,7 +47,9 @@ export function SectionsEditor({
         <div>
           <h2>Build the story.</h2>
           <p className="panel-description" style={{ marginBottom: 0 }}>
-            Arrange academic work into clear, considered sections.
+            {order === "academic"
+              ? "Academic order keeps education and research ahead of interests. Move a section to switch to your own sequence."
+              : "Use the arrows to arrange sections in your preferred sequence."}
           </p>
         </div>
         {admin && (
@@ -56,17 +60,22 @@ export function SectionsEditor({
             onChange={(e) => {
               const type = e.target.value as Section["type"];
               if (!type) return;
-              onChange([
-                ...sections,
-                {
-                  id: crypto.randomUUID(),
-                  type,
-                  title: type[0].toUpperCase() + type.slice(1),
-                  visible: true,
-                  intro: "",
-                  entries: [],
-                },
-              ]);
+              onChange(
+                orderSections(
+                  [
+                    ...sections,
+                    {
+                      id: crypto.randomUUID(),
+                      type,
+                      title: type[0].toUpperCase() + type.slice(1),
+                      visible: true,
+                      intro: "",
+                      entries: [],
+                    },
+                  ],
+                  order,
+                ),
+              );
             }}
           >
             <option value="">＋ Add a section</option>
@@ -78,6 +87,20 @@ export function SectionsEditor({
           </select>
         )}
       </div>
+      {admin && (
+        <div className="section-order-toolbar">
+          <span>
+            {sections.length} sections ·{" "}
+            {order === "academic" ? "Academic order" : "Custom order"}
+          </span>
+          <Button
+            variant="secondary small"
+            onClick={() => onChange(orderSections(sections), "academic")}
+          >
+            Use academic order
+          </Button>
+        </div>
+      )}
       {!sections.length && (
         <div className="empty-state">
           <h3>A story waiting to be told.</h3>
@@ -100,7 +123,9 @@ export function SectionsEditor({
             open={sections.length === 1 ? true : undefined}
           >
             <summary>
-              <GripVertical size={15} />
+              <span className="section-position">
+                {String(index + 1).padStart(2, "0")}
+              </span>
               <strong>{section.title || "Untitled section"}</strong>
               <span className="section-type">
                 {editable ? section.type : "Admin controlled"}
@@ -151,6 +176,30 @@ export function SectionsEditor({
             </summary>
             <div className="section-editor-body">
               <div className="form-grid">
+                {admin && placement && (
+                  <Field
+                    label="Display on page"
+                    hint={`Automatic placement: ${sectionDestination({ ...section, destination: "auto" })}.`}
+                  >
+                    <select
+                      value={section.destination || "auto"}
+                      onChange={(e) =>
+                        change(
+                          "destination",
+                          e.target.value as Section["destination"],
+                        )
+                      }
+                    >
+                      <option value="auto">
+                        Automatic — based on section type
+                      </option>
+                      <option value="home">Home</option>
+                      <option value="about">About</option>
+                      <option value="research">Research</option>
+                      <option value="contact">Contact</option>
+                    </select>
+                  </Field>
+                )}
                 <Field label="Section heading">
                   <input
                     value={section.title}

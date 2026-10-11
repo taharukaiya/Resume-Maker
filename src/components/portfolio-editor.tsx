@@ -5,6 +5,7 @@ import {
   editableOptions,
   emptyEntry,
   defaultLabels,
+  documentSchema,
   profileLinkUrlSchema,
 } from "@/modules/portfolios/schema";
 import type { Site } from "@/modules/portfolios/service";
@@ -34,6 +35,8 @@ import { CvImporter } from "./cv-importer";
 import { PortraitEditor } from "./portrait-editor";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
+import { PagePlanner } from "./page-planner";
+import { orderSections } from "@/modules/portfolios/structure";
 import { useUser } from "./studio-shell";
 import { NavigationLink } from "./navigation-link";
 import { PageLoading } from "./page-loading";
@@ -210,6 +213,15 @@ export function PortfolioEditor({ id }: { id: string }) {
   }, [tab, invalidLink]);
   async function save() {
     if (!document || !data) return;
+    const navigationResult = documentSchema.shape.navigation.safeParse(
+      document.navigation,
+    );
+    if (!navigationResult.success) {
+      setTab("pages");
+      throw new Error(
+        "Check Website structure in the Pages tab: every page needs a title and an address using lowercase letters, numbers, and hyphens.",
+      );
+    }
     for (const [index, page] of document.pages.entries()) {
       if (!page.title.trim()) {
         setTab("pages");
@@ -410,6 +422,30 @@ export function PortfolioEditor({ id }: { id: string }) {
             {label}
           </button>
         ))}
+      </div>
+      <div className="mobile-editor-tabs">
+        <Field label="Editing">
+          <select
+            value={tab}
+            onChange={(e) => {
+              const key = e.target.value;
+              setTab(key);
+              if (key === "history")
+                void feedback.run(async () => {
+                  const result = await api<{ revisions: Revision[] }>(
+                    `sites/${id}/history`,
+                  );
+                  setHistory(result.revisions);
+                });
+            }}
+          >
+            {tabs.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
       {tab === "profile" && (
         <div className="editor-grid">
@@ -663,8 +699,28 @@ export function PortfolioEditor({ id }: { id: string }) {
       )}
       {tab === "sections" && (
         <SectionsEditor
-          sections={document.sections}
-          onChange={(sections) => change({ ...document, sections })}
+          sections={orderSections(
+            document.sections,
+            document.navigation.sectionOrder,
+          )}
+          order={document.navigation.sectionOrder || "academic"}
+          placement={document.navigation.layout !== "single"}
+          onChange={(sections, sectionOrder) =>
+            change({
+              ...document,
+              sections: admin
+                ? sections
+                : document.sections.map(
+                    (section) =>
+                      sections.find((next) => next.id === section.id) ||
+                      section,
+                  ),
+              navigation: {
+                ...document.navigation,
+                ...(sectionOrder ? { sectionOrder } : {}),
+              },
+            })
+          }
           media={assets}
           admin={admin}
           allowed={data.site.editable_fields}
@@ -672,6 +728,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       )}
       {tab === "pages" && admin && (
         <>
+          <PagePlanner document={document} onChange={change} />
           <div className="section-title">
             <div>
               <h2>Give important work its own space.</h2>

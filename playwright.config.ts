@@ -20,7 +20,8 @@ export default defineConfig({
     env: {
       BRILLIANCY_E2E: "true",
       APP_URL: "http://localhost:3100",
-      DATA_DIR: path.resolve(".test-data/browser"),
+      // Keep repeated runs isolated, including real login rate limits and uploads.
+      DATA_DIR: path.resolve(`.test-data/browser-${Date.now()}-${process.pid}`),
       SETUP_TOKEN: "browser-test-bootstrap-only",
       SESSION_SECRET: "browser-test-only-secret-with-at-least-32-characters",
       RUN_WORKER: "true",

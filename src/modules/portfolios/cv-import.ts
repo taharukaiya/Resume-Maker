@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { orderSections } from "./structure";
 import {
   documentSchema,
   emptyEntry,
@@ -156,5 +157,6 @@ export function applyCvImport(
   });
   // Applying reviewed facts is a local edit. Unfinished pages or other fields
   // must not block it; the complete document is validated when saved/published.
+  next.sections = orderSections(next.sections, next.navigation.sectionOrder);
   return next;
 }
