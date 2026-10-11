@@ -49,16 +49,14 @@ test("free browser AI explains unsupported hardware without changing the draft",
   await page
     .getByRole("button", { name: "Create portfolio", exact: true })
     .click();
-  await page
-    .getByLabel("Upload a CV", { exact: true })
-    .setInputFiles({
-      name: "sample-cv.pdf",
-      mimeType: "application/pdf",
-      buffer: textPdf([
-        "Sample academic CV for testing only. Education: Master of Science, 2022.",
-        "Research interests include environmental modelling and scientific communication.",
-      ]),
-    });
+  await page.getByLabel("Upload a CV", { exact: true }).setInputFiles({
+    name: "sample-cv.pdf",
+    mimeType: "application/pdf",
+    buffer: textPdf([
+      "Sample academic CV for testing only. Education: Master of Science, 2022.",
+      "Research interests include environmental modelling and scientific communication.",
+    ]),
+  });
   await expect(
     page.getByRole("button", { name: "Extract details", exact: true }),
   ).toBeEnabled();
@@ -72,7 +70,9 @@ test("free browser AI explains unsupported hardware without changing the draft",
   await page
     .getByRole("button", { name: "Extract details", exact: true })
     .click();
-  await expect(page.getByRole("alert").filter({ hasText: "Free AI requires WebGPU" })).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Free AI requires WebGPU" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Extract details", exact: true }),
   ).toBeEnabled();
@@ -284,9 +284,9 @@ test("client invitation, permitted submission, files, private pages, and public 
         exact: true,
       }),
     ).toBeVisible();
-    expect((await clientPage.request.get(`/p/client-${stamp}`)).status()).toBe(
-      404,
-    );
+    expect(
+      (await clientPage.request.get(`/portfolio/client-${stamp}`)).status(),
+    ).toBe(404);
   } finally {
     await clientContext.close();
   }
@@ -353,7 +353,7 @@ test("client invitation, permitted submission, files, private pages, and public 
   await expect(
     page.getByRole("link", { name: "View published portfolio" }),
   ).toBeVisible({ timeout: 30000 });
-  await page.goto(`/p/client-${stamp}`);
+  await page.goto(`/portfolio/client-${stamp}`);
   await expect(
     page.getByText("A biography submitted by the invited researcher."),
   ).toBeVisible();
@@ -552,6 +552,13 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
     await route.fulfill({ response, json: body });
   });
   await page.reload();
+  // A page being edited must not prevent applying independently reviewed CV facts.
+  await page.getByRole("tab", { name: "Pages", exact: true }).click();
+  await page.getByRole("button", { name: "Add page", exact: true }).click();
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("Unfinished research page");
+  await page.getByRole("tab", { name: "Profile", exact: true }).click();
   await page
     .getByLabel("CV or resume PDF")
     .selectOption({ label: "review-fixture.pdf" });
@@ -572,6 +579,41 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   await expect(
     page.locator('input[value="MSc in Environmental Science"]'),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(
+    page.getByRole("tab", { name: "Pages", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByText(
+      "Page 1: enter a page title in the Pages tab, or remove this unfinished page.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    "Unfinished research page",
+  );
+  await page.getByLabel("Page title", { exact: true }).fill("Research");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(
+    page.getByText(
+      "Page 1 (Research): enter a page address using lowercase letters, numbers, and hyphens, such as research.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.getByLabel("Page address", { exact: true }).fill("research");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+  const importedDraft = await (
+    await page.request.get(`/api/sites/${id}`)
+  ).json();
+  expect(importedDraft.site.draft.pages[0].description).toBe(
+    "Unfinished research page",
+  );
+  expect(
+    importedDraft.site.draft.sections.some(
+      (section: { type: string }) => section.type === "education",
+    ),
+  ).toBe(true);
   await page.getByRole("tab", { name: "Review & publish" }).click();
   await page
     .getByRole("button", { name: "Delete draft portfolio", exact: true })

@@ -210,6 +210,20 @@ export function PortfolioEditor({ id }: { id: string }) {
   }, [tab, invalidLink]);
   async function save() {
     if (!document || !data) return;
+    for (const [index, page] of document.pages.entries()) {
+      if (!page.title.trim()) {
+        setTab("pages");
+        throw new Error(
+          `Page ${index + 1}: enter a page title in the Pages tab, or remove this unfinished page.`,
+        );
+      }
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug)) {
+        setTab("pages");
+        throw new Error(
+          `Page ${index + 1} (${page.title}): enter a page address using lowercase letters, numbers, and hyphens, such as research.`,
+        );
+      }
+    }
     const links = document.profile.links.map((link, index) => {
       const result = profileLinkUrlSchema.safeParse(link.url);
       if (!result.success) {
@@ -630,11 +644,11 @@ export function PortfolioEditor({ id }: { id: string }) {
             </section>
             <section className="panel">
               <h3>Portfolio address</h3>
-              <p>/p/{data.site.slug}</p>
+              <p>/portfolio/{data.site.slug}</p>
               {data.site.published_release_id ? (
                 <a
                   className="inline-link"
-                  href={`/p/${data.site.slug}`}
+                  href={`/portfolio/${data.site.slug}`}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -1264,7 +1278,7 @@ export function PortfolioEditor({ id }: { id: string }) {
             {data.site.published_release_id && (
               <a
                 className="guide-link"
-                href={`/p/${data.site.slug}`}
+                href={`/portfolio/${data.site.slug}`}
                 target="_blank"
                 rel="noreferrer"
               >

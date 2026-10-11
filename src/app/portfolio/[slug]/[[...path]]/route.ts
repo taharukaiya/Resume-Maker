@@ -1,4 +1,6 @@
 import { getObject } from "@/lib/storage";
+import { config } from "@/lib/config";
+import { migratePublicUrls } from "@/modules/publishing/public-urls";
 import { liveManifest } from "@/modules/publishing/service";
 import { NextRequest } from "next/server";
 export const runtime = "nodejs";
@@ -29,13 +31,20 @@ export async function GET(
     });
   const bytes = await getObject(item.key);
   if (!bytes) return new Response("Temporarily unavailable.", { status: 503 });
-  return new Response(new Uint8Array(bytes), {
+  const body =
+    item.type.startsWith("text/") || item.type.startsWith("application/xml")
+      ? migratePublicUrls(bytes.toString("utf8"), params.slug, [
+          config().appUrl,
+          new URL(manifest.baseUrl).origin,
+        ])
+      : new Uint8Array(bytes);
+  return new Response(body, {
     headers: {
       "Content-Type": item.type,
       "Cache-Control": route.startsWith("assets/")
         ? "public, max-age=31536000, immutable"
         : "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
-      ETag: `"${manifest.releaseId}-${route}"`,
+      ETag: `"portfolio-v2-${manifest.releaseId}-${route}"`,
       "Content-Security-Policy":
         "default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; font-src 'self'; script-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'self'",
       ...(item.type === "application/pdf"

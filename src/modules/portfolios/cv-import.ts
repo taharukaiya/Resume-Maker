@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { documentSchema, emptyEntry, type PortfolioDocument } from "./schema";
+import {
+  documentSchema,
+  emptyEntry,
+  entrySchema,
+  sectionSchema,
+  type PortfolioDocument,
+} from "./schema";
 
 export const cvProfileFields = [
   "name",
@@ -91,7 +97,9 @@ export function applyCvImport(
       result.profile[key] &&
       (selection.replace || !next.profile[key])
     ) {
-      next.profile[key] = result.profile[key];
+      next.profile[key] = documentSchema.shape.profile.shape[key].parse(
+        result.profile[key],
+      );
       if (key === "bio" && !next.sections.some((s) => s.type === "about"))
         next.sections.unshift({
           id: crypto.randomUUID(),
@@ -109,7 +117,9 @@ export function applyCvImport(
         link.url &&
         !next.profile.links.some((existing) => existing.url === link.url)
       )
-        next.profile.links.push(link);
+        next.profile.links.push(
+          documentSchema.shape.profile.shape.links.element.parse(link),
+        );
     }
   result.sections.forEach((section, si) => {
     const chosen = section.entries.filter((_, ei) =>
@@ -125,7 +135,7 @@ export function applyCvImport(
       target = {
         id: crypto.randomUUID(),
         type: section.type,
-        title: section.title,
+        title: sectionSchema.shape.title.parse(section.title),
         visible: true,
         intro: "",
         entries: [],
@@ -133,6 +143,7 @@ export function applyCvImport(
       next.sections.push(target);
     }
     for (const entry of chosen) {
+      const validated = entrySchema.parse({ ...emptyEntry(), ...entry });
       // Reapplying a proposal must not duplicate the same academic record.
       const duplicate = target.entries.some(
         (e) =>
@@ -140,8 +151,10 @@ export function applyCvImport(
           e.subtitle === entry.subtitle &&
           e.start === entry.start,
       );
-      if (!duplicate) target.entries.push({ ...emptyEntry(), ...entry });
+      if (!duplicate) target.entries.push(validated);
     }
   });
-  return documentSchema.parse(next);
+  // Applying reviewed facts is a local edit. Unfinished pages or other fields
+  // must not block it; the complete document is validated when saved/published.
+  return next;
 }

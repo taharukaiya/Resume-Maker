@@ -57,7 +57,7 @@ export async function buildRelease(
       id,
       config().assetUrl
         ? `${config().assetUrl!.replace(/\/$/, "")}/${key}`
-        : `${config().appUrl}/p/${payload.slug}/${route}`,
+        : `${config().appUrl}/portfolio/${payload.slug}/${route}`,
     );
   }
   for (const fontId of selectedFonts(document.theme)) {

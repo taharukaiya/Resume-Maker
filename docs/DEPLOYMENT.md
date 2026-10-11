@@ -46,7 +46,7 @@ The runtime database role has row-level operation grants on application tables, 
 
 ## Connecting an individual researcher domain
 
-1. Publish the portfolio on its studio `/p/slug` URL once.
+1. Publish the portfolio on its studio `/portfolio/slug` URL once.
 2. Add the custom hostname in Review & publish → Custom domains.
 3. Create the displayed `_brilliancy` TXT record at the domain’s DNS provider. Click Verify DNS record.
 4. Request an ACM certificate **in us-east-1**, covering the exact hostname. Add ACM’s DNS-validation CNAME records and wait for certificate status ISSUED.

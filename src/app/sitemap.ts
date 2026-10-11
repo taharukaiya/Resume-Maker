@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return sites
     .filter((s) => s.document.seo.indexable)
     .flatMap((s) => {
-      const base = `${config().appUrl}/p/${s.slug}`;
+      const base = `${config().appUrl}/portfolio/${s.slug}`;
       return [
         { url: base },
         ...s.document.pages.map((p) => ({ url: `${base}/${p.slug}` })),

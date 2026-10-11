@@ -48,6 +48,33 @@ const extracted: CvExtraction = {
   warnings: [],
 };
 describe("CV review and merge", () => {
+  it("applies valid selected facts while preserving unfinished pages and unrelated edits", () => {
+    const original = emptyDocument("Existing name");
+    original.pages = [
+      {
+        id: crypto.randomUUID(),
+        title: "",
+        slug: "",
+        description: "Work in progress",
+        sections: [],
+      },
+    ];
+    original.theme.style = "noir";
+    const result = applyCvImport(original, extracted, {
+      profile: ["name"],
+      entries: ["0:0"],
+      links: true,
+      replace: true,
+    });
+    expect(result.profile.name).toBe("Extracted name");
+    expect(result.sections[0].entries[0].title).toBe("MSc");
+    expect(result.profile.links).toEqual(extracted.profile.links);
+    expect(result.pages).toEqual(original.pages);
+    expect(result.theme.style).toBe("noir");
+    expect(original.profile.name).toBe("Existing name");
+    expect(original.sections).toEqual([]);
+    expect(documentSchema.safeParse(result).success).toBe(false);
+  });
   it("preserves existing fields and content, applies only chosen facts, and never attaches the CV publicly", () => {
     const original = emptyDocument("Existing name");
     const result = applyCvImport(original, extracted, {

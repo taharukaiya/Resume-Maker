@@ -365,7 +365,7 @@ describe.sequential(
       expect(html).toContain('class="entry-image"');
       expect(html).toContain(`/api/media/${uploaded.id}`);
       expect(html).toContain(`/api/sites/${siteId}/preview/research`);
-      expect(html).not.toContain(`/p/`);
+      expect(html).not.toContain(`/portfolio/`);
       const missing = await handle(
         new NextRequest(
           `http://localhost:3000/api/sites/${siteId}/preview/missing`,
@@ -824,11 +824,18 @@ describe.sequential(
       ).toBe("wOF2");
       const manifest = await liveManifest("first-researcher");
       expect(manifest).not.toBeNull();
+      expect(manifest!.baseUrl).toBe(
+        "http://localhost:3000/portfolio/first-researcher",
+      );
       const html = (await getObject(
         manifest!.routes["index.html"].key,
       ))!.toString();
       expect(html).toContain("A client-authored biography.");
       expect(html).not.toContain("A newer draft");
+      expect(html).toContain(
+        'rel="canonical" href="http://localhost:3000/portfolio/first-researcher"',
+      );
+      expect(html).not.toContain("http://localhost:3000/p/first-researcher");
       const result = await request(`sites/${siteId}`);
       expect(result.data.site.status).toBe("draft");
       expect(result.data.publishedDocument.profile.bio).toBe(

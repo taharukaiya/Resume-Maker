@@ -269,7 +269,7 @@ export async function portfolioRoutes(
               agencyName: agency?.value.name || "Brilliancy Research",
               canonicalUrl: primaryDomain
                 ? `https://${primaryDomain.hostname}`
-                : `${config().appUrl}/p/${latest.slug}`,
+                : `${config().appUrl}/portfolio/${latest.slug}`,
             }),
           ],
         );

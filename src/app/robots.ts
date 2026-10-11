@@ -4,7 +4,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       disallow: ["/studio/", "/api/", "/setup", "/accept", "/login", "/forgot"],
-      allow: "/p/",
+      allow: "/portfolio/",
     },
   };
 }

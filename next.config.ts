@@ -7,6 +7,15 @@ const config: NextConfig = {
   cacheMaxMemorySize: 0,
   serverExternalPackages: ["@electric-sql/pglite", "pg", "pdf-parse", "sharp"],
   experimental: { serverActions: { bodySizeLimit: "1mb" } },
+  async redirects() {
+    return [
+      {
+        source: "/p/:slug/:path*",
+        destination: "/portfolio/:slug/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

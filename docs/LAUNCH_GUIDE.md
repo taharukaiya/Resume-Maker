@@ -249,7 +249,7 @@ Create another disposable draft and test typed-confirmation deletion.
 For a researcher's own domain, follow
 [the custom-domain procedure](DEPLOYMENT.md#connecting-an-individual-researcher-domain).
 It requires domain-owner DNS changes and an ACM certificate in `us-east-1`.
-First prove the `/p/slug` version works; add the domain afterward.
+First prove the `/portfolio/slug` version works; add the domain afterward.
 
 ## 13. Finish the launch checks
 

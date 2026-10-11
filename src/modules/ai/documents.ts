@@ -6,7 +6,7 @@ import {
   cvProfileFields,
   type CvExtraction,
 } from "@/modules/portfolios/cv-import";
-import { emptyDocument } from "@/modules/portfolios/schema";
+import { documentSchema, emptyDocument } from "@/modules/portfolios/schema";
 
 export const browserModel = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 export type AiTask = "cv-import" | "abstract";
@@ -24,14 +24,16 @@ export const summaryInstructions = `${evidenceInstructions} Write a factual 150-
 
 export function validateCv(value: unknown) {
   const result = cvExtractionSchema.parse(value);
-  applyCvImport(emptyDocument("CV review"), result, {
-    profile: [...cvProfileFields],
-    entries: result.sections.flatMap((s, si) =>
-      s.entries.map((_, ei) => cvEntryKey(si, ei)),
-    ),
-    links: true,
-    replace: true,
-  });
+  documentSchema.parse(
+    applyCvImport(emptyDocument("CV review"), result, {
+      profile: [...cvProfileFields],
+      entries: result.sections.flatMap((s, si) =>
+        s.entries.map((_, ei) => cvEntryKey(si, ei)),
+      ),
+      links: true,
+      replace: true,
+    }),
+  );
   return result;
 }
 
