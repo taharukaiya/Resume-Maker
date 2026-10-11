@@ -131,9 +131,7 @@ export async function upload(
     purpose === "article" &&
     mime === "application/pdf" &&
     user.role === "admin" &&
-    aiConfig().provider === "openai" &&
-    !!process.env.OPENAI_API_KEY &&
-    !!process.env.OPENAI_MODEL;
+    aiConfig().server;
   if (summaryQueued) await rateLimit(`abstract:${user.id}`, 20, 3600);
   let extension = kind.ext;
   if (mime.startsWith("image/")) {

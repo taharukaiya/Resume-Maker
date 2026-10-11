@@ -108,11 +108,9 @@ export async function mediaRoutes(
     if (path.length === 3 && path[2] === "cv-import" && method === "POST") {
       requireAdmin(user);
       invariant(
-        aiConfig().provider === "openai" &&
-          process.env.OPENAI_API_KEY &&
-          process.env.OPENAI_MODEL,
+        aiConfig().server,
         503,
-        "Connect OpenAI in the server configuration before importing a CV.",
+        "Configure Gemini or OpenAI and its model on the server before importing a CV.",
       );
       invariant(
         media.mime === "application/pdf",
@@ -160,11 +158,9 @@ export async function mediaRoutes(
     if (path[2] === "abstract" && method === "POST") {
       requireAdmin(user);
       invariant(
-        aiConfig().provider === "openai" &&
-          process.env.OPENAI_API_KEY &&
-          process.env.OPENAI_MODEL,
+        aiConfig().server,
         503,
-        "Connect an OpenAI API account and choose a model before generating summaries.",
+        "Configure Gemini or OpenAI and its model on the server before generating summaries.",
       );
       invariant(
         media.mime === "application/pdf",

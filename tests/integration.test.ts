@@ -21,6 +21,7 @@ import { liveManifest } from "../src/modules/publishing/service";
 import { getObject, putObject } from "../src/lib/storage";
 import * as storage from "../src/lib/storage";
 import sharp from "sharp";
+import { textPdf } from "./pdf-fixture";
 const directory = path.resolve(".test-data", `integration-${randomUUID()}`);
 const adminEmail = "admin@integration.test",
   password = "A long integration passphrase 42!";
@@ -512,6 +513,103 @@ describe.sequential(
       } finally {
         delete process.env.OPENAI_API_KEY;
         delete process.env.OPENAI_MODEL;
+      }
+    });
+    it("processes Gemini CV and automatic summary jobs without changing the portfolio draft", async () => {
+      process.env.AI_PROVIDER = "gemini";
+      process.env.GEMINI_API_KEY = "integration-test-never-sent";
+      process.env.GEMINI_MODEL = "gemini-3.5-flash-lite";
+      const generated = [
+        {
+          abstract: "Test research summary grounded in the fixture.",
+          keywords: ["testing"],
+          limitations: "Fixture only.",
+        },
+        {
+          profile: {
+            name: "Gemini CV Name",
+            headline: "",
+            affiliation: "",
+            bio: "",
+            location: "",
+            email: "",
+            links: [],
+          },
+          sections: [],
+          warnings: [],
+        },
+      ];
+      const provider = vi.spyOn(globalThis, "fetch").mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  finishReason: "STOP",
+                  content: {
+                    parts: [{ text: JSON.stringify(generated.shift()) }],
+                  },
+                },
+              ],
+            }),
+          ),
+      );
+      try {
+        const before = (await request(`sites/${siteId}`)).data.site;
+        const form = new FormData();
+        form.set("purpose", "article");
+        form.set(
+          "file",
+          new File(
+            [
+              new Uint8Array(
+                textPdf([
+                  "Research article fixture for server AI background processing tests.",
+                  "This sample has enough text to check extraction without sending a real document to any service.",
+                  "Methods and findings in this sample are entirely for automated software verification.",
+                ]),
+              ),
+            ],
+            "gemini-test.pdf",
+            { type: "application/pdf" },
+          ),
+        );
+        const upload = await handle(
+          new NextRequest(`http://localhost:3000/api/sites/${siteId}/media`, {
+            method: "POST",
+            headers: { origin: "http://localhost:3000", cookie: adminCookie },
+            body: form,
+          }),
+          ["sites", siteId, "media"],
+        );
+        expect(upload.status).toBe(201);
+        const media = await upload.json();
+        expect(media.summaryQueued).toBe(true);
+        expect(await processOneJob()).toBe(true);
+        expect(
+          (await request(`media/${media.id}/cv-import`, "POST")).status,
+        ).toBe(202);
+        expect(await processOneJob()).toBe(true);
+        const updated = (await request(`sites/${siteId}`)).data;
+        const file = updated.media.find(
+          (m: { id: string }) => m.id === media.id,
+        );
+        expect(file.summary.model).toBe("gemini-3.5-flash-lite");
+        expect(file.cv_import.profile.name).toBe("Gemini CV Name");
+        expect(updated.site.draft).toEqual(before.draft);
+        expect(provider).toHaveBeenCalledTimes(2);
+        expect(
+          provider.mock.calls.every(([url]) =>
+            String(url).startsWith(
+              "https://generativelanguage.googleapis.com/",
+            ),
+          ),
+        ).toBe(true);
+      } finally {
+        provider.mockRestore();
+        delete process.env.AI_PROVIDER;
+        delete process.env.GEMINI_API_KEY;
+        delete process.env.GEMINI_MODEL;
       }
     });
     it("stores browser proposals only for administrators, validates them, and does not change the draft", async () => {

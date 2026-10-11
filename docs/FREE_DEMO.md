@@ -2,6 +2,8 @@
 
 This is the zero-cost presentation path. No OpenAI key, Hugging Face account, AWS account, paid domain, or GPU server is required. Render must accept your account and provision its Free plans. You still need an internet connection and an administrator computer with a compatible WebGPU GPU.
 
+If your browser cannot download or run the model, use the [Gemini free-tier server setup](AI_SETUP.md#free-server-ai-gemini) instead. It requires your Google AI Studio key and available free quota, uses sample documents, and removes the administrator GPU requirement. Hosting steps below still apply; change the AI environment as described in that guide.
+
 ## What is included
 
 | Capability                                        | Demo implementation                                                   |

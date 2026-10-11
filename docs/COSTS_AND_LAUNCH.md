@@ -8,7 +8,9 @@ The prepared `render.yaml` requests a Free web service and a Free PostgreSQL dat
 
 Render's free database expires after 30 days and its web service sleeps when idle; quotas can suspend services. This proposal does not promise indefinite free hosting. See [Render's limits](https://render.com/docs/free) and the exact [demo setup](FREE_DEMO.md).
 
-Hugging Face's hosted Inference Providers are a different product: its current Free account row includes no monthly credits. Docker Spaces currently require a paid plan to create. Browser inference avoids both charges. [Inference pricing](https://huggingface.co/docs/inference-providers/pricing), [Spaces requirements](https://huggingface.co/docs/hub/spaces-overview).
+Hugging Face's hosted Inference Providers are a different product: its current Free account row lists $0.10 in monthly credits, subject to change, followed by paid usage. This is a small trial allowance, not unlimited inference. Browser inference uses your own hardware. [Inference pricing](https://huggingface.co/docs/inference-providers/en/pricing).
+
+If browser downloads or GPU processing fail, the app also supports Gemini server processing with a free Google AI Studio project and available quota. Use sample documents on that tier because of its data-use terms. Follow [AI setup, current model pricing and verification](AI_SETUP.md) for both Gemini and OpenAI.
 
 ## Production budget for the architecture in this repository
 

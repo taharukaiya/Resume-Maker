@@ -4,6 +4,7 @@ import {
   type PortfolioDocument,
   editableOptions,
   emptyEntry,
+  defaultLabels,
 } from "@/modules/portfolios/schema";
 import type { Site } from "@/modules/portfolios/service";
 import {
@@ -29,11 +30,14 @@ import { useCallback, useEffect, useState } from "react";
 import { DesignEditor } from "./design-editor";
 import { DeleteDraft } from "./delete-draft";
 import { CvImporter } from "./cv-importer";
+import { PortraitEditor } from "./portrait-editor";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { useUser } from "./studio-shell";
 import { NavigationLink } from "./navigation-link";
 import { PageLoading } from "./page-loading";
+import { useConfirmation } from "./confirmation";
+import { useRouter } from "next/navigation";
 import {
   api,
   Badge,
@@ -67,8 +71,12 @@ type Revision = {
   author: string;
 };
 export function PortfolioEditor({ id }: { id: string }) {
+  const confirm = useConfirmation();
+  const router = useRouter();
   const ai = useDocumentAi();
   const [browserAi, setBrowserAi] = useState(false);
+  const [aiProvider, setAiProvider] = useState("openai");
+  const [demo, setDemo] = useState(false);
   const [autoSummary, setAutoSummary] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
@@ -112,12 +120,14 @@ export function PortfolioEditor({ id }: { id: string }) {
     void feedback.run(async () => {
       await Promise.all([
         load(true),
-        api<{ ai: boolean; aiProvider?: string }>("integrations").then(
-          (integrations) => {
-            setAiEnabled(integrations.ai);
-            setBrowserAi(integrations.aiProvider === "huggingface-browser");
-          },
-        ),
+        api<{ ai: boolean; aiProvider?: string; demo?: boolean }>(
+          "integrations",
+        ).then((integrations) => {
+          setAiEnabled(integrations.ai);
+          setBrowserAi(integrations.aiProvider === "huggingface-browser");
+          setAiProvider(integrations.aiProvider || "openai");
+          setDemo(!!integrations.demo);
+        }),
       ]);
     });
   }, [load]);
@@ -138,8 +148,52 @@ export function PortfolioEditor({ id }: { id: string }) {
       }
     }
     window.addEventListener("beforeunload", leave);
-    return () => window.removeEventListener("beforeunload", leave);
-  }, [dirty]);
+    async function navigate(event: MouseEvent) {
+      if (
+        !dirty ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const link =
+        event.target instanceof Element
+          ? event.target.closest("a[href]")
+          : null;
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.target === "_blank" ||
+        link.hasAttribute("download")
+      )
+        return;
+      const next = new URL(link.href);
+      if (
+        next.origin !== window.location.origin ||
+        !next.pathname.startsWith("/studio") ||
+        next.pathname === window.location.pathname
+      )
+        return;
+      event.preventDefault();
+      if (
+        await confirm({
+          title: "Leave unsaved changes?",
+          description:
+            "Your latest edits have not been saved. Stay here to save them, or leave and discard these edits.",
+          confirmLabel: "Leave without saving",
+          destructive: true,
+        })
+      )
+        router.push(next.pathname + next.search + next.hash);
+    }
+    window.document.addEventListener("click", navigate, true);
+    return () => {
+      window.removeEventListener("beforeunload", leave);
+      window.document.removeEventListener("click", navigate, true);
+    };
+  }, [dirty, confirm, router]);
   function change(next: PortfolioDocument) {
     setDocument(next);
     setDirty(true);
@@ -166,6 +220,23 @@ export function PortfolioEditor({ id }: { id: string }) {
   }
   const canEdit = (field: string) =>
     admin || !!data?.site.editable_fields.includes(field);
+  useEffect(() => {
+    if (!document) return;
+    const label = (
+      {
+        profile: "Profile",
+        sections: "Academic sections",
+        pages: "Pages",
+        design: "Design",
+        seo: "SEO & labels",
+        media: "Files & articles",
+        permissions: "Permissions",
+        publish: "Review & publish",
+        history: "History",
+      } as Record<string, string>
+    )[tab];
+    window.document.title = `${document.profile.name} · ${label} | Brilliancy Research`;
+  }, [document?.profile.name, tab]);
   if (!document || !data)
     return (
       <>
@@ -225,17 +296,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     <>
       <div className="page-heading editor-heading">
         <div>
-          <NavigationLink
-            className="back"
-            href="/studio/portfolios"
-            onClick={(e) => {
-              if (
-                dirty &&
-                !window.confirm("Leave without saving your changes?")
-              )
-                e.preventDefault();
-            }}
-          >
+          <NavigationLink className="back" href="/studio/portfolios">
             <ArrowLeft size={12} /> All portfolios
           </NavigationLink>
           <h1>{document.profile.name}</h1>
@@ -317,6 +378,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 document={document}
                 enabled={aiEnabled}
                 browserAi={browserAi}
+                aiProvider={aiProvider}
                 pending={
                   !!data.jobs.some(
                     (j) =>
@@ -399,7 +461,29 @@ export function PortfolioEditor({ id }: { id: string }) {
                     />
                   </Field>
                 </div>
-                {assetSelect("Profile photo", "portraitId", "image/")}
+                <PortraitEditor
+                  siteId={id}
+                  media={assets}
+                  value={document.profile.portraitId}
+                  editable={canEdit("profile.portraitId")}
+                  uploadAllowed={admin || !demo}
+                  demo={demo}
+                  onSelect={(value) => profile("portraitId", value)}
+                  onUploaded={async (portraitId) => {
+                    await load();
+                    // Keep edits made while the image was uploading.
+                    setDocument((current) =>
+                      current
+                        ? {
+                            ...current,
+                            profile: { ...current.profile, portraitId },
+                          }
+                        : current,
+                    );
+                    setDirty(true);
+                    feedback.setMessage("");
+                  }}
+                />
                 {assetSelect("Curriculum vitae", "cvId", "application/pdf")}
               </div>
             </section>
@@ -562,8 +646,15 @@ export function PortfolioEditor({ id }: { id: string }) {
                 <h2>{page.title || "New page"}</h2>
                 <Button
                   variant="danger small"
-                  onClick={() => {
-                    if (window.confirm("Remove this page from the draft?"))
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: "Remove page?",
+                        description: `“${page.title || "Untitled page"}” and its sections will be removed from this draft. Published pages remain unchanged until you publish again.`,
+                        confirmLabel: "Remove page",
+                        destructive: true,
+                      })
+                    )
                       change({
                         ...document,
                         pages: document.pages.filter((p) => p.id !== page.id),
@@ -795,7 +886,7 @@ export function PortfolioEditor({ id }: { id: string }) {
           <div className="form-grid">
             {(
               Object.keys(
-                document.labels,
+                defaultLabels,
               ) as (keyof PortfolioDocument["labels"])[]
             ).map((key) => (
               <Field
@@ -805,7 +896,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                   .replace(/^./, (s) => s.toUpperCase())}
               >
                 <input
-                  value={document.labels[key]}
+                  value={document.labels[key] ?? defaultLabels[key]}
                   maxLength={300}
                   onChange={(e) =>
                     change({
@@ -842,7 +933,9 @@ export function PortfolioEditor({ id }: { id: string }) {
             <div className="upload-zone">
               <Upload size={24} />
               <strong>Upload a portrait, CV, or research paper</strong>
-              <small>PDF, JPG, PNG, or WebP · up to 20 MB per file</small>
+              <small>
+                PDF, JPG, PNG, or WebP · up to {demo ? 5 : 20} MB per file
+              </small>
               <div
                 style={{
                   maxWidth: 340,
@@ -852,7 +945,7 @@ export function PortfolioEditor({ id }: { id: string }) {
               >
                 <Field
                   label="PDF purpose"
-                  hint="Research articles uploaded by an administrator are summarized automatically when AI is connected."
+                  hint="Server AI summarizes article uploads automatically. Browser AI requires the checkbox below. Images never trigger AI."
                 >
                   <select
                     value={uploadPurpose}
@@ -929,6 +1022,12 @@ export function PortfolioEditor({ id }: { id: string }) {
             </div>
           )}
           <AiProgress {...ai} />
+          {admin && aiProvider === "gemini" && (
+            <Notice
+              tone="info"
+              message="AI sends documents to Google Gemini. Use sample or redacted documents on the free tier; its terms allow content to be used to improve Google's products. Free quotas and model availability depend on your Google project."
+            />
+          )}
           {admin && !aiEnabled && (
             <Notice
               tone="info"
@@ -985,11 +1084,15 @@ export function PortfolioEditor({ id }: { id: string }) {
                     <button
                       className="icon-button"
                       aria-label={`Delete ${file.filename}`}
-                      onClick={() => {
+                      disabled={feedback.busy}
+                      onClick={async () => {
                         if (
-                          window.confirm(
-                            "Delete this file from the media library? Published release copies remain available.",
-                          )
+                          await confirm({
+                            title: "Delete this file?",
+                            description: `“${file.filename}” will be permanently removed from the media library. Copies in published releases remain available.`,
+                            confirmLabel: "Delete file",
+                            destructive: true,
+                          })
                         )
                           void feedback.run(async () => {
                             await api(`media/${file.id}`, { method: "DELETE" });
@@ -1151,11 +1254,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                 ) : (
                   <Button
                     variant="secondary small"
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        window.confirm(
-                          `Make revision ${release.revision} the live website?`,
-                        )
+                        await confirm({
+                          title: "Restore this release?",
+                          description: `Revision ${release.revision} will become the live website. Your current editing draft will be kept.`,
+                          confirmLabel: "Restore release",
+                        })
                       )
                         void feedback.run(async () => {
                           await api(`sites/${id}/rollback`, {
@@ -1181,6 +1286,7 @@ export function PortfolioEditor({ id }: { id: string }) {
               slug={data.site.slug}
               revision={data.site.revision}
               busy={!!hasJobs || feedback.busy}
+              onDeleted={() => setDirty(false)}
             />
           )}
           {data.site.published_release_id && (
@@ -1195,8 +1301,16 @@ export function PortfolioEditor({ id }: { id: string }) {
                 </div>
                 <Button
                   variant="danger"
-                  onClick={() => {
-                    if (window.confirm("Take this portfolio offline?"))
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: "Take this portfolio offline?",
+                        description:
+                          "Visitors will no longer be able to open this portfolio once cached pages expire. Your content and release history stay in the workspace.",
+                        confirmLabel: "Unpublish portfolio",
+                        destructive: true,
+                      })
+                    )
                       void feedback.run(async () => {
                         await api(`sites/${id}/unpublish`, { method: "POST" });
                         await load();
@@ -1239,11 +1353,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                     <Button
                       variant="secondary small"
                       disabled={dirty}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          window.confirm(
-                            `Restore revision ${revision.revision} as a new draft?`,
-                          )
+                          await confirm({
+                            title: "Restore this draft?",
+                            description: `Revision ${revision.revision} will be copied into a new draft revision. The live website will stay as it is.`,
+                            confirmLabel: "Restore draft",
+                          })
                         )
                           void feedback.run(async () => {
                             await api(`sites/${id}/restore`, {

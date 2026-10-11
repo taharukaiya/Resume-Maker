@@ -78,6 +78,86 @@ export const styles = [
     description:
       "An oversized editorial opening, framed portrait, and intimate reading column.",
   },
+  {
+    id: "atlas",
+    name: "Atlas",
+    description:
+      "A vivid research dashboard with layered cards, a bold introduction, and a portfolio index.",
+  },
+  {
+    id: "noir",
+    name: "Noir",
+    description:
+      "A cinematic, high-contrast composition with oversized type and gallery-like research panels.",
+  },
+  {
+    id: "horizon",
+    name: "Horizon",
+    description:
+      "An open, sunlit composition with flowing academic timelines and an arched portrait.",
+  },
+] as const;
+export const signatureLooks = [
+  {
+    name: "Atlas · Cobalt",
+    theme: {
+      style: "atlas",
+      accent: "#2448b8",
+      background: "#f5f7ff",
+      text: "#18243d",
+      secondary: "#b3ebad",
+      font: "space-grotesk",
+      bodyFont: "dm-sans",
+      decoration: "glow",
+      portrait: "rectangle",
+      scale: "expressive",
+      roundness: "soft",
+      motion: "subtle",
+      researchIndex: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
+  {
+    name: "Noir · Copper",
+    theme: {
+      style: "noir",
+      accent: "#ecc192",
+      background: "#171b22",
+      text: "#f4f0e9",
+      secondary: "#94aebd",
+      font: "cormorant-garamond",
+      bodyFont: "manrope",
+      decoration: "lines",
+      portrait: "rectangle",
+      scale: "expressive",
+      roundness: "sharp",
+      motion: "expressive",
+      researchIndex: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
+  {
+    name: "Horizon · Terracotta",
+    theme: {
+      style: "horizon",
+      accent: "#983e2c",
+      background: "#fffaf1",
+      text: "#352d29",
+      secondary: "#d9d9ad",
+      font: "fraunces",
+      bodyFont: "dm-sans",
+      decoration: "glow",
+      portrait: "arch",
+      scale: "expressive",
+      roundness: "soft",
+      motion: "subtle",
+      researchIndex: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
 ] as const;
 export const palettes = [
   {

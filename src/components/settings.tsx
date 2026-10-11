@@ -216,7 +216,9 @@ export function Settings() {
                   detail: integrations.ai
                     ? integrations.aiProvider === "huggingface-browser"
                       ? "Free Hugging Face model in your browser · WebGPU required"
-                      : "Server model and API key configured"
+                      : integrations.aiProvider === "gemini"
+                        ? "Google Gemini on the server · project quotas apply"
+                        : "OpenAI on the server · usage-based billing"
                     : "AI provider not configured",
                 },
                 {

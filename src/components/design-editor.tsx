@@ -7,6 +7,7 @@ import {
   palettes,
   styles,
   fontFaceCss,
+  signatureLooks,
 } from "@/modules/portfolios/design";
 import type { PortfolioDocument } from "@/modules/portfolios/schema";
 import { Field, Notice } from "./ui";
@@ -31,6 +32,40 @@ export function DesignEditor({
       <div className="stack">
         <section className="panel">
           <p className="eyebrow">A signature for their work</p>
+          <h2>A complete look, in one click</h2>
+          <p className="panel-description">
+            Curated colors, typography, layout, and motion. Apply a look, then
+            make every detail your own.
+          </p>
+          <div className="signature-looks">
+            {signatureLooks.map((look) => (
+              <button
+                type="button"
+                key={look.name}
+                className="signature-look"
+                style={{
+                  background: look.theme.background,
+                  color: look.theme.text,
+                  borderColor: look.theme.accent,
+                }}
+                onClick={() => update(look.theme)}
+              >
+                <span
+                  className="signature-orbit"
+                  aria-hidden="true"
+                  style={{
+                    background: `linear-gradient(135deg, ${look.theme.accent}, ${look.theme.secondary})`,
+                  }}
+                />
+                <strong>{look.name}</strong>
+                <span>
+                  Apply this look <span aria-hidden="true">↗</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
           <h2>Choose a composition</h2>
           <p className="panel-description">
             Each layout has its own rhythm. Your content and chosen typography
@@ -201,6 +236,57 @@ export function DesignEditor({
               </select>
             </Field>
           </div>
+        </section>
+        <section className="panel">
+          <h2>Motion & interaction</h2>
+          <p className="panel-description">
+            Small details that reward exploration. Motion respects the visitor’s
+            reduced-motion preference; content stays readable without animation.
+          </p>
+          <Field label="Motion style">
+            <select
+              value={theme.motion || "none"}
+              onChange={(e) =>
+                update({ motion: e.target.value as Theme["motion"] })
+              }
+            >
+              <option value="none">Still — no animation</option>
+              <option value="subtle">
+                Subtle — gentle entrances and hover effects
+              </option>
+              <option value="expressive">
+                Expressive — layered entrances and moving accents
+              </option>
+            </select>
+          </Field>
+          {(
+            [
+              [
+                "stickyNavigation",
+                "Keep navigation visible while scrolling",
+                theme.stickyNavigation !== false,
+              ],
+              [
+                "expandableEntries",
+                "Let visitors expand long research descriptions",
+                theme.expandableEntries !== false,
+              ],
+              [
+                "researchIndex",
+                "Show a clickable research index below the introduction",
+                !!theme.researchIndex,
+              ],
+            ] as const
+          ).map(([key, label, checked]) => (
+            <label key={key} className="check-row">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => update({ [key]: e.target.checked })}
+              />
+              {label}
+            </label>
+          ))}
         </section>
         <section className="panel">
           <h2>Finishing touches</h2>

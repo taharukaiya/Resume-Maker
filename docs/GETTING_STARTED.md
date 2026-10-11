@@ -2,6 +2,8 @@
 
 The accounts should belong to **Brilliancy Research**, with developer access granted to you. You do not need to purchase a theme, a CMS subscription, a dedicated AI server, or a separate database product.
 
+For CV extraction, article summaries, and the direct profile-photo upload, follow [AI setup and verification](AI_SETUP.md). It includes the Gemini free-tier alternative when browser model downloads fail, paid OpenAI setup, and an acceptance walkthrough.
+
 ## 1. Run the application locally first
 
 1. Open a terminal in this project.
@@ -88,13 +90,39 @@ successful extraction remains available. API usage is billed by OpenAI.
 
 ## 7. Portfolio design controls
 
-Open **Design** to choose Editorial, Studio, Archive, Aurora, or Folio. Apply
+Open **Design** to choose Editorial, Studio, Archive, Aurora, Folio, Atlas,
+Noir, or Horizon. Apply
 one of eight palettes or set the accent, background, body text and secondary
 colors yourself. Heading and body fonts are independent: Georgia, system sans,
 Fraunces, Cormorant Garamond, Playfair Display, DM Sans, Manrope, and Space Grotesk.
 There are also controls for heading scale, spacing, portrait shape, decoration,
 width and corners. The sidebar shows typography/color changes immediately;
 save and use Preview to inspect the full layout.
+
+For a complete coordinated design, choose **Atlas · Cobalt**, **Noir · Copper**,
+or **Horizon · Terracotta** at the top of Design. These presets set the layout,
+colors, fonts, portrait treatment, and motion together; every setting remains
+editable. They do not replace the researcher's content.
+
+Under **Motion & interaction**, choose Still, Subtle, or Expressive. You can also
+enable sticky navigation, expandable research descriptions, and an index linking
+to the portfolio's visible sections. Visitors' reduced-motion preferences take
+priority. Entrance and hover effects use CSS; scroll-linked accents appear in
+supporting browsers. Expandable descriptions are native HTML and work without
+JavaScript. The full text remains in the page for accessibility and indexing.
+Edit their button labels under **SEO & labels**.
+
+Choose **Save draft → Preview** to inspect your changes, then **Review & publish**
+to update the public site. Existing published releases keep their design until
+republished. Browser tab titles identify the workspace page, or the researcher
+and current editor tab. Public pages use their SEO title or a title based on the
+researcher and page/publication name.
+
+Deletion, restoration, unpublishing, and leaving the editor through workspace
+links now use in-app confirmation dialogs with Cancel as the initial focus.
+Escape cancels, and keyboard focus returns to the triggering control. Browsers
+may still show their own unsaved-changes warning when closing or reloading a tab;
+that browser-owned safety dialog cannot be styled by the application.
 
 Selected fonts are served locally, including from published releases. Existing
 published portfolios keep their saved release until republished. For previously

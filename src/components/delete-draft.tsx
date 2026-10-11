@@ -9,17 +9,20 @@ export function DeleteDraft({
   slug,
   revision,
   busy,
+  onDeleted,
 }: {
   id: string;
   name: string;
   slug: string;
   revision: number;
   busy: boolean;
+  onDeleted?: () => void;
 }) {
   const router = useRouter();
   const feedback = useFeedback();
   const [open, setOpen] = useState(false),
-    [confirmation, setConfirmation] = useState("");
+    [confirmation, setConfirmation] = useState(""),
+    [deleted, setDeleted] = useState(false);
   return (
     <section className="panel danger-zone">
       <h3>Delete draft portfolio</h3>
@@ -43,8 +46,10 @@ export function DeleteDraft({
                 method: "DELETE",
                 body: JSON.stringify({ slug: confirmation, revision }),
               });
+              setDeleted(true);
+              onDeleted?.();
+              // Refreshing the old route here can cancel the replacement.
               router.replace("/studio/portfolios");
-              router.refresh();
             });
           }}
         >
@@ -60,7 +65,7 @@ export function DeleteDraft({
               type="submit"
               variant="danger"
               busy={feedback.busy}
-              disabled={busy || confirmation !== slug}
+              disabled={busy || deleted || confirmation !== slug}
             >
               Permanently delete draft
             </Button>

@@ -17,6 +17,7 @@ export function CvImporter({
   document,
   enabled,
   browserAi = false,
+  aiProvider = "openai",
   pending,
   error,
   onChange,
@@ -27,6 +28,7 @@ export function CvImporter({
   document: PortfolioDocument;
   enabled: boolean;
   browserAi?: boolean;
+  aiProvider?: string;
   pending: boolean;
   error?: string;
   onChange: (doc: PortfolioDocument) => void;
@@ -123,7 +125,9 @@ export function CvImporter({
       <p className="panel-description">
         {browserAi
           ? "Free AI downloads roughly 1 GB of model files from Hugging Face on first use and runs on your computer. Use desktop Chrome or Edge with WebGPU and enough available GPU memory (allow about 3 GB). Keep this tab open. The uploaded PDF stays on this app's server; its extracted text is processed in your browser."
-          : "Extract details sends this CV to OpenAI for processing. Use a CV you have permission to process."}{" "}
+          : aiProvider === "gemini"
+            ? "Extract details sends this CV to Google Gemini. Use sample or redacted documents on the free tier; its terms allow content to be used to improve Google's products."
+            : "Extract details sends this CV to OpenAI for processing. Use a CV you have permission to process."}{" "}
         Check names, dates and every academic claim before publishing.
       </p>
       <div className="actions">

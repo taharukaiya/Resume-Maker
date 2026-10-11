@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { existsSync } from "node:fs";
+import { aiConfig } from "../src/modules/ai/config";
 
 // Read-only: never open the embedded database in a second process or print secrets.
 let failures = 0;
@@ -75,8 +76,7 @@ console.log(
 for (const [name, ready] of [
   [
     "AI summaries (browser hardware or live API still needs checking)",
-    process.env.AI_PROVIDER === "huggingface-browser" ||
-      !!(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL),
+    aiConfig().enabled,
   ],
   ["Amazon SES email", !!process.env.EMAIL_FROM],
   ["Amazon S3 storage", !!(process.env.S3_BUCKET && process.env.PUBLIC_BUCKET)],

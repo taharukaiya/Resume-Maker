@@ -116,23 +116,35 @@ export function Modal({
   title,
   children,
   onClose,
+  role = "dialog",
+  descriptionId,
+  returnFocus,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  role?: "dialog" | "alertdialog";
+  descriptionId?: string;
+  returnFocus?: HTMLElement | null;
 }) {
   const dialog = useRef<HTMLElement>(null),
     close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
+    const previous =
+      returnFocus || (document.activeElement as HTMLElement | null);
     const focusable = () =>
       Array.from(
         dialog.current?.querySelectorAll<HTMLElement>(
           'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]',
         ) || [],
       );
-    focusable()[0]?.focus();
+    (
+      dialog.current?.querySelector<HTMLElement>("[data-autofocus]") ||
+      focusable()[0]
+    )?.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function key(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -154,6 +166,7 @@ export function Modal({
     document.addEventListener("keydown", key);
     return () => {
       document.removeEventListener("keydown", key);
+      document.body.style.overflow = overflow;
       if (previous?.isConnected) previous.focus();
     };
   }, []);
@@ -166,7 +179,8 @@ export function Modal({
     >
       <section
         ref={dialog}
-        role="dialog"
+        role={role}
+        aria-describedby={descriptionId}
         aria-modal="true"
         aria-label={title}
         className="modal"

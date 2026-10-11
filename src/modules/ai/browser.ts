@@ -41,7 +41,12 @@ export async function inferInBrowser(
   let worker: Worker | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abort: (() => void) | undefined;
+  let phase: "preparing" | "downloading" | "processing" = "preparing";
   try {
+    let rejectWorker: (error: Error) => void = () => {};
+    const workerFailed = new Promise<never>((_, reject) => {
+      rejectWorker = reject;
+    });
     const cancelled = new Promise<never>((_, reject) => {
       abort = () =>
         reject(
@@ -60,12 +65,17 @@ export async function inferInBrowser(
       progress(
         "Preparing free AI. The first use downloads roughly 1 GB of model files from Hugging Face; keep this tab open.",
       );
+      phase = "downloading";
       const { CreateWebWorkerMLCEngine } = await import("@mlc-ai/web-llm");
       signal.throwIfAborted();
       worker = new Worker(new URL("./browser.worker.ts", import.meta.url), {
         type: "module",
       });
-      worker.addEventListener("error", () => deadline.abort(), { once: true });
+      worker.addEventListener(
+        "error",
+        () => rejectWorker(new Error("Browser AI worker failed.")),
+        { once: true },
+      );
       const engine = await CreateWebWorkerMLCEngine(
         worker,
         browserModel,
@@ -75,6 +85,7 @@ export async function inferInBrowser(
         },
         { context_window_size: 16384 },
       );
+      phase = "processing";
       async function generate(
         source: string,
         schema: z.ZodType,
@@ -154,7 +165,14 @@ export async function inferInBrowser(
         `${combined.limitations} Generated from ${chunks.length} excerpt summaries by a small browser model; verify against the original paper.`.trim();
       return summarySchema.parse(combined);
     })();
-    return await Promise.race([processing, cancelled]);
+    return await Promise.race([processing, cancelled, workerFailed]);
+  } catch (error) {
+    if (signal.aborted || phase === "preparing") throw error;
+    const hint =
+      phase === "downloading"
+        ? "The free browser model could not load. Check your connection, allow downloads from huggingface.co and its CDN, enable hardware acceleration, and close other GPU-heavy tabs. If it keeps failing, use the server Gemini or OpenAI option in docs/AI_SETUP.md."
+        : "The browser model could not complete this document. Retry with a shorter text-based PDF, or use the server Gemini or OpenAI option in docs/AI_SETUP.md. No partial proposal was saved.";
+    throw new Error(hint, { cause: error });
   } finally {
     worker?.terminate();
     clearTimeout(timer);

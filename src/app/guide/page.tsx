@@ -1,4 +1,5 @@
 import Link from "next/link";
+export const metadata = { title: "Setup guide" };
 export default function Guide() {
   return (
     <main

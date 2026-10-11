@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Field } from "./ui";
+import { useConfirmation } from "./confirmation";
 export function SectionsEditor({
   sections,
   onChange,
@@ -27,6 +28,7 @@ export function SectionsEditor({
   admin: boolean;
   allowed: string[];
 }) {
+  const confirm = useConfirmation();
   function update(index: number, next: Section) {
     onChange(sections.map((s, i) => (i === index ? next : s)));
   }
@@ -130,11 +132,14 @@ export function SectionsEditor({
                     type="button"
                     className="icon-button"
                     aria-label={`Remove ${section.title}`}
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        window.confirm(
-                          `Remove the ${section.title} section from this draft?`,
-                        )
+                        await confirm({
+                          title: "Remove section?",
+                          description: `“${section.title}” and its entries will be removed from this draft. Save the draft to apply this change.`,
+                          confirmLabel: "Remove section",
+                          destructive: true,
+                        })
                       )
                         onChange(sections.filter((s) => s.id !== section.id));
                     }}
@@ -257,6 +262,7 @@ function EntryEditor({
   onDelete: () => void;
   onMove: (direction: number) => void;
 }) {
+  const confirm = useConfirmation();
   function change<K extends keyof Entry>(key: K, value: Entry[K]) {
     onChange({ ...entry, [key]: value });
   }
@@ -283,8 +289,15 @@ function EntryEditor({
             <button
               className="icon-button"
               aria-label="Remove entry"
-              onClick={() => {
-                if (window.confirm("Remove this entry from the draft?"))
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: "Remove entry?",
+                    description: `Remove “${entry.title || "Untitled entry"}” from this draft? Save the draft to apply this change.`,
+                    confirmLabel: "Remove entry",
+                    destructive: true,
+                  })
+                )
                   onDelete();
               }}
             >

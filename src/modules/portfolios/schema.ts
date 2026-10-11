@@ -69,7 +69,7 @@ export const sectionSchema = z
     entries: z.array(entrySchema).max(100),
   })
   .strict();
-export const defaultLabels = {
+const baseLabels = {
   name: "Your name",
   email: "Email address",
   message: "Message",
@@ -87,14 +87,30 @@ export const defaultLabels = {
   receivedTitle: "Thank you for reaching out.",
   receivedMessage: "Your message has been delivered to the portfolio team.",
 };
+const interactionLabels = {
+  readMore: "Read full description",
+  showLess: "Show less",
+  explore: "Explore my work",
+  backToTop: "Back to top",
+  researchIndex: "Explore the portfolio",
+};
+export const defaultLabels = { ...baseLabels, ...interactionLabels };
 const labelsSchema = z
   .object(
     Object.fromEntries(
-      Object.keys(defaultLabels).map((key) => [
+      Object.keys(baseLabels).map((key) => [
         key,
         z.string().trim().min(1).max(300),
       ]),
-    ) as Record<keyof typeof defaultLabels, z.ZodString>,
+    ) as Record<keyof typeof baseLabels, z.ZodString>,
+  )
+  .extend(
+    Object.fromEntries(
+      Object.keys(interactionLabels).map((key) => [
+        key,
+        z.string().trim().min(1).max(300).optional(),
+      ]),
+    ) as Record<keyof typeof interactionLabels, z.ZodOptional<z.ZodString>>,
   )
   .strict();
 export const documentSchema = z
@@ -123,7 +139,16 @@ export const documentSchema = z
       .strict(),
     theme: z
       .object({
-        style: z.enum(["editorial", "modern", "classic", "aurora", "folio"]),
+        style: z.enum([
+          "editorial",
+          "modern",
+          "classic",
+          "aurora",
+          "folio",
+          "atlas",
+          "noir",
+          "horizon",
+        ]),
         accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         background: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         font: z.enum(fontIds),
@@ -140,6 +165,10 @@ export const documentSchema = z
         spacing: z.enum(["compact", "generous"]).optional(),
         portrait: z.enum(["rectangle", "arch", "circle"]).optional(),
         decoration: z.enum(["none", "glow", "lines"]).optional(),
+        motion: z.enum(["none", "subtle", "expressive"]).optional(),
+        stickyNavigation: z.boolean().optional(),
+        expandableEntries: z.boolean().optional(),
+        researchIndex: z.boolean().optional(),
         width: z.enum(["standard", "wide"]),
         roundness: z.enum(["sharp", "soft"]),
         showAgencyCredit: z.boolean(),
@@ -271,6 +300,10 @@ export function emptyDocument(name: string): PortfolioDocument {
       width: "standard",
       roundness: "soft",
       showAgencyCredit: true,
+      motion: "subtle",
+      stickyNavigation: true,
+      expandableEntries: true,
+      researchIndex: false,
     },
     navigation: {
       siteTitle: "",
