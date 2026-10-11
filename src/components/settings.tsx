@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "./studio-shell";
 import { api, Badge, Button, Feedback, Field, Notice, useFeedback } from "./ui";
+import { PageLoading } from "./page-loading";
 type Integrations = {
   ai: boolean;
   aiProvider?: string;
@@ -19,6 +20,7 @@ export function Settings() {
     router = useRouter(),
     feedback = useFeedback();
   const [name, setName] = useState("Brilliancy Research"),
+    [loading, setLoading] = useState(true),
     [integrations, setIntegrations] = useState<Integrations | null>(null),
     [current, setCurrent] = useState(""),
     [password, setPassword] = useState(""),
@@ -26,15 +28,18 @@ export function Settings() {
     [secret, setSecret] = useState(""),
     [code, setCode] = useState("");
   useEffect(() => {
-    void feedback.run(async () => {
-      const [settings, services] = await Promise.all([
-        api<{ name: string }>("settings"),
-        api<Integrations>("integrations"),
-      ]);
-      setName(settings.name);
-      setIntegrations(services);
-    });
+    void feedback
+      .run(async () => {
+        const [settings, services] = await Promise.all([
+          api<{ name: string }>("settings"),
+          api<Integrations>("integrations"),
+        ]);
+        setName(settings.name);
+        setIntegrations(services);
+      })
+      .finally(() => setLoading(false));
   }, []);
+  if (loading) return <PageLoading label="Loading settings and security…" />;
   return (
     <>
       <div className="page-heading">

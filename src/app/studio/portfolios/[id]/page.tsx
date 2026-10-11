@@ -4,5 +4,6 @@ export default async function Page({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  return <PortfolioEditor id={(await params).id} />;
+  const { id } = await params;
+  return <PortfolioEditor key={id} id={id} />;
 }

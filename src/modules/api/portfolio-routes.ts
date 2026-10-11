@@ -147,27 +147,34 @@ export async function portfolioRoutes(
       return json({ ok: true });
     }
     if (!action && method === "GET") {
-      const [published] = site.published_release_id
-        ? await database.query<{ document: unknown }>(
-            "SELECT document FROM releases WHERE id=$1 AND site_id=$2",
-            [site.published_release_id, id],
-          )
-        : [];
-      return json({
-        site,
-        publishedDocument: published?.document || null,
-        media: await database.query<Media>(
+      // Access was checked above. These independent reads can share the pool
+      // instead of adding one database round trip after another.
+      const [published, media, jobs, releases] = await Promise.all([
+        site.published_release_id
+          ? database.query<{ document: unknown }>(
+              "SELECT document FROM releases WHERE id=$1 AND site_id=$2",
+              [site.published_release_id, id],
+            )
+          : Promise.resolve([]),
+        database.query<Media>(
           `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
           [id],
         ),
-        jobs: await database.query(
+        database.query(
           "SELECT id,kind,status,error,created_at,finished_at FROM jobs WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
           [id],
         ),
-        releases: await database.query(
+        database.query(
           "SELECT id,revision,created_at FROM releases WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
           [id],
         ),
+      ]);
+      return json({
+        site,
+        publishedDocument: published[0]?.document || null,
+        media,
+        jobs,
+        releases,
       });
     }
     if (!action && method === "PUT") {

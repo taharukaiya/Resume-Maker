@@ -2,6 +2,7 @@
 import { Copy, Plus, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useUser } from "./studio-shell";
+import { PageLoading } from "./page-loading";
 import {
   api,
   Badge,
@@ -24,6 +25,7 @@ export function People() {
   const user = useUser(),
     feedback = useFeedback();
   const [users, setUsers] = useState<Account[]>([]),
+    [loading, setLoading] = useState(true),
     [open, setOpen] = useState(false),
     [name, setName] = useState(""),
     [email, setEmail] = useState(""),
@@ -34,7 +36,8 @@ export function People() {
     setUsers(result.users);
   }
   useEffect(() => {
-    void feedback.run(load);
+    if (user.role === "admin")
+      void feedback.run(load).finally(() => setLoading(false));
   }, []);
   if (user.role !== "admin")
     return (
@@ -85,7 +88,9 @@ export function People() {
           </Button>
         </div>
       )}
-      {users.length ? (
+      {loading ? (
+        <PageLoading label="Loading people and access…" />
+      ) : users.length ? (
         <div className="table-wrap">
           <table>
             <thead>

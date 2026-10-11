@@ -1,6 +1,7 @@
 "use client";
 import { Check, Inbox as InboxIcon, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PageLoading } from "./page-loading";
 import {
   api,
   Badge,
@@ -22,13 +23,14 @@ type Inquiry = {
 export function Inbox() {
   const feedback = useFeedback();
   const [items, setItems] = useState<Inquiry[]>([]),
+    [loading, setLoading] = useState(true),
     [filter, setFilter] = useState("all");
   async function load() {
     const result = await api<{ inquiries: Inquiry[] }>("inquiries");
     setItems(result.inquiries);
   }
   useEffect(() => {
-    void feedback.run(load);
+    void feedback.run(load).finally(() => setLoading(false));
   }, []);
   return (
     <>
@@ -51,6 +53,7 @@ export function Inbox() {
         </select>
       </div>
       <Feedback {...feedback} />
+      {loading && <PageLoading label="Loading messages…" />}
       {items
         .filter((i) => filter === "all" || !i.read_at)
         .map((item) => (
@@ -96,13 +99,15 @@ export function Inbox() {
             </div>
           </article>
         ))}
-      {!items.some((i) => filter === "all" || !i.read_at) && (
-        <Empty
-          icon={<InboxIcon />}
-          title="Room for a new connection."
-          description="Messages sent through a portfolio’s contact form will appear here."
-        />
-      )}
+      {!loading &&
+        !feedback.error &&
+        !items.some((i) => filter === "all" || !i.read_at) && (
+          <Empty
+            icon={<InboxIcon />}
+            title="Room for a new connection."
+            description="Messages sent through a portfolio’s contact form will appear here."
+          />
+        )}
     </>
   );
 }

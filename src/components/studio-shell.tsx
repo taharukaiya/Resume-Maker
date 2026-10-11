@@ -13,11 +13,11 @@ import {
   Users,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { api } from "./ui";
 import { BrandLogo } from "./brand-logo";
+import { NavigationLink } from "./navigation-link";
 const UserContext = createContext<PublicUser | null>(null);
 export function useUser() {
   return useContext(UserContext)!;
@@ -49,9 +49,9 @@ export function StudioShell({
     <UserContext.Provider value={user}>
       <div className="studio">
         <aside className={`sidebar ${open ? "open" : ""}`}>
-          <Link href="/studio" className="brand-lockup">
+          <NavigationLink href="/studio" className="brand-lockup">
             <BrandLogo />
-          </Link>
+          </NavigationLink>
           <button
             className="mobile-close icon-button"
             onClick={() => setOpen(false)}
@@ -60,12 +60,21 @@ export function StudioShell({
             <X />
           </button>
           <div className="nav-caption">WORKSPACE</div>
-          <nav>
+          <nav aria-label="Workspace navigation">
             {links.map(({ url, label, icon: Icon }) => (
-              <Link
+              <NavigationLink
                 key={url}
                 href={url}
-                onClick={() => setOpen(false)}
+                onNavigate={() => setOpen(false)}
+                aria-current={
+                  (
+                    url === "/studio"
+                      ? pathname === url
+                      : pathname.startsWith(url)
+                  )
+                    ? "page"
+                    : undefined
+                }
                 className={
                   (
                     url === "/studio"
@@ -81,7 +90,7 @@ export function StudioShell({
                 {url === "/studio/portfolios" && (
                   <ArrowUpRight className="nav-end" size={14} />
                 )}
-              </Link>
+              </NavigationLink>
             ))}
           </nav>
           <div className="sidebar-note">

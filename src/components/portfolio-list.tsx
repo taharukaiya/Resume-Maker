@@ -10,10 +10,11 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "./studio-shell";
+import { NavigationLink } from "./navigation-link";
+import { PageLoading } from "./page-loading";
 import {
   api,
   Badge,
@@ -132,9 +133,9 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
                   Create a portfolio <Plus size={14} />
                 </Button>
               ) : (
-                <Link href="/studio/portfolios" className="button">
+                <NavigationLink href="/studio/portfolios" className="button">
                   Your portfolios <ArrowRight size={14} />
-                </Link>
+                </NavigationLink>
               )}
             </div>
             <div className="welcome-art" aria-hidden="true">
@@ -166,9 +167,9 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
           </div>
           <div className="section-title">
             <h2>Recent portfolios</h2>
-            <Link href="/studio/portfolios">
+            <NavigationLink href="/studio/portfolios">
               View all portfolios <ArrowRight size={13} />
-            </Link>
+            </NavigationLink>
           </div>
         </>
       ) : (
@@ -214,11 +215,12 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
         </>
       )}
       {loading ? (
-        <div className="skeleton">Loading your workspace…</div>
+        <PageLoading label="Loading your workspace…" />
       ) : visible.length ? (
         <div className="portfolio-grid">
           {(overview ? visible.slice(0, 6) : visible).map((site) => (
-            <Link
+            <NavigationLink
+              prefetchOnIntent
               key={site.id}
               href={`/studio/portfolios/${site.id}`}
               className="portfolio-card"
@@ -249,7 +251,7 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
                   <ArrowUpRight size={14} />
                 </div>
               </div>
-            </Link>
+            </NavigationLink>
           ))}
         </div>
       ) : (

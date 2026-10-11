@@ -136,3 +136,28 @@ npm.cmd run dev
 ```
 
 Open [local login](http://localhost:3000/login). Manual editing remains available if your browser cannot run the model.
+
+## Checking navigation speed
+
+The workspace preloads its main navigation routes in production and prepares
+portfolio editor routes on hover, keyboard focus, or touch. Page data is fetched
+through the authenticated API on every visit. Loading feedback keeps the sidebar
+usable while a request is pending, and independent editor requests run together.
+
+`npm run dev` compiles pages on demand and does not enable Next.js automatic
+production prefetching. A first local visit can therefore take several seconds.
+Judge the deployed build after the service has woken up; Render already runs
+`npm run build` and `npm run start` using the Blueprint. A local production start
+requires the PostgreSQL and HTTPS configuration documented in the deployment
+guide; do not switch off production validation to benchmark the embedded database.
+
+After pushing an update, open **Render → brilliancy-demo → Manual Deploy → Deploy
+latest commit** (automatic deploys are disabled in this Blueprint). Wait for the
+deployment to become live, refresh the browser once, then click through Overview,
+Portfolios, People & access, Inbox, Activity log, and Settings & security. Confirm
+the active link changes, pages populate, and keyboard/mobile navigation works.
+The regression check is `npm.cmd run test:e2e -- tests/browser/navigation.spec.ts`.
+
+A free Render service sleeps after 15 minutes without incoming traffic and can
+take about a minute to wake. Route optimizations cannot remove that hosting delay;
+open the demo before presenting. See [Render's free-service limits](https://render.com/docs/free).

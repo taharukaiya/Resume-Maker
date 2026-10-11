@@ -25,7 +25,6 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DesignEditor } from "./design-editor";
 import { DeleteDraft } from "./delete-draft";
@@ -33,6 +32,8 @@ import { CvImporter } from "./cv-importer";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { useUser } from "./studio-shell";
+import { NavigationLink } from "./navigation-link";
+import { PageLoading } from "./page-loading";
 import {
   api,
   Badge,
@@ -109,12 +110,15 @@ export function PortfolioEditor({ id }: { id: string }) {
   );
   useEffect(() => {
     void feedback.run(async () => {
-      await load(true);
-      const integrations = await api<{ ai: boolean; aiProvider?: string }>(
-        "integrations",
-      );
-      setAiEnabled(integrations.ai);
-      setBrowserAi(integrations.aiProvider === "huggingface-browser");
+      await Promise.all([
+        load(true),
+        api<{ ai: boolean; aiProvider?: string }>("integrations").then(
+          (integrations) => {
+            setAiEnabled(integrations.ai);
+            setBrowserAi(integrations.aiProvider === "huggingface-browser");
+          },
+        ),
+      ]);
     });
   }, [load]);
   const hasJobs = data?.jobs.some((j) =>
@@ -166,7 +170,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     return (
       <>
         <Feedback {...feedback} />
-        <div className="skeleton">Opening the portfolio…</div>
+        {!feedback.error && <PageLoading label="Opening the portfolio…" />}
       </>
     );
   function profile<K extends keyof PortfolioDocument["profile"]>(
@@ -221,7 +225,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     <>
       <div className="page-heading editor-heading">
         <div>
-          <Link
+          <NavigationLink
             className="back"
             href="/studio/portfolios"
             onClick={(e) => {
@@ -233,7 +237,7 @@ export function PortfolioEditor({ id }: { id: string }) {
             }}
           >
             <ArrowLeft size={12} /> All portfolios
-          </Link>
+          </NavigationLink>
           <h1>{document.profile.name}</h1>
           <div className="row">
             <Badge value={data.site.status} />
