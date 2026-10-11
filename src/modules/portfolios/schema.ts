@@ -2,6 +2,32 @@ import { contrastRatio } from "@/lib/colors";
 import { z } from "zod";
 import { fontIds } from "./design";
 const short = z.string().trim().max(200);
+export const profileLinkUrlSchema = z
+  .string()
+  .trim()
+  .transform((value) =>
+    /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#][^\s]*)?$/i.test(
+      value,
+    )
+      ? `https://${value}`
+      : value,
+  )
+  .refine((value) => {
+    if (!value) return true;
+    if (value.length > 2000 || /\s/.test(value)) return false;
+    try {
+      const parsed = new URL(value);
+      return (
+        /^https?:\/\//i.test(value) &&
+        ["http:", "https:"].includes(parsed.protocol) &&
+        !!parsed.hostname &&
+        !parsed.username &&
+        !parsed.password
+      );
+    } catch {
+      return false;
+    }
+  }, "Enter a website address such as https://example.com/profile, or leave it blank.");
 const url = z.union([
   z.literal(""),
   z
@@ -125,7 +151,9 @@ export const documentSchema = z
         email: z.union([z.literal(""), z.email()]),
         portraitId: asset,
         cvId: asset,
-        links: z.array(z.object({ label: short, url })).max(20),
+        links: z
+          .array(z.object({ label: short, url: profileLinkUrlSchema }))
+          .max(20),
       })
       .strict(),
     seo: z

@@ -5,6 +5,7 @@ import {
   editableOptions,
   emptyEntry,
   defaultLabels,
+  profileLinkUrlSchema,
 } from "@/modules/portfolios/schema";
 import type { Site } from "@/modules/portfolios/service";
 import {
@@ -78,6 +79,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   const [aiProvider, setAiProvider] = useState("openai");
   const [demo, setDemo] = useState(false);
   const [autoSummary, setAutoSummary] = useState(false);
+  const [invalidLink, setInvalidLink] = useState<number | null>(null);
   const user = useUser(),
     admin = user.role === "admin",
     feedback = useFeedback();
@@ -199,18 +201,45 @@ export function PortfolioEditor({ id }: { id: string }) {
     setDirty(true);
     feedback.setMessage("");
   }
+  useEffect(() => {
+    if (tab === "profile" && invalidLink !== null) {
+      window.document
+        .querySelector<HTMLInputElement>(`[data-profile-link="${invalidLink}"]`)
+        ?.focus();
+    }
+  }, [tab, invalidLink]);
   async function save() {
     if (!document || !data) return;
+    const links = document.profile.links.map((link, index) => {
+      const result = profileLinkUrlSchema.safeParse(link.url);
+      if (!result.success) {
+        setInvalidLink(index);
+        setTab("profile");
+        throw new Error(
+          `Profile link ${index + 1}${link.label ? ` (${link.label})` : ""}: enter a valid website address, or clear the URL to leave it blank.${canEdit("profile.links") ? "" : " Ask your administrator to correct this locked field."}`,
+        );
+      }
+      return { ...link, url: result.data };
+    });
+    const savedDocument = {
+      ...document,
+      profile: { ...document.profile, links },
+    };
     const result = await api<{ revision: number }>(`sites/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ document, revision: data.site.revision }),
+      body: JSON.stringify({
+        document: savedDocument,
+        revision: data.site.revision,
+      }),
     });
+    setDocument(savedDocument);
+    setInvalidLink(null);
     setData({
       ...data,
       site: {
         ...data.site,
         revision: result.revision,
-        draft: document,
+        draft: savedDocument,
         status: admin ? "draft" : "review",
       },
     });
@@ -533,9 +562,26 @@ export function PortfolioEditor({ id }: { id: string }) {
                     />
                   </Field>
                   <div style={{ flex: 1 }}>
-                    <Field label="URL">
+                    <Field
+                      label="URL"
+                      hint={
+                        invalidLink === index &&
+                        !profileLinkUrlSchema.safeParse(link.url).success
+                          ? "Enter a valid website address, or leave this URL blank."
+                          : "You can paste a full URL or an address such as linkedin.com/in/name."
+                      }
+                    >
                       <input
-                        type="url"
+                        type="text"
+                        inputMode="url"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        placeholder="https://example.com/profile"
+                        data-profile-link={index}
+                        aria-invalid={
+                          invalidLink === index &&
+                          !profileLinkUrlSchema.safeParse(link.url).success
+                        }
                         value={link.url}
                         disabled={!canEdit("profile.links")}
                         onChange={(e) =>
