@@ -34,8 +34,8 @@ export function DesignEditor({
           <p className="eyebrow">A signature for their work</p>
           <h2>A complete look, in one click</h2>
           <p className="panel-description">
-            Curated colors, typography, layout, and motion. Apply a look, then
-            make every detail your own.
+            Start with Academic · Ink & Blue for a crisp research website. Apply
+            a complete look, then adjust only what you need.
           </p>
           <div className="signature-looks">
             {signatureLooks.map((look) => (
@@ -273,8 +273,13 @@ export function DesignEditor({
               ],
               [
                 "researchIndex",
-                "Show a clickable research index below the introduction",
+                "Show an extra section index (single-page layout only)",
                 !!theme.researchIndex,
+              ],
+              [
+                "homeHighlights",
+                "Show selected research and interests on the home page",
+                theme.homeHighlights !== false,
               ],
             ] as const
           ).map(([key, label, checked]) => (
@@ -299,6 +304,9 @@ export function DesignEditor({
                 }
               >
                 <option value="rectangle">Framed rectangle</option>
+                <option value="cutout">
+                  Natural cutout — no frame or background
+                </option>
                 <option value="arch">Architectural arch</option>
                 <option value="circle">Circle</option>
               </select>

@@ -1,3 +1,4 @@
+import { signInAdmin } from "./admin-session";
 import { expect, test } from "@playwright/test";
 import {
   emptyDocument,
@@ -12,30 +13,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
 }) => {
   test.setTimeout(180000);
   const headers = { origin: "http://localhost:3100" };
-  const credentials = {
-    email: "browser-admin@integration.test",
-    password: "Browser testing passphrase 2026!",
-  };
-  if (!(await (await page.request.get("/api/status")).json()).initialized) {
-    expect(
-      (
-        await page.request.post("/api/setup", {
-          headers,
-          data: {
-            ...credentials,
-            token: "browser-test-bootstrap-only",
-            name: "Browser Administrator",
-            agencyName: "Brilliancy Research",
-          },
-        })
-      ).ok(),
-    ).toBeTruthy();
-  }
-  expect(
-    (
-      await page.request.post("/api/auth/login", { headers, data: credentials })
-    ).ok(),
-  ).toBeTruthy();
+  await signInAdmin(page);
   const slug = `multipage-${Date.now()}`;
   const created = await page.request.post("/api/sites", {
     headers,

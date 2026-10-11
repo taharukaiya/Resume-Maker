@@ -151,8 +151,11 @@ export async function portfolioRoutes(
       // instead of adding one database round trip after another.
       const [published, media, jobs, releases] = await Promise.all([
         site.published_release_id
-          ? database.query<{ document: unknown }>(
-              "SELECT document FROM releases WHERE id=$1 AND site_id=$2",
+          ? database.query<{
+              document: unknown;
+              manifest: { baseUrl?: string };
+            }>(
+              "SELECT document,manifest FROM releases WHERE id=$1 AND site_id=$2",
               [site.published_release_id, id],
             )
           : Promise.resolve([]),
@@ -172,6 +175,11 @@ export async function portfolioRoutes(
       return json({
         site,
         publishedDocument: published[0]?.document || null,
+        publishedUrl:
+          published[0]?.manifest?.baseUrl?.replace(
+            `${config().appUrl}/p/`,
+            `${config().appUrl}/portfolio/`,
+          ) || null,
         media,
         jobs,
         releases,

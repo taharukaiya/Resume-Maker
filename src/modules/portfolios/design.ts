@@ -52,7 +52,7 @@ export const styles = [
     id: "lumen",
     name: "Lumen",
     description:
-      "A crisp academic presence with generous space, a sculpted portrait, and focused page cards.",
+      "A calm academic presence with generous space, a sculpted portrait, and research highlights.",
   },
   {
     id: "archive",
@@ -68,9 +68,9 @@ export const styles = [
   },
   {
     id: "modern",
-    name: "Studio",
+    name: "Academic",
     description:
-      "Architectural lines, numbered sections, and confident research cards.",
+      "Crisp white space, a natural portrait, precise typography, and structured research.",
   },
   {
     id: "classic",
@@ -110,6 +110,27 @@ export const styles = [
   },
 ] as const;
 export const signatureLooks = [
+  {
+    name: "Academic · Ink & Blue",
+    theme: {
+      style: "modern",
+      accent: "#2254a5",
+      background: "#ffffff",
+      text: "#162438",
+      secondary: "#d9e6fa",
+      font: "manrope",
+      bodyFont: "dm-sans",
+      decoration: "none",
+      portrait: "cutout",
+      scale: "balanced",
+      roundness: "soft",
+      motion: "subtle",
+      researchIndex: false,
+      homeHighlights: true,
+      stickyNavigation: true,
+      expandableEntries: true,
+    },
+  },
   {
     name: "Lumen · Sage",
     theme: {

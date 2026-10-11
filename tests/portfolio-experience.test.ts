@@ -85,7 +85,9 @@ describe("Portfolio experience", () => {
       const pages = renderPortfolio(documentSchema.parse(doc), options);
       const html = pages["index.html"];
       expect(html).toContain(`class="${look.theme.style}"`);
-      expect(html).toContain('class="research-index"');
+      expect(html.includes('class="research-index"')).toBe(
+        !!look.theme.researchIndex,
+      );
       expect(html).toContain('class="entry-details"');
       expect(html).toContain("Evidence &amp; interpretation.");
       expect(html).not.toContain("Private draft section");
@@ -107,5 +109,56 @@ describe("Portfolio experience", () => {
     const next = structuredClone(original);
     next.theme.motion = "expressive";
     expect(canEditDocument(original, next, ["profile.bio"])).toBe(false);
+  });
+
+  it("shows public research excerpts instead of duplicate page cards and keeps the footer editable", () => {
+    const doc = emptyDocument("Researcher");
+    const publication = {
+      ...emptyEntry(),
+      title: "Coastal resilience",
+      body: "Complete short abstract.",
+      tags: "Climate, Communities",
+    };
+    doc.sections = [
+      {
+        id: crypto.randomUUID(),
+        type: "publications",
+        title: "Publications",
+        intro: "",
+        visible: true,
+        entries: [publication],
+      },
+      {
+        id: crypto.randomUUID(),
+        type: "projects",
+        title: "Private research",
+        intro: "",
+        visible: false,
+        entries: [
+          {
+            ...emptyEntry(),
+            title: "Unannounced project",
+            tags: "Private topic",
+          },
+        ],
+      },
+    ];
+    doc.navigation.copyright = "© 2024–2026 Researcher & collaborators";
+    doc.labels.footerHeading = "Discuss a collaboration";
+    const html = renderPortfolio(doc, options)["index.html"];
+    expect(html).toContain(
+      `href="https://research.example/publications/${publication.id}"`,
+    );
+    expect(html).toContain("Complete short abstract.");
+    expect(html).toContain("Climate");
+    expect(html).not.toContain("Unannounced project");
+    expect(html).not.toContain("Private topic");
+    expect(html).not.toContain('class="page-overview"');
+    expect(html).toContain("Discuss a collaboration");
+    expect(html).toContain("© 2024–2026 Researcher &amp; collaborators");
+    doc.theme.homeHighlights = false;
+    expect(renderPortfolio(doc, options)["index.html"]).not.toContain(
+      "Coastal resilience",
+    );
   });
 });

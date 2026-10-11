@@ -46,8 +46,8 @@ The runtime database role has row-level operation grants on application tables, 
 
 ## Connecting an individual researcher domain
 
-1. Publish the portfolio on its studio `/portfolio/slug` URL once.
-2. Add the custom hostname in Review & publish → Custom domains.
+1. Register the researcher's chosen domain with a registrar, or obtain DNS access to a domain they already own. A name such as `research-portfolio-by-rukaiya-taha.com` is only an example; registration and availability are separate from publishing. Publish the portfolio on its studio `/portfolio/slug` URL once.
+2. Add the owned hostname in **Review & publish → Website address → Connect a personal domain**.
 3. Create the displayed `_brilliancy` TXT record at the domain’s DNS provider. Click Verify DNS record.
 4. Request an ACM certificate **in us-east-1**, covering the exact hostname. Add ACM’s DNS-validation CNAME records and wait for certificate status ISSUED.
 5. Run the provisioner inside the private VPC, using the `DomainOperatorTaskArn`, cluster, subnet IDs, and security-group ID from `.data/aws-outputs.json`. Do not expose the database publicly to run this from a laptop.
@@ -66,7 +66,7 @@ pwsh -File infra/domain.ps1 -Hostname $researcherHostname -CertificateArn $issue
 
 9. Republish the portfolio. Navigation and canonical URLs then use the activated hostname, and subsequent publications update CloudFront automatically. Test HTTPS, article pages, files, sitemap, contact form, and mobile layout.
 
-The first activated domain is canonical. CloudFront certificate issuance, domain ownership, and DNS propagation require the real domain owner and cannot be verified in a local test.
+The first activated domain is canonical. The editor displays the address of the actual published release, so verification alone does not prematurely switch the published link. CloudFront certificate issuance, domain ownership, and DNS propagation require the real domain owner and cannot be verified in a local test. The free local/demo deployment keeps the shared address until production domain delivery has been provisioned; purchasing a domain does not provision hosting.
 
 ## Future releases
 

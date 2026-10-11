@@ -1,30 +1,11 @@
+import { signInAdmin } from "./admin-session";
 import { expect, test } from "@playwright/test";
 
 test("navigation stays responsive while routes and data are slow", async ({
   page,
   request,
 }) => {
-  const email = "browser-admin@integration.test";
-  const password = "Browser testing passphrase 2026!";
-  const status = await (await request.get("/api/status")).json();
-  if (!status.initialized) {
-    const setup = await request.post("/api/setup", {
-      headers: { origin: "http://localhost:3100" },
-      data: {
-        token: "browser-test-bootstrap-only",
-        name: "Browser Administrator",
-        email,
-        password,
-        agencyName: "Brilliancy Research",
-      },
-    });
-    expect(setup.ok()).toBeTruthy();
-  }
-  const login = await page.request.post("/api/auth/login", {
-    headers: { origin: "http://localhost:3100" },
-    data: { email, password },
-  });
-  expect(login.ok()).toBeTruthy();
+  await signInAdmin(page);
   await page.goto("/studio");
   await expect(
     page.getByRole("heading", { name: "Good to see you, Browser." }),

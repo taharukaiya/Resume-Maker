@@ -1,3 +1,4 @@
+import { signInAdmin } from "./admin-session";
 import { expect, test } from "@playwright/test";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
 import { signatureLooks } from "../../src/modules/portfolios/design";
@@ -10,33 +11,8 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   browser,
 }) => {
   test.setTimeout(180000);
-  const email = "browser-admin@integration.test";
-  const password = "Browser testing passphrase 2026!";
+  await signInAdmin(page);
   const headers = { origin: "http://localhost:3100" };
-  if (!(await (await request.get("/api/status")).json()).initialized) {
-    expect(
-      (
-        await request.post("/api/setup", {
-          headers,
-          data: {
-            token: "browser-test-bootstrap-only",
-            name: "Browser Administrator",
-            email,
-            password,
-            agencyName: "Brilliancy Research",
-          },
-        })
-      ).ok(),
-    ).toBeTruthy();
-  }
-  expect(
-    (
-      await page.request.post("/api/auth/login", {
-        headers,
-        data: { email, password },
-      })
-    ).ok(),
-  ).toBeTruthy();
   const created = await page.request.post("/api/sites", {
     headers,
     data: { name: "Dr. Maya Rahman", slug: `appearance-${Date.now()}` },
@@ -141,9 +117,11 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
         "Dr. Maya Rahman — Research portfolio",
       );
       await expect(publicPage.locator("body")).toHaveClass(look.theme.style);
-      await expect(
-        publicPage.getByRole("navigation", { name: "Explore the portfolio" }),
-      ).toBeVisible();
+      const index = publicPage.getByRole("navigation", {
+        name: "Explore the portfolio",
+      });
+      if (look.theme.researchIndex) await expect(index).toBeVisible();
+      else await expect(index).toHaveCount(0);
       const details = publicPage.locator(".entry-details").first();
       await details.locator("summary").click();
       await expect(details).toHaveAttribute("open", "");
@@ -262,6 +240,11 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   await page
     .getByLabel("Biography", { exact: true })
     .fill("This unsaved biography must survive the photo upload.");
+  await page
+    .getByRole("checkbox", {
+      name: /Automatically remove the portrait background/,
+    })
+    .uncheck();
   await page.getByLabel("Upload profile photo", { exact: true }).setInputFiles({
     name: "profile-test.png",
     mimeType: "image/png",

@@ -11,7 +11,6 @@ import {
 import type { Site } from "@/modules/portfolios/service";
 import {
   ArrowLeft,
-  CheckCircle2,
   Download,
   ExternalLink,
   Eye,
@@ -36,6 +35,8 @@ import { PortraitEditor } from "./portrait-editor";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { PagePlanner } from "./page-planner";
+import { EditorWorkflow, portfolioSteps } from "./editor-workflow";
+import { DomainManager } from "./domain-manager";
 import { orderSections } from "@/modules/portfolios/structure";
 import { useUser } from "./studio-shell";
 import { NavigationLink } from "./navigation-link";
@@ -67,6 +68,7 @@ type EditorData = {
   jobs: Job[];
   releases: Release[];
   publishedDocument?: PortfolioDocument | null;
+  publishedUrl?: string | null;
 };
 type Revision = {
   id: string;
@@ -312,19 +314,26 @@ export function PortfolioEditor({ id }: { id: string }) {
       ? [
           ["pages", "Pages"],
           ["design", "Design"],
+          ["publish", "Review & publish"],
           ["seo", "SEO & labels"],
         ]
       : []),
     ["media", "Files & articles"],
-    ...(admin
-      ? [
-          ["permissions", "Permissions"],
-          ["publish", "Review & publish"],
-        ]
-      : []),
+    ...(admin ? [["permissions", "Permissions"]] : []),
     ["history", "History"],
   ];
   const assets = data.media;
+  const currentStep = portfolioSteps.findIndex(([key]) => key === tab);
+  function selectTab(key: string) {
+    setTab(key);
+    if (key === "history")
+      void feedback.run(async () => {
+        const result = await api<{ revisions: Revision[] }>(
+          `sites/${id}/history`,
+        );
+        setHistory(result.revisions);
+      });
+  }
   const assetSelect = (
     label: string,
     key: "portraitId" | "cvId",
@@ -401,44 +410,15 @@ export function PortfolioEditor({ id }: { id: string }) {
           message="Your administrator controls which fields you can edit. Your changes go live only after administrator review and publishing."
         />
       )}
-      <div className="tabs" role="tablist" aria-label="Portfolio editor">
-        {tabs.map(([key, label]) => (
-          <button
-            role="tab"
-            aria-selected={tab === key}
-            key={key}
-            className={tab === key ? "active" : ""}
-            onClick={() => {
-              setTab(key);
-              if (key === "history")
-                void feedback.run(async () => {
-                  const result = await api<{ revisions: Revision[] }>(
-                    `sites/${id}/history`,
-                  );
-                  setHistory(result.revisions);
-                });
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <EditorWorkflow
+        tab={tab}
+        tabs={tabs}
+        admin={admin}
+        onSelect={selectTab}
+      />
       <div className="mobile-editor-tabs">
         <Field label="Editing">
-          <select
-            value={tab}
-            onChange={(e) => {
-              const key = e.target.value;
-              setTab(key);
-              if (key === "history")
-                void feedback.run(async () => {
-                  const result = await api<{ revisions: Revision[] }>(
-                    `sites/${id}/history`,
-                  );
-                  setHistory(result.revisions);
-                });
-            }}
-          >
+          <select value={tab} onChange={(e) => selectTab(e.target.value)}>
             {tabs.map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
@@ -529,7 +509,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 <div className="full-span">
                   <Field
                     label="Biography"
-                    hint="Add an About section to display this biography on the website."
+                    hint="Appears on the About page in a separate-page website. In a scrolling layout, add an About section."
                   >
                     <textarea
                       rows={7}
@@ -680,11 +660,13 @@ export function PortfolioEditor({ id }: { id: string }) {
             </section>
             <section className="panel">
               <h3>Portfolio address</h3>
-              <p>/portfolio/{data.site.slug}</p>
+              <p style={{ overflowWrap: "anywhere" }}>
+                {data.publishedUrl || `/portfolio/${data.site.slug}`}
+              </p>
               {data.site.published_release_id ? (
                 <a
                   className="inline-link"
-                  href={`/portfolio/${data.site.slug}`}
+                  href={data.publishedUrl || `/portfolio/${data.site.slug}`}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -961,7 +943,13 @@ export function PortfolioEditor({ id }: { id: string }) {
             </p>
             <div className="form-grid">
               {(
-                ["siteTitle", "contactLabel", "cvLabel", "footer"] as const
+                [
+                  "siteTitle",
+                  "contactLabel",
+                  "cvLabel",
+                  "footer",
+                  "copyright",
+                ] as const
               ).map((key) => (
                 <Field
                   key={key}
@@ -971,11 +959,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                       contactLabel: "Contact button",
                       cvLabel: "CV button",
                       footer: "Footer text",
+                      copyright:
+                        "Copyright line (leave blank for automatic year and name)",
                     }[key]
                   }
                 >
                   <input
-                    value={document.navigation[key]}
+                    value={document.navigation[key] ?? ""}
                     maxLength={key === "footer" ? 1000 : 200}
                     onChange={(e) =>
                       change({
@@ -1299,43 +1289,42 @@ export function PortfolioEditor({ id }: { id: string }) {
               <div>
                 <h2>Ready for the world?</h2>
                 <p className="panel-description">
-                  Publishing uses the saved draft. Unsaved changes must be saved
-                  first.
+                  Preview the website and review the changes below. Publishing
+                  makes this version available to visitors.
                 </p>
               </div>
               <Button
                 busy={feedback.busy}
-                disabled={
-                  dirty ||
-                  data.jobs.some(
-                    (j) =>
-                      j.kind === "publish" &&
-                      ["queued", "running"].includes(j.status),
-                  )
-                }
+                disabled={data.jobs.some(
+                  (j) =>
+                    j.kind === "publish" &&
+                    ["queued", "running"].includes(j.status),
+                )}
                 onClick={() =>
                   void feedback.run(async () => {
+                    const revision = dirty ? await save() : data.site.revision;
                     await api(`sites/${id}/publish`, {
                       method: "POST",
-                      body: JSON.stringify({ revision: data.site.revision }),
+                      body: JSON.stringify({ revision }),
                     });
                     await load();
                   }, "Publishing has started. The current website remains available until the new release is ready.")
                 }
               >
-                <Globe size={15} /> Publish approved draft
+                <Globe size={15} />{" "}
+                {dirty ? "Save and publish draft" : "Publish approved draft"}
               </Button>
             </div>
             {dirty && (
               <Notice
                 tone="info"
-                message="Save the current changes before publishing."
+                message="Publishing will first save your current edits, then publish the approved draft."
               />
             )}
             {data.site.published_release_id && (
               <a
                 className="guide-link"
-                href={`/portfolio/${data.site.slug}`}
+                href={data.publishedUrl || `/portfolio/${data.site.slug}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -1343,6 +1332,11 @@ export function PortfolioEditor({ id }: { id: string }) {
               </a>
             )}
           </section>
+          <DomainManager
+            siteId={id}
+            slug={data.site.slug}
+            publishedUrl={data.publishedUrl}
+          />
           <section className="panel">
             <h2>Changes since the published version</h2>
             <p className="panel-description">
@@ -1395,7 +1389,6 @@ export function PortfolioEditor({ id }: { id: string }) {
             ))}
             {!data.releases.length && <p className="muted">No releases yet.</p>}
           </section>
-          <DomainManager siteId={id} />
           {!data.site.published_release_id && !data.releases.length && (
             <DeleteDraft
               id={id}
@@ -1502,6 +1495,28 @@ export function PortfolioEditor({ id }: { id: string }) {
             ))}
           </section>
         </>
+      )}
+      {admin && currentStep >= 0 && currentStep < portfolioSteps.length - 1 && (
+        <div className="workflow-continue">
+          <div>
+            <strong>Next: {portfolioSteps[currentStep + 1][1]}</strong>
+            <p>Your content stays together as you move through the steps.</p>
+          </div>
+          <Button
+            aria-label={`${dirty ? "Save & continue" : "Continue"} to ${portfolioSteps[currentStep + 1][1]}`}
+            busy={feedback.busy}
+            onClick={() =>
+              void feedback.run(async () => {
+                if (dirty) await save();
+                selectTab(portfolioSteps[currentStep + 1][0]);
+                window.scrollTo({ top: 0, behavior: "instant" });
+              })
+            }
+          >
+            {dirty ? "Save & continue" : "Continue"}{" "}
+            <span aria-hidden="true">→</span>
+          </Button>
+        </div>
       )}
       {preview && (
         <div className="modal-backdrop">
@@ -1717,97 +1732,5 @@ function DocumentDiff({
       tone="success"
       message="The content matches the currently published version."
     />
-  );
-}
-function DomainManager({ siteId }: { siteId: string }) {
-  const feedback = useFeedback(),
-    [hostname, setHostname] = useState(""),
-    [domains, setDomains] = useState<
-      {
-        id: string;
-        hostname: string;
-        verification_token: string;
-        verified_at: string | null;
-      }[]
-    >([]);
-  async function load() {
-    const result = await api<{ domains: typeof domains }>(
-      `sites/${siteId}/domains`,
-    );
-    setDomains(result.domains);
-  }
-  useEffect(() => {
-    void feedback.run(load);
-  }, []);
-  return (
-    <section className="panel">
-      <h2>Custom domains</h2>
-      <p className="panel-description">
-        Verify ownership first. HTTPS and delivery must then be provisioned in
-        your hosting account using the deployment guide.
-      </p>
-      <Feedback {...feedback} />
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void feedback.run(async () => {
-            await api(`sites/${siteId}/domains`, {
-              method: "POST",
-              body: JSON.stringify({ hostname }),
-            });
-            setHostname("");
-            await load();
-          });
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Field label="Domain name">
-            <input
-              value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
-              required
-            />
-          </Field>
-        </div>
-        <Button
-          variant="secondary"
-          busy={feedback.busy}
-          style={{ marginTop: 24 }}
-        >
-          Add domain
-        </Button>
-      </form>
-      {domains.map((domain) => (
-        <div key={domain.id} style={{ marginTop: 25 }}>
-          <div className="spread">
-            <strong>{domain.hostname}</strong>
-            <Badge
-              value={domain.verified_at ? "ownership verified" : "unverified"}
-            />
-          </div>
-          <p className="panel-description">
-            Create a TXT record named <code>_brilliancy.{domain.hostname}</code>{" "}
-            with this value:
-          </p>
-          <div className="code-box">{domain.verification_token}</div>
-          <Button
-            variant="secondary small"
-            busy={feedback.busy}
-            onClick={() =>
-              void feedback.run(async () => {
-                await api(`sites/${siteId}/verify-domain`, {
-                  method: "POST",
-                  body: JSON.stringify({ domainId: domain.id }),
-                });
-                await load();
-              }, "Domain ownership verified. Configure HTTPS delivery next.")
-            }
-          >
-            <CheckCircle2 size={13} /> Verify DNS record
-          </Button>
-        </div>
-      ))}
-    </section>
   );
 }

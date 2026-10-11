@@ -90,7 +90,11 @@ successful extraction remains available. API usage is billed by OpenAI.
 
 ## 7. Portfolio design controls
 
-Open **Design** to choose Lumen, Archive, Editorial, Studio, Classic, Aurora, Folio, Atlas,
+New portfolios start with **Academic**, a crisp white layout with restrained blue accents, structured research, and natural portrait presentation. Existing drafts keep their chosen design; apply **Academic · Ink & Blue** to change one deliberately.
+
+The editor follows five steps: **Profile → Academic sections → Pages → Design → Review & publish**. **Save & continue** saves your edits before moving forward. SEO, files, permissions, and history are grouped under Tools. You can jump between steps, and **Save and publish draft** saves pending edits before queueing the release.
+
+Open **Design** to choose Lumen, Archive, Editorial, Academic, Classic, Aurora, Folio, Atlas,
 Noir, or Horizon. Apply
 one of eight palettes or set the accent, background, body text and secondary
 colors yourself. Heading and body fonts are independent: Georgia, system sans,
@@ -99,11 +103,27 @@ There are also controls for heading scale, spacing, portrait shape, decoration,
 width and corners. The sidebar shows typography/color changes immediately;
 save and use Preview to inspect the full layout.
 
-For a complete coordinated design, choose **Lumen · Sage**, **Archive · Oxblood**,
+For a complete coordinated design, choose **Academic · Ink & Blue**, **Lumen · Sage**, **Archive · Oxblood**,
 **Atlas · Cobalt**, **Noir · Copper**,
 or **Horizon · Terracotta** at the top of Design. These presets set the layout,
 colors, fonts, portrait treatment, and motion together; every setting remains
 editable. They do not replace the researcher's content.
+
+Home features actual research excerpts and topic tags instead of repeating navigation as page cards. Disable **Show selected research and interests on the home page** under Motion & interaction if preferred. The substantial footer contains contact details, profile links, agency credit, and copyright. Edit the footer message/copyright under **SEO & labels**, and its heading under the editable labels. Leave copyright blank to use the researcher name and the year at publication; a custom value lets you set dates explicitly.
+
+### Profile photos and automatic background removal
+
+1. In **Profile**, leave **Automatically remove the portrait background** enabled and upload a JPG, PNG, or WebP.
+2. An image with existing transparent pixels skips model processing. For opaque portraits, the browser downloads the free [MODNet model](https://huggingface.co/Xenova/modnet) on first use and runs it locally in a worker. No paid API, API key, or GPU is required. Keep the editor open; processing speed and downloads depend on the device and connection.
+3. Review the result, especially hair and clothing edges. **Use original** and **Use transparent version** switch between the two; both are in the media library. The original is never replaced by the cutout. The model provider receives model-download requests, not the photo. Normal private media uploads still go to your application server.
+4. Choose **Design → Portrait shape → Natural cutout — no frame or background** to display it without a frame. A transparent photo remains transparent with other shapes, but those may add decorative framing.
+5. Save, preview, and publish. For an existing selected portrait, use **Remove background from selected photo**. Turn automatic processing off if you want to keep future uploads unchanged.
+
+If downloads are blocked or processing fails, the original remains selected and the app explains how to retry. Cancellation also keeps the original. Clear, well-lit photos of one person work best; background removal cannot guarantee perfect edges. Scientific figures and other images uploaded through Files & articles are not processed as portraits. Large photos are limited to 40 megapixels and processed at up to 1800 pixels on the longest side. The model is Apache-2.0 licensed; see its model card. To run the optional real-model browser check, place the official sample portrait at `.test-data/portrait-source.jpg`, set `RUN_PORTRAIT_MODEL_TEST=true`, and run `npx playwright test tests/browser/portrait.spec.ts`.
+
+First-use downloads need a connection to `huggingface.co` and its model CDN (`*.hf.co`). The loader retries an interrupted download once and the operation has a three-minute overall limit. A successful sample cutout was verified during development, but subsequent live checks encountered CDN connection timeouts; availability of this free download service is not guaranteed by the application. Before a demonstration, process a portrait on the actual presentation browser to populate its model cache. If the CDN is unavailable, use the original photo or upload an already-transparent PNG/WebP; both paths work without the model. Ordinary automated checks cover these fallback paths; the live-model check is opt-in because it depends on the external service.
+
+### Pages, motion, and publishing
 
 Under **Pages → Website structure**, the default **Separate pages** layout creates
 focused Home, About, Research, and Contact destinations from your content. About

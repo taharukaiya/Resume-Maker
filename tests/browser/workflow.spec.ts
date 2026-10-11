@@ -169,7 +169,7 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    `http://localhost:3100${publicUrl}`,
+    new URL(publicUrl!, "http://localhost:3100").href,
   );
   await page.screenshot({
     path: ".test-data/portfolio-desktop.png",
