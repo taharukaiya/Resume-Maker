@@ -1,0 +1,3 @@
+# Preserve original artwork bytes and treat Illustrator files as binary.
+assets/brand/source/** -text
+*.ai binary

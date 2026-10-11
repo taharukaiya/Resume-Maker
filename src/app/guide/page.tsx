@@ -16,7 +16,7 @@ export default function Guide() {
         <br />
         to the first live portfolio.
       </h1>
-      <p className="lead" style={{ marginBottom: 35, color: "#76826b" }}>
+      <p className="lead" style={{ marginBottom: 35, color: "var(--muted)" }}>
         Start locally. Connect production services when the agency is ready to
         launch.
       </p>
@@ -70,7 +70,9 @@ export default function Guide() {
         <section className="panel" key={number}>
           <div className="eyebrow">STEP {number}</div>
           <h2 style={{ marginTop: 10 }}>{title}</h2>
-          <p style={{ color: "#718066", marginBottom: 0 }}>{description}</p>
+          <p style={{ color: "var(--muted)", marginBottom: 0 }}>
+            {description}
+          </p>
         </section>
       ))}
       <p className="muted" style={{ fontSize: 12 }}>

@@ -16,6 +16,11 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
     await expect(page.getByText("Your account is ready.")).toBeVisible();
   }
   await page.goto("/login");
+  await page.screenshot({
+    path: ".test-data/login-desktop.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await page.getByLabel("Email address", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in to workspace" }).click();
@@ -103,10 +108,15 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
   await expect(
     page.getByRole("link", { name: "People & access" }),
   ).toBeVisible();
+  await page.screenshot({
+    path: ".test-data/navigation-mobile.png",
+    animations: "disabled",
+  });
   await page.getByRole("button", { name: "Close navigation" }).click();
   await page.screenshot({
     path: ".test-data/dashboard-mobile.png",
     fullPage: true,
+    animations: "disabled",
   });
   expect(
     await page.evaluate(
@@ -209,13 +219,11 @@ test("client invitation, permitted submission, files, private pages, and public 
   })
     .png()
     .toBuffer();
-  await page
-    .getByLabel("Upload a file")
-    .setInputFiles({
-      name: "research-image.png",
-      mimeType: "image/png",
-      buffer: image,
-    });
+  await page.getByLabel("Upload a file").setInputFiles({
+    name: "research-image.png",
+    mimeType: "image/png",
+    buffer: image,
+  });
   await expect(
     page.getByRole("link", { name: /Download research-image/ }),
   ).toBeVisible();

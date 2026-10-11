@@ -1,5 +1,6 @@
 "use client";
-import { ArrowRight, BookOpen, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { BrandLogo } from "./brand-logo";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -45,12 +46,7 @@ export function AuthForm({
     <div className="auth-page">
       <section className="auth-brand-panel">
         <Link href="/" className="brand-lockup">
-          <span className="brand-symbol">
-            <BookOpen size={24} />
-          </span>
-          <span>
-            Brilliancy<span className="brand-sub">RESEARCH STUDIO</span>
-          </span>
+          <BrandLogo />
         </Link>
         <div className="auth-quote">
           <span className="eyebrow">FOR THE NEXT CHAPTER</span>

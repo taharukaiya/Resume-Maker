@@ -3,7 +3,6 @@ import type { PublicUser } from "@/modules/auth/service";
 import {
   Activity,
   ArrowUpRight,
-  BookOpen,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -18,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { api } from "./ui";
+import { BrandLogo } from "./brand-logo";
 const UserContext = createContext<PublicUser | null>(null);
 export function useUser() {
   return useContext(UserContext)!;
@@ -50,12 +50,7 @@ export function StudioShell({
       <div className="studio">
         <aside className={`sidebar ${open ? "open" : ""}`}>
           <Link href="/studio" className="brand-lockup">
-            <span className="brand-symbol">
-              <BookOpen size={24} />
-            </span>
-            <span>
-              Brilliancy<span className="brand-sub">RESEARCH STUDIO</span>
-            </span>
+            <BrandLogo />
           </Link>
           <button
             className="mobile-close icon-button"

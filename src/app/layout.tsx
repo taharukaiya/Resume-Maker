@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
+  icons: { icon: "/brand/mark.svg" },
   title: {
     default: "Brilliancy Research — Portfolio Studio",
     template: "%s | Brilliancy Research",
