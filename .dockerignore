@@ -14,3 +14,4 @@ playwright-report
 cdk.out
 coverage
 *.log
+hostinger.txt
