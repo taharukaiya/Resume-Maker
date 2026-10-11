@@ -34,6 +34,8 @@ export default defineConfig({
       CLAMAV_HOST: "",
       OPENAI_API_KEY: "",
       OPENAI_MODEL: "",
+      AI_PROVIDER: "openai",
+      DEPLOYMENT_MODE: "",
       NODE_ENV: "development",
       NEXT_TELEMETRY_DISABLED: "1",
     },

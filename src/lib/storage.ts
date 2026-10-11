@@ -16,6 +16,8 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
+import { db, type Sql } from "./db";
+import { putDemoObject } from "./demo-storage";
 function keyPath(key: string) {
   if (
     !/^[a-zA-Z0-9_./-]+$/.test(key) ||
@@ -33,8 +35,10 @@ export async function putObject(
   key: string,
   body: Buffer | string,
   contentType: string,
+  transaction?: Sql,
 ) {
   keyPath(key);
+  if (config().demo) return putDemoObject(key, body, contentType, transaction);
   if (config().bucket) {
     await client().send(
       new PutObjectCommand({
@@ -55,6 +59,15 @@ export async function putObject(
 }
 export async function getObject(key: string): Promise<Buffer | null> {
   keyPath(key);
+  if (config().demo) {
+    const [row] = await (
+      await db()
+    ).query<{ body: Uint8Array }>(
+      "SELECT body FROM demo_objects WHERE key=$1",
+      [key],
+    );
+    return row ? Buffer.from(row.body) : null;
+  }
   if (config().bucket) {
     try {
       const object = await client().send(
@@ -75,8 +88,15 @@ export async function getObject(key: string): Promise<Buffer | null> {
     throw error;
   }
 }
-export async function deleteObject(key: string) {
+export async function deleteObject(key: string, transaction?: Sql) {
   keyPath(key);
+  if (config().demo) {
+    await (transaction || (await db())).query(
+      "DELETE FROM demo_objects WHERE key=$1",
+      [key],
+    );
+    return;
+  }
   if (config().bucket) {
     await client().send(
       new DeleteObjectCommand({ Bucket: bucketFor(key), Key: key }),
@@ -91,9 +111,16 @@ export async function deleteObject(key: string) {
 }
 
 /** Only portfolio-scoped prefixes may be removed by the deletion outbox. */
-export async function deletePortfolioFiles(prefix: string) {
+export async function deletePortfolioFiles(prefix: string, transaction?: Sql) {
   if (!/^(private|releases)\/[0-9a-f-]{36}\/$/.test(prefix))
     throw new Error("Invalid portfolio cleanup prefix");
+  if (config().demo) {
+    await (transaction || (await db())).query(
+      "DELETE FROM demo_objects WHERE starts_with(key,$1)",
+      [prefix],
+    );
+    return;
+  }
   const target = path.resolve(keyPath(prefix));
   const root = path.resolve(config().dataDir, "storage") + path.sep;
   if (!target.startsWith(root)) throw new Error("Cleanup escaped storage root");

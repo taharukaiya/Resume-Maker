@@ -30,6 +30,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DesignEditor } from "./design-editor";
 import { DeleteDraft } from "./delete-draft";
 import { CvImporter } from "./cv-importer";
+import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { useUser } from "./studio-shell";
 import {
@@ -65,6 +66,9 @@ type Revision = {
   author: string;
 };
 export function PortfolioEditor({ id }: { id: string }) {
+  const ai = useDocumentAi();
+  const [browserAi, setBrowserAi] = useState(false);
+  const [autoSummary, setAutoSummary] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
     feedback = useFeedback();
@@ -106,8 +110,11 @@ export function PortfolioEditor({ id }: { id: string }) {
   useEffect(() => {
     void feedback.run(async () => {
       await load(true);
-      const integrations = await api<{ ai: boolean }>("integrations");
+      const integrations = await api<{ ai: boolean; aiProvider?: string }>(
+        "integrations",
+      );
       setAiEnabled(integrations.ai);
+      setBrowserAi(integrations.aiProvider === "huggingface-browser");
     });
   }, [load]);
   const hasJobs = data?.jobs.some((j) =>
@@ -305,6 +312,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 media={assets}
                 document={document}
                 enabled={aiEnabled}
+                browserAi={browserAi}
                 pending={
                   !!data.jobs.some(
                     (j) =>
@@ -865,14 +873,26 @@ export function PortfolioEditor({ id }: { id: string }) {
                     const form = new FormData();
                     form.append("file", file);
                     form.append("purpose", uploadPurpose);
-                    const result = await api<{ summaryQueued: boolean }>(
-                      `sites/${id}/media`,
-                      {
-                        method: "POST",
-                        body: form,
-                      },
-                    );
+                    const result = await api<{
+                      id: string;
+                      summaryQueued: boolean;
+                    }>(`sites/${id}/media`, {
+                      method: "POST",
+                      body: form,
+                    });
                     await load();
+                    if (
+                      admin &&
+                      browserAi &&
+                      autoSummary &&
+                      uploadPurpose === "article" &&
+                      file.type === "application/pdf"
+                    ) {
+                      const message = await ai.run(result.id, "abstract", true);
+                      await load();
+                      feedback.setMessage(message);
+                      return;
+                    }
                     feedback.setMessage(
                       result.summaryQueued
                         ? "Article uploaded. Research summary generation started automatically."
@@ -884,10 +904,31 @@ export function PortfolioEditor({ id }: { id: string }) {
               />
             </div>
           )}
+          {admin && browserAi && (
+            <div className="panel">
+              <h3>Free AI on your computer</h3>
+              <p className="panel-description">
+                The first use downloads roughly 1 GB from Hugging Face. Use
+                desktop Chrome or Edge with WebGPU, allow about 3 GB of GPU
+                memory, and keep this tab open. Uploaded documents stay on this
+                app's server; inference runs in your browser. Text-based PDFs
+                only; review every claim.
+              </p>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={autoSummary}
+                  onChange={(event) => setAutoSummary(event.target.checked)}
+                />{" "}
+                Generate a free summary after each article upload
+              </label>
+            </div>
+          )}
+          <AiProgress {...ai} />
           {admin && !aiEnabled && (
             <Notice
               tone="info"
-              message="Automatic research summaries will be available after an OpenAI API key and model are configured. You can add original abstracts manually now."
+              message="Enable free browser AI or configure a server AI provider to generate research summaries. You can add original abstracts manually now."
             />
           )}
           <div className="file-list">
@@ -923,11 +964,14 @@ export function PortfolioEditor({ id }: { id: string }) {
                       disabled={!aiEnabled || feedback.busy}
                       onClick={() =>
                         void feedback.run(async () => {
-                          await api(`media/${file.id}/abstract`, {
-                            method: "POST",
-                          });
+                          const message = await ai.run(
+                            file.id,
+                            "abstract",
+                            browserAi,
+                          );
                           await load();
-                        }, "Summary generation queued. This page will update when it is ready.")
+                          feedback.setMessage(message);
+                        })
                       }
                     >
                       <Sparkles size={13} /> Generate summary

@@ -4,6 +4,7 @@ const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   devIndicators: false,
+  cacheMaxMemorySize: 0,
   serverExternalPackages: ["@electric-sql/pglite", "pg", "pdf-parse", "sharp"],
   experimental: { serverActions: { bodySizeLimit: "1mb" } },
   async headers() {
@@ -11,6 +12,9 @@ const config: NextConfig = {
       {
         source: "/:path*",
         headers: [
+          ...(process.env.DEPLOYMENT_MODE === "demo"
+            ? [{ key: "X-Robots-Tag", value: "noindex, nofollow" }]
+            : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },

@@ -57,6 +57,8 @@ beforeAll(() => {
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_MODEL;
   delete process.env.CLAMAV_HOST;
+  delete process.env.AI_PROVIDER;
+  delete process.env.DEPLOYMENT_MODE;
 });
 afterAll(async () => {
   await closeDb();
@@ -510,6 +512,142 @@ describe.sequential(
       } finally {
         delete process.env.OPENAI_API_KEY;
         delete process.env.OPENAI_MODEL;
+      }
+    });
+    it("stores browser proposals only for administrators, validates them, and does not change the draft", async () => {
+      const database = await db();
+      const [media] = await database.query<{ id: string }>(
+        "SELECT id FROM media WHERE site_id=$1 AND mime='application/pdf' LIMIT 1",
+        [siteId],
+      );
+      const route = `media/${media.id}/browser-ai`;
+      const input = {
+        task: "abstract",
+        result: {
+          abstract: "A test proposal.",
+          keywords: [],
+          limitations: "Test data.",
+        },
+      };
+      expect((await request(route, "PUT", input)).status).toBe(409);
+      process.env.AI_PROVIDER = "huggingface-browser";
+      process.env.OPENAI_API_KEY = "test-unused-paid-key";
+      process.env.OPENAI_MODEL = "test-unused-model";
+      try {
+        const before = (await request(`sites/${siteId}`)).data.site;
+        expect((await request(route, "PUT", input, clientCookie)).status).toBe(
+          403,
+        );
+        expect(
+          (await request(route, "POST", { task: "abstract" }, clientCookie))
+            .status,
+        ).toBe(403);
+        expect(
+          (await request(route, "PUT", { ...input, result: { abstract: 123 } }))
+            .status,
+        ).toBe(400);
+        expect((await request(route, "PUT", input)).status).toBe(200);
+        const cv = {
+          profile: {
+            name: "Browser Proposal",
+            headline: "",
+            affiliation: "",
+            bio: "",
+            location: "",
+            email: "",
+            links: [],
+          },
+          sections: [],
+          warnings: [],
+        };
+        expect(
+          (await request(route, "PUT", { task: "cv-import", result: cv }))
+            .status,
+        ).toBe(200);
+        const after = (await request(`sites/${siteId}`)).data;
+        expect(after.site.draft).toEqual(before.draft);
+        expect(after.site.revision).toBe(before.revision);
+        expect(
+          after.media.find((m: { id: string }) => m.id === media.id).cv_import
+            .profile.name,
+        ).toBe("Browser Proposal");
+        expect(
+          (await request(`media/${media.id}/abstract`, "POST")).status,
+        ).toBe(503);
+        expect(
+          (
+            await database.query(
+              "SELECT * FROM audit_events WHERE action='ai.browser_proposal_saved' AND site_id=$1",
+              [siteId],
+            )
+          ).length,
+        ).toBe(2);
+      } finally {
+        delete process.env.AI_PROVIDER;
+        delete process.env.OPENAI_API_KEY;
+        delete process.env.OPENAI_MODEL;
+      }
+    });
+    it("persists demo files in PostgreSQL and scopes transactional cleanup", async () => {
+      process.env.DEPLOYMENT_MODE = "demo";
+      const own = `private/${randomUUID()}/`,
+        other = `private/${randomUUID()}/`;
+      try {
+        await putObject(`${own}test.pdf`, "original", "application/pdf");
+        await putObject(`${other}test.pdf`, "keep", "application/pdf");
+        await (
+          await db()
+        ).transaction(async (tx) => {
+          await putObject(`${own}test.pdf`, "updated", "application/pdf", tx);
+        });
+        expect((await getObject(`${own}test.pdf`))?.toString()).toBe("updated");
+        await (
+          await db()
+        ).transaction((tx) => storage.deletePortfolioFiles(own, tx));
+        expect(await getObject(`${own}test.pdf`)).toBeNull();
+        expect((await getObject(`${other}test.pdf`))?.toString()).toBe("keep");
+        await expect(
+          storage.deletePortfolioFiles("private/"),
+        ).rejects.toThrow();
+        await storage.deletePortfolioFiles(other);
+      } finally {
+        delete process.env.DEPLOYMENT_MODE;
+      }
+    });
+    it("publishes, unpublishes and restores a release using transactional demo storage", async () => {
+      process.env.DEPLOYMENT_MODE = "demo";
+      try {
+        const slug = `demo-${randomUUID()}`;
+        const created = await request("sites", "POST", {
+          name: "Demo integration fixture",
+          slug,
+        });
+        expect(created.status).toBe(201);
+        const id = created.data.id;
+        expect(
+          (await request(`sites/${id}/publish`, "POST", { revision: 1 }))
+            .status,
+        ).toBe(202);
+        await processOneJob();
+        const live = await liveManifest(slug);
+        expect(live).not.toBeNull();
+        expect(
+          (await getObject(live!.routes["index.html"].key))?.toString(),
+        ).toContain("Demo integration fixture");
+        expect((await request(`sites/${id}/unpublish`, "POST")).status).toBe(
+          200,
+        );
+        expect(await liveManifest(slug)).toBeNull();
+        expect(
+          (
+            await request(`sites/${id}/rollback`, "POST", {
+              releaseId: live!.releaseId,
+            })
+          ).status,
+        ).toBe(200);
+        expect((await liveManifest(slug))?.releaseId).toBe(live!.releaseId);
+      } finally {
+        delete process.env.DEPLOYMENT_MODE;
       }
     });
     it("rejects references to another tenant’s media", async () => {

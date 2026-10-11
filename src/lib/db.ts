@@ -59,7 +59,7 @@ async function connect(): Promise<Database> {
   if (config().databaseUrl) {
     const pool = new Pool({
       connectionString: config().databaseUrl,
-      max: 10,
+      max: config().demo ? 3 : 10,
       connectionTimeoutMillis: 10000,
     });
     return {

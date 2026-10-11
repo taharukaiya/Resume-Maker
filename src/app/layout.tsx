@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { config } from "@/lib/config";
 export const metadata: Metadata = {
   icons: { icon: "/brand/mark.svg" },
   title: {
@@ -18,7 +19,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       {/* Browser extensions such as Grammarly add body attributes before hydration. */}
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {config().demo && (
+          <div className="demo-banner" role="note">
+            CEO demonstration · Use sample data only · Free database expires
+            after 30 days · Email delivery and malware scanning are not
+            configured
+          </div>
+        )}
+        {children}
+      </body>
     </html>
   );
 }

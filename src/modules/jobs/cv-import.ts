@@ -9,6 +9,7 @@ import {
 } from "@/modules/portfolios/cv-import";
 import { emptyDocument } from "@/modules/portfolios/schema";
 import OpenAI from "openai";
+import { aiConfig } from "@/modules/ai/config";
 import { zodTextFormat } from "openai/helpers/zod";
 
 export async function generateCvImport(job: {
@@ -18,7 +19,9 @@ export async function generateCvImport(job: {
   payload: Record<string, unknown>;
 }) {
   invariant(
-    process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL,
+    aiConfig().provider === "openai" &&
+      process.env.OPENAI_API_KEY &&
+      process.env.OPENAI_MODEL,
     503,
     "Configure OPENAI_API_KEY and OPENAI_MODEL to enable CV import.",
   );

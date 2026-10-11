@@ -1,4 +1,5 @@
 import { config } from "@/lib/config";
+import { aiConfig } from "@/modules/ai/config";
 import {
   checkPassword,
   decrypt,
@@ -135,9 +136,15 @@ export async function accountRoutes(
   }
   if (route === "integrations" && method === "GET") {
     return json({
-      ai: !!(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL),
+      ai: aiConfig().enabled,
+      aiProvider: aiConfig().provider,
+      demo: config().demo,
       email: !!process.env.EMAIL_FROM,
-      storage: config().bucket ? "s3" : "local",
+      storage: config().demo
+        ? "database-demo"
+        : config().bucket
+          ? "s3"
+          : "local",
       scanner: !!process.env.CLAMAV_HOST,
       database:
         config().databaseUrl || process.env.DATABASE_SECRET_ARN

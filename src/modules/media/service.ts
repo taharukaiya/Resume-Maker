@@ -12,6 +12,7 @@ import { fileTypeFromBuffer } from "file-type";
 import { randomUUID } from "node:crypto";
 import net from "node:net";
 import sharp from "sharp";
+import { aiConfig } from "@/modules/ai/config";
 export type Media = {
   cv_import?: import("@/modules/portfolios/cv-import").CvExtraction | null;
   id: string;
@@ -32,7 +33,7 @@ export type Media = {
 export async function scanFile(buffer: Buffer) {
   const host = process.env.CLAMAV_HOST;
   invariant(
-    host || !config().production,
+    host || !config().production || config().demo,
     503,
     "Upload scanning must be configured before production uploads.",
   );
@@ -81,6 +82,18 @@ export async function upload(
 ) {
   await siteAccess(user, siteId);
   const database = await db();
+  if (config().demo) {
+    invariant(
+      user.role === "admin",
+      403,
+      "Demo uploads are restricted to administrators. Use sample documents only.",
+    );
+    invariant(
+      file.size <= 5 * 1024 * 1024,
+      400,
+      "The free demo accepts files up to 5 MB.",
+    );
+  }
   if (user.role === "client") {
     const [site] = await database.query<{ editable_fields: string[] }>(
       "SELECT editable_fields FROM sites WHERE id=$1",
@@ -118,6 +131,7 @@ export async function upload(
     purpose === "article" &&
     mime === "application/pdf" &&
     user.role === "admin" &&
+    aiConfig().provider === "openai" &&
     !!process.env.OPENAI_API_KEY &&
     !!process.env.OPENAI_MODEL;
   if (summaryQueued) await rateLimit(`abstract:${user.id}`, 20, 3600);

@@ -8,7 +8,7 @@ export async function processStorageCleanup() {
     );
     if (!item) return false;
     try {
-      await deletePortfolioFiles(item.prefix);
+      await deletePortfolioFiles(item.prefix, tx);
       await tx.query("DELETE FROM storage_cleanup WHERE prefix=$1", [
         item.prefix,
       ]);

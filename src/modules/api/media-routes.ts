@@ -14,6 +14,15 @@ import { getSite } from "@/modules/portfolios/service";
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { idSchema, json } from "./shared";
+import { body } from "./shared";
+import { z } from "zod";
+import { aiConfig } from "@/modules/ai/config";
+import {
+  browserModel,
+  summarySchema,
+  validateCv,
+} from "@/modules/ai/documents";
+import { readBrowserDocument } from "@/modules/ai/pdf";
 
 export async function mediaRoutes(
   request: NextRequest,
@@ -31,10 +40,77 @@ export async function mediaRoutes(
     );
     invariant(media, 404, "File not found.");
     await siteAccess(user, media.site_id);
+    if (
+      path.length === 3 &&
+      path[2] === "browser-ai" &&
+      ["POST", "PUT"].includes(method)
+    ) {
+      requireAdmin(user);
+      invariant(
+        aiConfig().provider === "huggingface-browser",
+        409,
+        "Browser AI is not enabled on this installation.",
+      );
+      invariant(
+        media.mime === "application/pdf",
+        400,
+        "Select a PDF document.",
+      );
+      const input = z
+        .object({
+          task: z.enum(["cv-import", "abstract"]),
+          result: z.unknown().optional(),
+        })
+        .strict()
+        .parse(await body(request));
+      await rateLimit(`browser-ai:${user.id}`, 40, 3600);
+      if (method === "POST") {
+        const bytes = await getObject(media.storage_key);
+        invariant(bytes, 404, "The document could not be read.");
+        return json({ text: await readBrowserDocument(bytes, input.task) });
+      }
+      // Browser output is untrusted administrator input, not verified model provenance.
+      const result =
+        input.task === "cv-import"
+          ? validateCv(input.result)
+          : summarySchema.parse(input.result);
+      await database.transaction(async (tx) => {
+        if (input.task === "cv-import") {
+          await tx.query(
+            "UPDATE media SET cv_import=$1 WHERE id=$2 AND site_id=$3",
+            [JSON.stringify(result), id, media.site_id],
+          );
+        } else {
+          await tx.query(
+            "UPDATE media SET summary=$1 WHERE id=$2 AND site_id=$3",
+            [
+              JSON.stringify({
+                ...result,
+                model: browserModel,
+                source: "browser-submitted",
+                generatedAt: new Date().toISOString(),
+              }),
+              id,
+              media.site_id,
+            ],
+          );
+        }
+        await audit(
+          user.id,
+          media.site_id,
+          "ai.browser_proposal_saved",
+          { mediaId: id, task: input.task, configuredModel: browserModel },
+          tx,
+        );
+      });
+      return json({ ok: true });
+    }
     if (path.length === 3 && path[2] === "cv-import" && method === "POST") {
       requireAdmin(user);
       invariant(
-        process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL,
+        aiConfig().provider === "openai" &&
+          process.env.OPENAI_API_KEY &&
+          process.env.OPENAI_MODEL,
         503,
         "Connect OpenAI in the server configuration before importing a CV.",
       );
@@ -84,7 +160,9 @@ export async function mediaRoutes(
     if (path[2] === "abstract" && method === "POST") {
       requireAdmin(user);
       invariant(
-        process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL,
+        aiConfig().provider === "openai" &&
+          process.env.OPENAI_API_KEY &&
+          process.env.OPENAI_MODEL,
         503,
         "Connect an OpenAI API account and choose a model before generating summaries.",
       );

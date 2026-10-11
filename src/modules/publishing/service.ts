@@ -117,6 +117,7 @@ export async function activateRelease(
     `sites/${manifest.slug}/live.json`,
     JSON.stringify(manifest),
     "application/json",
+    tx,
   );
   await tx.query(
     "UPDATE sites SET published_release_id=$1,status=CASE WHEN revision=$2 THEN 'published' ELSE 'draft' END WHERE id=$3",

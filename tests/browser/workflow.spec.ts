@@ -2,8 +2,88 @@ import { test, expect } from "@playwright/test";
 import sharp from "sharp";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
 import { styles, palettes } from "../../src/modules/portfolios/design";
+import { textPdf } from "../pdf-fixture";
 const email = "browser-admin@integration.test",
   password = "Browser testing passphrase 2026!";
+test("free browser AI explains unsupported hardware without changing the draft", async ({
+  page,
+  request,
+}) => {
+  const status = await (await request.get("/api/status")).json();
+  if (!status.initialized) {
+    const setup = await request.post("/api/setup", {
+      headers: { origin: "http://localhost:3100" },
+      data: {
+        token: "browser-test-bootstrap-only",
+        name: "Browser Administrator",
+        email,
+        password,
+        agencyName: "Brilliancy Research",
+      },
+    });
+    expect(setup.status()).toBe(200);
+  }
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "gpu", {
+      value: undefined,
+      configurable: true,
+    }),
+  );
+  await page.route("**/api/integrations", (route) =>
+    route.fulfill({ json: { ai: true, aiProvider: "huggingface-browser" } }),
+  );
+  await page.goto("/login");
+  await page.getByLabel("Email address", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in to workspace" }).click();
+  await expect(
+    page.getByRole("button", { name: "Create a portfolio", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Create a portfolio", exact: true })
+    .click();
+  await page.getByLabel("Researcher’s name").fill("Free AI browser fixture");
+  await page
+    .getByLabel("Portfolio address", { exact: true })
+    .fill(`free-ai-${Date.now()}`);
+  await page
+    .getByRole("button", { name: "Create portfolio", exact: true })
+    .click();
+  await page
+    .getByLabel("Upload a CV", { exact: true })
+    .setInputFiles({
+      name: "sample-cv.pdf",
+      mimeType: "application/pdf",
+      buffer: textPdf([
+        "Sample academic CV for testing only. Education: Master of Science, 2022.",
+        "Research interests include environmental modelling and scientific communication.",
+      ]),
+    });
+  await expect(
+    page.getByRole("button", { name: "Extract details", exact: true }),
+  ).toBeEnabled();
+  await page.route("**/api/media/*/browser-ai", (route) =>
+    route.fulfill({
+      json: {
+        text: "Sample CV text for a browser capability test. ".repeat(5),
+      },
+    }),
+  );
+  await page
+    .getByRole("button", { name: "Extract details", exact: true })
+    .click();
+  await expect(page.getByRole("alert").filter({ hasText: "Free AI requires WebGPU" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Extract details", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Review extracted details" }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: ".test-data/free-browser-ai.png",
+    fullPage: true,
+  });
+});
 test("administrator setup, editor, permissions, publishing, and mobile layout", async ({
   page,
   request,

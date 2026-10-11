@@ -12,6 +12,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { generateCvImport } from "./cv-import";
 import { processStorageCleanup } from "./storage-cleanup";
+import { aiConfig } from "@/modules/ai/config";
 type Job = {
   id: string;
   site_id: string;
@@ -29,7 +30,9 @@ const summarySchema = z
   .strict();
 async function generateAbstract(job: Job) {
   invariant(
-    process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL,
+    aiConfig().provider === "openai" &&
+      process.env.OPENAI_API_KEY &&
+      process.env.OPENAI_MODEL,
     503,
     "Configure OPENAI_API_KEY and OPENAI_MODEL to enable abstracts.",
   );

@@ -9,12 +9,14 @@ import {
 } from "@/modules/portfolios/cv-import";
 import type { PortfolioDocument } from "@/modules/portfolios/schema";
 import { api, Button, Field, Feedback, Notice, useFeedback } from "./ui";
+import { AiProgress, useDocumentAi } from "./use-document-ai";
 
 export function CvImporter({
   siteId,
   media,
   document,
   enabled,
+  browserAi = false,
   pending,
   error,
   onChange,
@@ -24,6 +26,7 @@ export function CvImporter({
   media: Media[];
   document: PortfolioDocument;
   enabled: boolean;
+  browserAi?: boolean;
   pending: boolean;
   error?: string;
   onChange: (doc: PortfolioDocument) => void;
@@ -38,6 +41,7 @@ export function CvImporter({
   });
   const [review, setReview] = useState(false);
   const feedback = useFeedback();
+  const ai = useDocumentAi();
   const selected = media.find((m) => m.id === mediaId);
   const result = selected?.cv_import;
   const toggle = (kind: "profile" | "entries", key: string) =>
@@ -57,6 +61,7 @@ export function CvImporter({
         draft; save and publish when you are ready.
       </p>
       <Feedback {...feedback} />
+      <AiProgress {...ai} />
       {error && (
         <Notice
           message={`CV extraction failed: ${error} You can retry extraction. Any previous successful proposal is still available.`}
@@ -65,7 +70,7 @@ export function CvImporter({
       {!enabled && (
         <Notice
           tone="info"
-          message="Connect OPENAI_API_KEY and OPENAI_MODEL in the server environment, then restart the app and worker to enable extraction. Manual editing is always available."
+          message="Enable free browser AI or configure a server AI provider to extract details. Manual editing is always available."
         />
       )}
       <div className="form-grid">
@@ -116,9 +121,10 @@ export function CvImporter({
         </Field>
       </div>
       <p className="panel-description">
-        Extract details sends this CV to OpenAI for processing. Use a CV you
-        have permission to process. Check names, dates and every academic claim
-        before publishing.
+        {browserAi
+          ? "Free AI downloads roughly 1 GB of model files from Hugging Face on first use and runs on your computer. Use desktop Chrome or Edge with WebGPU and enough available GPU memory (allow about 3 GB). Keep this tab open. The uploaded PDF stays on this app's server; its extracted text is processed in your browser."
+          : "Extract details sends this CV to OpenAI for processing. Use a CV you have permission to process."}{" "}
+        Check names, dates and every academic claim before publishing.
       </p>
       <div className="actions">
         <Button
@@ -126,10 +132,11 @@ export function CvImporter({
           busy={feedback.busy}
           onClick={() =>
             void feedback.run(async () => {
-              await api(`media/${mediaId}/cv-import`, { method: "POST" });
+              const message = await ai.run(mediaId, "cv-import", browserAi);
               setReview(false);
               await onRefresh();
-            }, "Extraction queued. You can keep editing while it runs.")
+              feedback.setMessage(message);
+            })
           }
         >
           {pending ? "Extracting CV…" : "Extract details"}

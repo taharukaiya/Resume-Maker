@@ -16,6 +16,8 @@ Every protected site and media route checks the authenticated user’s site owne
 
 ## Persistence
 
+The isolated CEO demo uses `DEPLOYMENT_MODE=demo`, a free hosted PostgreSQL database, and a bounded `demo_objects` bytea store (200 MB total, including release copies). This avoids losing uploads when Render sleeps. It is not the production storage architecture. The free database expires after 30 days; preserve it before expiration. Production assertions still require PostgreSQL, HTTPS and strong session secrets; MFA and tenant authorization remain enforced. Demo uploads are limited to administrators and 5 MB sample files. Client uploads require the production scanner path.
+
 Production uses PostgreSQL with SQL migrations and migration checksums. The deployment uses a dedicated migration role and a restricted runtime role. Runtime cannot change schema or edit/delete existing audit events. Local PGlite runs the same PostgreSQL schema, with a single application process.
 
 Site updates lock the row and compare an integer revision before writing. Client submissions are marked for review. A publish request captures the exact approved document and revision in the durable job payload. Later edits cannot change that queued snapshot.
@@ -37,6 +39,10 @@ The PostgreSQL queue uses `FOR UPDATE SKIP LOCKED`, per-site publishing uniquene
 Database-backed rate limits protect authentication and expensive AI operations across replicas. WAF rate limiting supplements application limits.
 
 ## Article processing
+
+`AI_PROVIDER=huggingface-browser` selects a lazy-loaded WebGPU worker running Qwen2.5-1.5B-Instruct (MLC quantization) downloaded from Hugging Face. PDF text is extracted by the authenticated server, processed in the admin browser, and returned to an admin-only proposal endpoint. The server validates the actual portfolio schema before storage; browser output is treated as administrator-submitted data, not verified model provenance. Text is chunked without truncation, CV conflicts are flagged, and article summaries are reduced in bounded groups. Browser tasks need an open tab; they are separate from the server queue and never fall back to a paid API. Scanned PDFs need OCR outside this free path. No AI runtime is included in generated public portfolios.
+
+With `AI_PROVIDER=openai` (the existing default), the following server processing path applies.
 
 PDF uploads are file-signature validated and scanned. Text extraction is attempted first. Scanned/unsupported extraction results use the selected model’s native PDF input. The document is treated as source data, never instructions. The API returns a structured summary, keywords, and limitations with model and generation time recorded.
 

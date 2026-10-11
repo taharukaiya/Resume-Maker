@@ -6,6 +6,8 @@ import { useUser } from "./studio-shell";
 import { api, Badge, Button, Feedback, Field, Notice, useFeedback } from "./ui";
 type Integrations = {
   ai: boolean;
+  aiProvider?: string;
+  demo?: boolean;
   email: boolean;
   storage: string;
   scanner: boolean;
@@ -207,8 +209,10 @@ export function Settings() {
                   name: "AI summaries",
                   ready: integrations.ai,
                   detail: integrations.ai
-                    ? "Model and API key configured"
-                    : "OpenAI account required",
+                    ? integrations.aiProvider === "huggingface-browser"
+                      ? "Free Hugging Face model in your browser · WebGPU required"
+                      : "Server model and API key configured"
+                    : "AI provider not configured",
                 },
                 {
                   name: "Email delivery",
@@ -223,7 +227,9 @@ export function Settings() {
                   detail:
                     integrations.storage === "s3"
                       ? "Amazon S3"
-                      : "Local development storage",
+                      : integrations.storage === "database-demo"
+                        ? "Demo PostgreSQL file storage · 200 MB total"
+                        : "Local development storage",
                 },
                 {
                   name: "Database",

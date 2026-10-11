@@ -290,7 +290,7 @@ export async function portfolioRoutes(
           "Wait for the publishing job to finish before unpublishing.",
         );
         await syncCustomDomains(tx, id, null);
-        await deleteObject(`sites/${site.slug}/live.json`);
+        await deleteObject(`sites/${site.slug}/live.json`, tx);
         await tx.query(
           "UPDATE sites SET published_release_id=NULL,status='draft' WHERE id=$1",
           [id],
@@ -325,6 +325,7 @@ export async function portfolioRoutes(
           `sites/${site.slug}/live.json`,
           JSON.stringify(release.manifest),
           "application/json",
+          tx,
         );
         await tx.query(
           "UPDATE sites SET published_release_id=$1,status='draft' WHERE id=$2",

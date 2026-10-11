@@ -4,6 +4,8 @@ A multi-tenant academic portfolio application for a scholarship agency. Administ
 
 ## Start locally
 
+For the CEO presentation, follow [the free demo deployment guide](docs/FREE_DEMO.md). It uses Render and a Hugging Face model running in the admin browser. Read [costs and production requirements](docs/COSTS_AND_LAUNCH.md) before upgrading. The free hosted database expires after 30 days.
+
 Start with the [completion checklist](docs/COMPLETION_CHECKLIST.md) for current blockers, manual account setup, and the acceptance walkthrough. Run `npm run doctor` while the app is running to diagnose local readiness.
 
 Install Node.js 24 LTS, then run from this directory:
@@ -25,7 +27,7 @@ Local development uses embedded PostgreSQL (PGlite), local storage, and an in-pr
 - Profile, biography, links, CV, portrait, academic sections, entries, dates, custom pages, section ordering, theme controls, SEO, and website labels.
 - Versioned drafts, optimistic concurrency, client submissions, administrator review, preview, publication jobs, historical draft restore, release rollback, and unpublishing.
 - Tenant-isolated media library, file signature validation, bounded uploads, optimized images, and production ClamAV scanning.
-- Real OpenAI document processing with structured results; native PDF fallback for scanned papers. The integration is explicitly unavailable until API credentials and a model are configured.
+- Free Hugging Face browser inference for reviewed CV extraction and article summaries (`AI_PROVIDER=huggingface-browser`; WebGPU required). Optional paid OpenAI processing retains background jobs and native PDF input.
 - Generated HTML, individual publication pages, structured data, canonical URLs, sitemap, robots directives, responsive layouts, and contact forms.
 - Inquiry inbox, audit history, content JSON export, custom-domain ownership verification, and AWS CloudFront provisioning script.
 

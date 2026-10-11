@@ -1,3 +1,13 @@
+.demo-banner {
+  padding: 10px 20px;
+  background: #fff3d7;
+  color: #644710;
+  border-bottom: 1px solid #ecd39a;
+  text-align: center;
+  font:
+    500 12px/1.5 system-ui,
+    sans-serif;
+}
 :root {
   --ink: #202024;
   --muted: #66666e;

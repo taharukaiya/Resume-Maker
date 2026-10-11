@@ -20,6 +20,21 @@ export default function Guide() {
         Start locally. Connect production services when the agency is ready to
         launch.
       </p>
+      <section className="panel">
+        <p className="eyebrow">Free CEO demonstration</p>
+        <h2>Start with the free demo guide</h2>
+        <p>
+          The repository includes <strong>docs/FREE_DEMO.md</strong> with the
+          Render signup, deployment and presentation steps. This option runs a
+          Hugging Face model in the administrator’s browser, keeps demo files in
+          PostgreSQL, and uses invitation links without email delivery. The free
+          database expires after 30 days. Use sample documents only.
+        </p>
+        <p>
+          Production costs and the remaining launch requirements are in{" "}
+          <strong>docs/COSTS_AND_LAUNCH.md</strong>.
+        </p>
+      </section>
       {[
         [
           "1",

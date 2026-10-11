@@ -73,7 +73,11 @@ console.log(
   "\nExternal services (configuration only; live operation is not verified):",
 );
 for (const [name, ready] of [
-  ["AI summaries", !!(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL)],
+  [
+    "AI summaries (browser hardware or live API still needs checking)",
+    process.env.AI_PROVIDER === "huggingface-browser" ||
+      !!(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL),
+  ],
   ["Amazon SES email", !!process.env.EMAIL_FROM],
   ["Amazon S3 storage", !!(process.env.S3_BUCKET && process.env.PUBLIC_BUCKET)],
   ["Upload malware scanning", !!process.env.CLAMAV_HOST],
