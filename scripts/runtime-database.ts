@@ -32,7 +32,7 @@ export async function configureRuntimeRole(database: Database) {
     await tx.query("GRANT USAGE ON SCHEMA public TO brilliancy_app");
     // Runtime may modify application records, but not schema, migration history, or existing audit events.
     await tx.query(
-      "GRANT SELECT, INSERT, UPDATE, DELETE ON settings, users, sessions, account_tokens, sites, revisions, releases, media, jobs, domains, inquiries, rate_limits TO brilliancy_app",
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON settings, users, sessions, account_tokens, sites, revisions, releases, media, jobs, domains, inquiries, rate_limits, storage_cleanup TO brilliancy_app",
     );
     await tx.query("GRANT SELECT, INSERT ON audit_events TO brilliancy_app");
   });

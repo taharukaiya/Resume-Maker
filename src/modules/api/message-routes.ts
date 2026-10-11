@@ -36,7 +36,7 @@ export async function messageRoutes(
     requireAdmin(user);
     return json({
       events: await database.query(
-        "SELECT a.*,u.name AS actor,s.name AS site_name FROM audit_events a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN sites s ON s.id=a.site_id ORDER BY a.created_at DESC LIMIT 200",
+        "SELECT a.*,u.name AS actor,COALESCE(s.name,a.details->>'name','Deleted portfolio '||left(a.site_id::text,8)) AS site_name FROM audit_events a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN sites s ON s.id=a.site_id ORDER BY a.created_at DESC LIMIT 200",
       ),
     });
   }

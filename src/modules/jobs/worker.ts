@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
 import { z } from "zod";
 import { generateCvImport } from "./cv-import";
+import { processStorageCleanup } from "./storage-cleanup";
 type Job = {
   id: string;
   site_id: string;
@@ -140,7 +141,7 @@ export async function processOneJob() {
     );
     return { ...next, lease_id: leaseId, attempts: next.attempts + 1 };
   });
-  if (!job) return false;
+  if (!job) return processStorageCleanup();
   const heartbeat = setInterval(() => {
     void database
       .query(

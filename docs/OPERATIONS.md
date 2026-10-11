@@ -38,6 +38,14 @@ If unpublishing, allow CDN caches and disabled distributions to propagate. Previ
 
 ## Maintenance
 
+Administrators can delete never-published drafts in Review & publish using typed
+slug confirmation. A database transaction removes the site and dependent content,
+retains audit events, and queues private/failed-release file prefixes in
+`storage_cleanup`. The worker processes cleanup when no publication/AI job is
+ready; failures retry after one minute. Monitor oldest queued cleanup and rows
+with nonzero attempts. S3 version history and database backups are retained under
+the agency's retention policy; deletion from the workspace is not backup erasure.
+
 Keep Next.js, Node.js, PDF/image parsing libraries, ClamAV, and AWS dependencies updated. Pin and test release images in staging. Inspect job backlogs and database growth. Rate-limit/session/token rows and historical releases require an explicit retention policy; do not delete audit history or published artifacts without an agreed policy and backup.
 
 Use different AWS accounts or isolated resources for staging and production. Never copy production secrets into tests. Test fixtures live only in `.test-data`.

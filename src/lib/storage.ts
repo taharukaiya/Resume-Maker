@@ -1,11 +1,19 @@
 import {
   DeleteObjectCommand,
+  ListObjectsV2Command,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  rename,
+  unlink,
+  writeFile,
+  rm,
+} from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
 function keyPath(key: string) {
@@ -79,5 +87,32 @@ export async function deleteObject(key: string) {
     await unlink(keyPath(key));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+/** Only portfolio-scoped prefixes may be removed by the deletion outbox. */
+export async function deletePortfolioFiles(prefix: string) {
+  if (!/^(private|releases)\/[0-9a-f-]{36}\/$/.test(prefix))
+    throw new Error("Invalid portfolio cleanup prefix");
+  const target = path.resolve(keyPath(prefix));
+  const root = path.resolve(config().dataDir, "storage") + path.sep;
+  if (!target.startsWith(root)) throw new Error("Cleanup escaped storage root");
+  if (!config().bucket) {
+    await rm(target, { recursive: true, force: true });
+    return;
+  }
+  // Re-list the first page after deletion; this also resumes safely after a crash.
+  const s3 = client();
+  while (true) {
+    const page = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: bucketFor(prefix),
+        Prefix: prefix,
+        MaxKeys: 100,
+      }),
+    );
+    if (!page.Contents?.length) break;
+    for (const object of page.Contents)
+      if (object.Key) await deleteObject(object.Key);
   }
 }

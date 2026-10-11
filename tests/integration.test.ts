@@ -18,7 +18,8 @@ import {
 } from "../src/modules/portfolios/schema";
 import { processOneJob } from "../src/modules/jobs/worker";
 import { liveManifest } from "../src/modules/publishing/service";
-import { getObject } from "../src/lib/storage";
+import { getObject, putObject } from "../src/lib/storage";
+import * as storage from "../src/lib/storage";
 import sharp from "sharp";
 const directory = path.resolve(".test-data", `integration-${randomUUID()}`);
 const adminEmail = "admin@integration.test",
@@ -653,10 +654,100 @@ describe.sequential(
     });
     it("unpublishes without deleting the saved content", async () => {
       expect(
+        (
+          await request(`sites/${siteId}`, "DELETE", {
+            slug: "first-researcher",
+            revision,
+          })
+        ).status,
+      ).toBe(409);
+      expect(
         (await request(`sites/${siteId}/unpublish`, "POST", {})).status,
       ).toBe(200);
       expect(await liveManifest("first-researcher")).toBeNull();
       expect((await request(`sites/${siteId}`)).status).toBe(200);
+      expect(
+        (
+          await request(`sites/${siteId}`, "DELETE", {
+            slug: "first-researcher",
+            revision,
+          })
+        ).status,
+      ).toBe(409);
+    });
+    it("deletes only a confirmed unused draft, retains audit history and cleans private and failed-release files", async () => {
+      const created = await request("sites", "POST", {
+        name: "Disposable draft",
+        slug: "disposable-draft",
+        clientId,
+      });
+      const id = created.data.id;
+      const confirm = { slug: "disposable-draft", revision: 1 };
+      expect(
+        (await request(`sites/${id}`, "DELETE", confirm, clientCookie)).status,
+      ).toBe(403);
+      expect(
+        (await request(`sites/${id}`, "DELETE", { ...confirm, slug: "wrong" }))
+          .status,
+      ).toBe(409);
+      expect(
+        (await request(`sites/${id}`, "DELETE", { ...confirm, revision: 2 }))
+          .status,
+      ).toBe(409);
+      const database = await db();
+      const jobId = randomUUID();
+      await database.query(
+        "INSERT INTO jobs(id,site_id,kind,payload) VALUES($1,$2,'publish','{}')",
+        [jobId, id],
+      );
+      expect((await request(`sites/${id}`, "DELETE", confirm)).status).toBe(
+        409,
+      );
+      await database.query("UPDATE jobs SET status='failed' WHERE id=$1", [
+        jobId,
+      ]);
+      const privateKey = `private/${id}/original.pdf`,
+        releaseKey = `releases/${id}/${jobId}/index.html`;
+      await putObject(privateKey, "fixture", "application/pdf");
+      await putObject(releaseKey, "fixture", "text/html");
+      expect((await request(`sites/${id}`, "DELETE", confirm)).status).toBe(
+        200,
+      );
+      expect((await request(`sites/${id}`)).status).toBe(404);
+      expect(
+        await database.query("SELECT * FROM revisions WHERE site_id=$1", [id]),
+      ).toHaveLength(0);
+      expect(
+        await database.query("SELECT * FROM jobs WHERE site_id=$1", [id]),
+      ).toHaveLength(0);
+      expect(
+        await database.query(
+          "SELECT * FROM audit_events WHERE site_id=$1 AND action='portfolio.deleted'",
+          [id],
+        ),
+      ).toHaveLength(1);
+      expect(
+        await database.query("SELECT * FROM users WHERE id=$1", [clientId]),
+      ).toHaveLength(1);
+      const cleanupFailure = vi
+        .spyOn(storage, "deletePortfolioFiles")
+        .mockRejectedValueOnce(new Error("Simulated storage outage"));
+      try {
+        expect(await processOneJob()).toBe(true);
+      } finally {
+        cleanupFailure.mockRestore();
+      }
+      expect(
+        await database.query("SELECT * FROM storage_cleanup WHERE attempts=1"),
+      ).toHaveLength(1);
+      await database.query("UPDATE storage_cleanup SET available_at=now()");
+      expect(await processOneJob()).toBe(true);
+      expect(await processOneJob()).toBe(true);
+      expect(await getObject(privateKey)).toBeNull();
+      expect(await getObject(releaseKey)).toBeNull();
+      expect(
+        await database.query("SELECT * FROM storage_cleanup"),
+      ).toHaveLength(0);
     });
     it("disabling a client revokes existing sessions", async () => {
       expect(

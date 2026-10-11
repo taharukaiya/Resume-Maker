@@ -64,6 +64,8 @@ Browser tests use the installed Chrome on a local Windows machine, an isolated d
 
 ## Production
 
+Follow the [complete first-deployment walkthrough](docs/LAUNCH_GUIDE.md) for tool installation, AWS sign-in, DNS, AI secrets, deployment commands and verification.
+
 Start with [the account guide](docs/GETTING_STARTED.md), then [deployment](docs/DEPLOYMENT.md). Read [architecture](docs/ARCHITECTURE.md) and [operations](docs/OPERATIONS.md) before accepting live client data. Run the application’s `/guide` page for the concise onboarding walkthrough.
 
 The repository includes production integrations and deployment definitions. Live AWS provisioning, real email delivery, AI output evaluation, custom-domain HTTPS, and disaster recovery must be verified in the agency’s accounts before launch. A local build or synthesized infrastructure template does not establish production availability.

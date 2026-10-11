@@ -1,5 +1,7 @@
 # AWS deployment
 
+For the complete first-time walkthrough, start with [LAUNCH_GUIDE.md](LAUNCH_GUIDE.md).
+
 This provisions paid AWS resources. Start only after the agency account, domain, and billing arrangements exist. The CDK template can be synthesized locally, but the live deployment requires AWS credentials and Docker.
 
 ## Workstation prerequisites

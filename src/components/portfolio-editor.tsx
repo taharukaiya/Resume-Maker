@@ -28,6 +28,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DesignEditor } from "./design-editor";
+import { DeleteDraft } from "./delete-draft";
 import { CvImporter } from "./cv-importer";
 import { SectionsEditor } from "./section-editor";
 import { useUser } from "./studio-shell";
@@ -1125,6 +1126,15 @@ export function PortfolioEditor({ id }: { id: string }) {
             {!data.releases.length && <p className="muted">No releases yet.</p>}
           </section>
           <DomainManager siteId={id} />
+          {!data.site.published_release_id && !data.releases.length && (
+            <DeleteDraft
+              id={id}
+              name={data.site.name}
+              slug={data.site.slug}
+              revision={data.site.revision}
+              busy={!!hasJobs || feedback.busy}
+            />
+          )}
           {data.site.published_release_id && (
             <section className="panel danger-zone">
               <div className="spread wrap">

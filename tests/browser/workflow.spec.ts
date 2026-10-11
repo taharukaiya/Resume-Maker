@@ -492,4 +492,17 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   await expect(
     page.locator('input[value="MSc in Environmental Science"]'),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Review & publish" }).click();
+  await page
+    .getByRole("button", { name: "Delete draft portfolio", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Permanently delete draft" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel(`Type design-${stamp} to confirm deletion`)
+    .fill(`design-${stamp}`);
+  await page.getByRole("button", { name: "Permanently delete draft" }).click();
+  await expect(page).toHaveURL(/\/studio\/portfolios$/);
+  expect((await page.request.get(`/api/sites/${id}`)).status()).toBe(404);
 });
