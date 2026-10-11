@@ -37,7 +37,7 @@ export async function GET(
         : "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
       ETag: `"${manifest.releaseId}-${route}"`,
       "Content-Security-Policy":
-        "default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; script-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'self'",
+        "default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; font-src 'self'; script-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'self'",
       ...(item.type === "application/pdf"
         ? { "Content-Disposition": "attachment" }
         : {}),

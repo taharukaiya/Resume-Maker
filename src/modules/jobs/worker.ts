@@ -10,10 +10,11 @@ import {
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
 import { z } from "zod";
+import { generateCvImport } from "./cv-import";
 type Job = {
   id: string;
   site_id: string;
-  kind: "publish" | "abstract";
+  kind: "publish" | "abstract" | "cv-import";
   payload: Record<string, unknown>;
   attempts: number;
   lease_id: string;
@@ -167,7 +168,8 @@ export async function processOneJob() {
           tx,
         );
       });
-    } else await generateAbstract(job);
+    } else if (job.kind === "cv-import") await generateCvImport(job);
+    else await generateAbstract(job);
     await database.query(
       "UPDATE jobs SET status='done',finished_at=now(),error=NULL WHERE id=$1 AND lease_id=$2",
       [job.id, leaseId],

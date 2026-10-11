@@ -109,7 +109,7 @@ try {
           Name: `brilliancy-security-${suffix}-${stamp}`,
           SecurityHeadersConfig: {
             ContentSecurityPolicy: {
-              ContentSecurityPolicy: `default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; script-src 'none'; form-action ${new URL(config().appUrl).origin}; frame-ancestors 'none'; base-uri 'none'`,
+              ContentSecurityPolicy: `default-src 'none'; img-src 'self' https: data:; style-src 'unsafe-inline'; font-src 'self'; script-src 'none'; form-action ${new URL(config().appUrl).origin}; frame-ancestors 'none'; base-uri 'none'`,
               Override: true,
             },
             ContentTypeOptions: { Override: true },

@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import sharp from "sharp";
+import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
+import { styles, palettes } from "../../src/modules/portfolios/design";
 const email = "browser-admin@integration.test",
   password = "Browser testing passphrase 2026!";
 test("administrator setup, editor, permissions, publishing, and mobile layout", async ({
@@ -295,4 +297,199 @@ test("client invitation, permitted submission, files, private pages, and public 
   ).toBeVisible();
   await page.goto("/studio/inbox");
   await expect(page.getByText(message, { exact: true })).toBeVisible();
+});
+
+test("design compositions, local fonts, mobile layouts and selective CV review", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await page.goto("/login");
+  await page.getByLabel("Email address", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in to workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Good to see you, Browser." }),
+  ).toBeVisible();
+  const stamp = Date.now();
+  const created = await page.request.post("/api/sites", {
+    headers: { origin: "http://localhost:3100" },
+    data: { name: "Dr. Amara Rahman", slug: `design-${stamp}` },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  const doc = emptyDocument("Dr. Amara Rahman");
+  doc.profile.headline =
+    "Exploring the connections between climate, cities, and human possibility.";
+  doc.profile.affiliation = "Environmental Systems Research";
+  doc.profile.bio =
+    "I study how communities adapt to a changing climate. My work brings together urban field research, open data, and participatory design to create more equitable and resilient places.";
+  doc.profile.location = "Dhaka, Bangladesh";
+  doc.profile.email = "amara@example.org";
+  const entry = {
+    ...emptyEntry(),
+    title: "Resilient cities, shared futures",
+    subtitle: "Urban climate adaptation research",
+    body: "Investigating how neighborhood-scale evidence can shape inclusive urban policy and support communities facing environmental change.",
+    start: "2024",
+    current: true,
+    tags: "Climate adaptation, Open data, Urban systems",
+  };
+  doc.sections = [
+    {
+      id: crypto.randomUUID(),
+      type: "about",
+      title: "A question worth pursuing",
+      intro: "",
+      visible: true,
+      entries: [],
+    },
+    {
+      id: crypto.randomUUID(),
+      type: "projects",
+      title: "Selected research",
+      intro: "",
+      visible: true,
+      entries: [
+        entry,
+        {
+          ...entry,
+          id: crypto.randomUUID(),
+          title: "Community-led environmental evidence",
+          current: false,
+          end: "2025",
+        },
+      ],
+    },
+    {
+      id: crypto.randomUUID(),
+      type: "contact",
+      title: "Let's exchange ideas",
+      intro: "Open to thoughtful research collaborations.",
+      visible: true,
+      entries: [],
+    },
+  ];
+  doc.theme = {
+    ...doc.theme,
+    font: "fraunces",
+    bodyFont: "dm-sans",
+    scale: "expressive",
+    portrait: "arch",
+    decoration: "glow",
+  };
+  let revision = 1;
+  for (const [i, style] of styles.entries()) {
+    const { name: paletteName, ...palette } = palettes[i === 4 ? 6 : i];
+    doc.theme = { ...doc.theme, ...palette, style: style.id };
+    const saved = await page.request.put(`/api/sites/${id}`, {
+      headers: { origin: "http://localhost:3100" },
+      data: { document: doc, revision },
+    });
+    expect(saved.status(), paletteName).toBe(200);
+    revision = (await saved.json()).revision;
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(`/api/sites/${id}/preview`);
+    await page.evaluate(() => document.fonts.ready);
+    expect(
+      await page.evaluate(() =>
+        document.fonts.check('500 30px "Portfolio Fraunces"'),
+      ),
+    ).toBe(true);
+    await expect(page.locator("body")).toHaveClass(style.id);
+    await page.screenshot({
+      path: `.test-data/design-${style.id}-desktop.png`,
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `.test-data/design-${style.id}-mobile.png`,
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`/studio/portfolios/${id}`);
+  await page.getByRole("tab", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: "Aurora Soft color" }).click();
+  await page.getByRole("button", { name: "Iris & Pearl", exact: true }).click();
+  await page.getByLabel("Heading typography").selectOption("playfair-display");
+  await page.getByLabel("Body typography").selectOption("manrope");
+  await page.screenshot({
+    path: ".test-data/design-editor.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+  // The provider response is a browser fixture; the real queue/storage path is
+  // covered separately by integration tests without sending private documents.
+  const result = {
+    profile: {
+      name: "Imported researcher",
+      headline: "",
+      affiliation: "",
+      bio: "",
+      location: "",
+      email: "",
+      links: [],
+    },
+    sections: [
+      {
+        type: "education",
+        title: "Education",
+        entries: [
+          {
+            title: "MSc in Environmental Science",
+            subtitle: "Example University",
+            body: "Studied environmental systems.",
+            url: "",
+            tags: "",
+            authors: "",
+            doi: "",
+            status: "",
+            start: "2020",
+            end: "2022",
+            current: false,
+          },
+        ],
+      },
+    ],
+    warnings: ["Review extracted dates."],
+  };
+  await page.route(`**/api/sites/${id}`, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    body.media.push({
+      id: crypto.randomUUID(),
+      filename: "review-fixture.pdf",
+      mime: "application/pdf",
+      cv_import: result,
+    });
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  await page
+    .getByLabel("CV or resume PDF")
+    .selectOption({ label: "review-fixture.pdf" });
+  await page.getByRole("button", { name: "Review extracted details" }).click();
+  await expect(page.getByText("Review extracted dates.")).toBeVisible();
+  await page.screenshot({ path: ".test-data/cv-review.png", fullPage: true });
+  await page.getByRole("button", { name: "Apply selected details" }).click();
+  await expect(
+    page.getByText(
+      "Selected details applied to your unsaved draft. Review, then save.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Dr. Amara Rahman",
+  );
+  await page.getByRole("tab", { name: "Academic sections" }).click();
+  await page.locator("summary").filter({ hasText: "Education" }).click();
+  await expect(
+    page.locator('input[value="MSc in Environmental Science"]'),
+  ).toBeVisible();
 });

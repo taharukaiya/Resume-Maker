@@ -1,5 +1,6 @@
 import { contrastRatio } from "@/lib/colors";
 import { z } from "zod";
+import { fontIds } from "./design";
 const short = z.string().trim().max(200);
 const url = z.union([
   z.literal(""),
@@ -122,10 +123,23 @@ export const documentSchema = z
       .strict(),
     theme: z
       .object({
-        style: z.enum(["editorial", "modern", "classic"]),
+        style: z.enum(["editorial", "modern", "classic", "aurora", "folio"]),
         accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         background: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-        font: z.enum(["serif", "sans"]),
+        font: z.enum(fontIds),
+        bodyFont: z.enum(fontIds).optional(),
+        text: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+        secondary: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
+        scale: z.enum(["balanced", "expressive"]).optional(),
+        spacing: z.enum(["compact", "generous"]).optional(),
+        portrait: z.enum(["rectangle", "arch", "circle"]).optional(),
+        decoration: z.enum(["none", "glow", "lines"]).optional(),
         width: z.enum(["standard", "wide"]),
         roundness: z.enum(["sharp", "soft"]),
         showAgencyCredit: z.boolean(),
@@ -160,6 +174,16 @@ export const documentSchema = z
   })
   .strict()
   .superRefine((doc, ctx) => {
+    if (
+      doc.theme.text &&
+      contrastRatio(doc.theme.text, doc.theme.background) < 4.5
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["theme", "text"],
+        message:
+          "Body text needs at least 4.5:1 contrast against the background.",
+      });
     if (contrastRatio(doc.theme.accent, doc.theme.background) < 4.5)
       ctx.addIssue({
         code: "custom",

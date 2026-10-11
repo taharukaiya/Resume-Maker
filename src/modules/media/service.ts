@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import net from "node:net";
 import sharp from "sharp";
 export type Media = {
+  cv_import?: import("@/modules/portfolios/cv-import").CvExtraction | null;
   id: string;
   site_id: string;
   filename: string;

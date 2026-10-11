@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { selectedFonts, fonts } from "@/modules/portfolios/design";
 import { config } from "@/lib/config";
 import { db, type Sql } from "@/lib/db";
 import { invariant } from "@/lib/errors";
@@ -56,6 +59,17 @@ export async function buildRelease(
         ? `${config().assetUrl!.replace(/\/$/, "")}/${key}`
         : `${config().appUrl}/p/${payload.slug}/${route}`,
     );
+  }
+  for (const fontId of selectedFonts(document.theme)) {
+    const file = fonts[fontId].file!;
+    const route = `fonts/${file}`,
+      key = `releases/${siteId}/${releaseId}/${route}`;
+    await putObject(
+      key,
+      await readFile(path.join(process.cwd(), "public", "fonts", file)),
+      "font/woff2",
+    );
+    routes[route] = { key, type: "font/woff2" };
   }
   const rendered = renderPortfolio(document, {
     baseUrl: payload.canonicalUrl,

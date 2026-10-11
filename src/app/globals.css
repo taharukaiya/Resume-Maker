@@ -1592,3 +1592,233 @@ select:focus {
     scroll-behavior: auto !important;
   }
 }
+.design-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+.design-preview-panel {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+}
+.design-live-sample {
+  padding: 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.design-live-sample h2 {
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+  margin: 24px 0 16px;
+}
+.design-live-sample p {
+  line-height: 1.7;
+}
+.design-sample-body {
+  font-size: 13px;
+}
+.design-sample-orbit {
+  width: 80px;
+  height: 80px;
+  border-radius: 50% 50% 12% 50%;
+  margin-top: 28px;
+}
+.design-sample-button {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 16px;
+}
+.design-preview-panel > .panel-description {
+  padding: 16px 4px;
+}
+.composition-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.composition-card,
+.palette-card {
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface, #fff);
+  color: inherit;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+.composition-card.active,
+.palette-card[aria-pressed="true"] {
+  border-color: var(--accent, #b51d32);
+  box-shadow: 0 0 0 1px var(--accent, #b51d32);
+}
+.composition-card strong,
+.composition-card small {
+  display: block;
+}
+.composition-card strong {
+  font-size: 13px;
+  margin: 12px 0 6px;
+}
+.composition-card small {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.composition-sketch {
+  height: 76px;
+  background: #f4f0ed;
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 5px;
+  align-items: center;
+}
+.composition-sketch i {
+  background: #b5a194;
+  width: 30%;
+  height: 42px;
+  border-radius: 24px 24px 4px 4px;
+}
+.composition-sketch > span {
+  flex: 1;
+}
+.composition-sketch b {
+  height: 4px;
+  width: 100%;
+  display: block;
+  background: #70625b;
+  margin: 6px 0;
+}
+.composition-sketch b:last-child {
+  width: 60%;
+  background: #c4b6ad;
+}
+.sketch-modern {
+  background: #edf0f9;
+  border-left: 5px solid #5461a2;
+}
+.sketch-modern i {
+  border-radius: 0;
+  background: #9ba9cb;
+}
+.sketch-classic {
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+}
+.sketch-classic i {
+  height: 22px;
+  width: 22px;
+  border-radius: 50%;
+}
+.sketch-classic > span {
+  width: 60%;
+}
+.sketch-classic b {
+  height: 2px;
+  margin: 4px auto;
+}
+.sketch-aurora {
+  background: linear-gradient(130deg, #ece6fa, #f8d7c4);
+}
+.sketch-aurora i {
+  background: #aa90c6;
+  border-radius: 20px;
+}
+.sketch-folio {
+  flex-direction: row-reverse;
+  background: #eaf2ef;
+}
+.sketch-folio i {
+  transform: rotate(5deg);
+  border-radius: 0;
+  background: #82a294;
+}
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.palette-card {
+  font-size: 12px;
+}
+.palette-swatches {
+  display: flex;
+  height: 28px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #0001;
+  margin-bottom: 8px;
+}
+.palette-swatches i {
+  flex: 1;
+}
+.font-pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+.cv-review {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+.cv-review-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: flex-start;
+  font-size: 13px;
+}
+.cv-review-item input {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.cv-review-item > span {
+  min-width: 0;
+}
+.cv-value {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 5px 0;
+}
+.cv-review-item small {
+  color: var(--muted);
+}
+.cv-importer .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.cv-review h3 {
+  margin-top: 24px;
+}
+@media (max-width: 1200px) {
+  .design-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .design-preview-panel {
+    position: static;
+    max-width: 600px;
+  }
+  .composition-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .composition-grid,
+  .palette-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -31,6 +31,30 @@ export async function mediaRoutes(
     );
     invariant(media, 404, "File not found.");
     await siteAccess(user, media.site_id);
+    if (path.length === 3 && path[2] === "cv-import" && method === "POST") {
+      requireAdmin(user);
+      invariant(
+        process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL,
+        503,
+        "Connect OpenAI in the server configuration before importing a CV.",
+      );
+      invariant(
+        media.mime === "application/pdf",
+        400,
+        "CV import requires a PDF. Export Word documents to PDF first.",
+      );
+      await rateLimit(`cv-import:${user.id}`, 10, 3600);
+      const jobId = randomUUID();
+      await database.query(
+        "INSERT INTO jobs(id,site_id,kind,payload) VALUES($1,$2,'cv-import',$3)",
+        [jobId, media.site_id, JSON.stringify({ mediaId: id })],
+      );
+      await audit(user.id, media.site_id, "cv.import.requested", {
+        mediaId: id,
+        jobId,
+      });
+      return json({ jobId }, 202);
+    }
     if (path.length === 2 && method === "GET") {
       const file = await getObject(media.storage_key);
       invariant(file, 404, "File not found.");

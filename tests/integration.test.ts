@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+const { parseCv } = vi.hoisted(() => ({ parseCv: vi.fn() }));
+vi.mock("openai", () => ({
+  default: class {
+    responses = { parse: parseCv };
+  },
+}));
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -425,6 +431,86 @@ describe.sequential(
         delete process.env.OPENAI_MODEL;
       }
     });
+    it("imports a CV through a leased job, isolates results, and never changes the draft automatically", async () => {
+      const database = await db();
+      const [media] = await database.query<{ id: string }>(
+        "SELECT id FROM media WHERE site_id=$1 AND mime='application/pdf' LIMIT 1",
+        [siteId],
+      );
+      expect(
+        (
+          await request(
+            `media/${media.id}/cv-import`,
+            "POST",
+            undefined,
+            clientCookie,
+          )
+        ).status,
+      ).toBe(403);
+      expect(
+        (await request(`media/${media.id}/cv-import`, "POST")).status,
+      ).toBe(503);
+      process.env.OPENAI_API_KEY = "test-only-never-sent";
+      process.env.OPENAI_MODEL = "test-model";
+      parseCv.mockResolvedValue({
+        status: "completed",
+        output_parsed: {
+          profile: {
+            name: "CV Name",
+            headline: "Researcher",
+            affiliation: "",
+            bio: "",
+            location: "",
+            email: "",
+            links: [],
+          },
+          sections: [],
+          warnings: ["Check extracted facts."],
+        },
+      });
+      try {
+        const before = (await request(`sites/${siteId}`)).data.site;
+        const queued = await request(`media/${media.id}/cv-import`, "POST");
+        expect(queued.status).toBe(202);
+        expect(
+          (await request(`media/${media.id}/cv-import`, "POST")).status,
+        ).toBe(409);
+        expect(await processOneJob()).toBe(true);
+        const result = (await request(`sites/${siteId}`)).data;
+        expect(
+          result.media.find((m: { id: string }) => m.id === media.id).cv_import
+            .profile.name,
+        ).toBe("CV Name");
+        expect(result.site.draft).toEqual(before.draft);
+        expect(result.site.revision).toBe(before.revision);
+        expect(
+          (await request(`sites/${siteId}`, "GET", undefined, clientCookie))
+            .data.media[0],
+        ).not.toHaveProperty("cv_import");
+        expect(parseCv.mock.calls[0][0].store).toBe(false);
+        // A refusal never replaces a previously reviewed extraction.
+        parseCv.mockResolvedValue({ status: "completed", output_parsed: null });
+        const retry = await request(`media/${media.id}/cv-import`, "POST");
+        await database.query("UPDATE jobs SET attempts=2 WHERE id=$1", [
+          retry.data.jobId,
+        ]);
+        await processOneJob();
+        expect(
+          (
+            await database.query<{ status: string }>(
+              "SELECT status FROM jobs WHERE id=$1",
+              [retry.data.jobId],
+            )
+          )[0].status,
+        ).toBe("failed");
+        expect((await request(`sites/${siteId}`)).data.site.draft).toEqual(
+          before.draft,
+        );
+      } finally {
+        delete process.env.OPENAI_API_KEY;
+        delete process.env.OPENAI_MODEL;
+      }
+    });
     it("rejects references to another tenant’s media", async () => {
       const foreign = structuredClone(document);
       foreign.profile.cvId = randomUUID();
@@ -438,6 +524,8 @@ describe.sequential(
       ).toBe(400);
     });
     it("saves academic sections and queues an immutable publishing snapshot", async () => {
+      document.theme.font = "fraunces";
+      document.theme.bodyFont = "dm-sans";
       document.sections = [
         {
           id: randomUUID(),
@@ -488,6 +576,15 @@ describe.sequential(
       revision = changed.data.revision;
       document = newer;
       expect(await processOneJob()).toBe(true);
+      const fontsManifest = await liveManifest("first-researcher");
+      expect(fontsManifest?.routes["fonts/fraunces.woff2"].type).toBe(
+        "font/woff2",
+      );
+      expect(
+        (await getObject(fontsManifest!.routes["fonts/dm-sans.woff2"].key))
+          ?.subarray(0, 4)
+          .toString(),
+      ).toBe("wOF2");
       const manifest = await liveManifest("first-researcher");
       expect(manifest).not.toBeNull();
       const html = (await getObject(

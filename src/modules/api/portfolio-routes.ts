@@ -92,7 +92,7 @@ export async function portfolioRoutes(
         site,
         publishedDocument: published?.document || null,
         media: await database.query<Media>(
-          "SELECT id,site_id,filename,mime,bytes,summary,created_at FROM media WHERE site_id=$1 ORDER BY created_at DESC",
+          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
           [id],
         ),
         jobs: await database.query(
@@ -309,6 +309,7 @@ export async function portfolioRoutes(
       );
       const rendered = renderPortfolio(site.draft, {
         baseUrl: `${config().appUrl}/api/sites/${id}/preview`,
+        fontUrl: (file) => `${config().appUrl}/fonts/${file}`,
         agencyName: agency?.value.name || "Brilliancy Research",
         asset: (assetId) => `${config().appUrl}/api/media/${assetId}`,
         isImage: (assetId) =>
@@ -325,7 +326,7 @@ export async function portfolioRoutes(
           "Cache-Control": "no-store",
           "X-Robots-Tag": "noindex, nofollow",
           "Content-Security-Policy":
-            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'self'; form-action 'none'; base-uri 'none'",
+            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src 'self'; frame-ancestors 'self'; form-action 'none'; base-uri 'none'",
         },
       });
     }

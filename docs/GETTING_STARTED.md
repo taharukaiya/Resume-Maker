@@ -58,6 +58,50 @@ For local evaluation, set `OPENAI_API_KEY` and `OPENAI_MODEL` in the ignored `.e
 
 Sources: [OpenAI API authentication](https://developers.openai.com/api/reference/overview), [PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
 
-## 6. Before the first live client
+## 6. Optional: fill a portfolio from a CV
+
+1. Complete the OpenAI configuration in section 5. Use a model supporting PDF
+   input and structured outputs. For local development, restart both `npm run dev`
+   and `npm run worker` after changing `.env` (a separate worker is unnecessary
+   when `RUN_WORKER=true`). Restarting the app also applies the CV-import migration
+   for the local database; use `npm run db:migrate` in your deployment workflow.
+2. Open a portfolio as an administrator, select **Profile**, and find **Fill from CV**.
+3. Upload a PDF CV, or choose an existing PDF. Word documents must first be
+   exported to PDF. Uploading alone does not send the CV to AI or publish it.
+4. Select **Extract details**. This explicitly sends the PDF to OpenAI. The job
+   runs in the background, including for scanned PDFs supported by your model.
+5. Choose **Review extracted details** when processing finishes. Check the
+   warnings, dates, links, publication status, and every academic claim. Select
+   the individual records to add. Existing profile fields are protected unless
+   you enable replacement and select those fields.
+6. Select **Apply selected details**. This updates only your unsaved editor draft.
+   Existing academic entries are retained, and records with identical title,
+   institution/subtitle and start date are skipped. Edit any corrections in the
+   normal editor, then **Save draft**, preview, and publish when approved.
+
+The importer does not infer missing credentials, automatically attach the CV
+to the public website, or change client permissions. AI extraction can still
+misread a document, so administrator review is required. If it fails, check
+the Profile error or job history under Files & articles, verify the worker and
+model configuration, and retry with a clearer or shorter PDF. A previous
+successful extraction remains available. API usage is billed by OpenAI.
+
+## 7. Portfolio design controls
+
+Open **Design** to choose Editorial, Studio, Archive, Aurora, or Folio. Apply
+one of eight palettes or set the accent, background, body text and secondary
+colors yourself. Heading and body fonts are independent: Georgia, system sans,
+Fraunces, Cormorant Garamond, Playfair Display, DM Sans, Manrope, and Space Grotesk.
+There are also controls for heading scale, spacing, portrait shape, decoration,
+width and corners. The sidebar shows typography/color changes immediately;
+save and use Preview to inspect the full layout.
+
+Selected fonts are served locally, including from published releases. Existing
+published portfolios keep their saved release until republished. For previously
+provisioned custom domains, ensure the CloudFront response headers policy permits
+`font-src 'self'` before republishing with web fonts; newly provisioned domains
+include that policy automatically. Font licenses are in `public/fonts/licenses`.
+
+## 8. Before the first live client
 
 Complete `docs/OPERATIONS.md`. You need a successful deployment, confirmed email delivery, a tested model, tenant authorization tests, successful backup restoration, and an uptime alert routed to a responsible person. Choose an availability target and incident support arrangement with the agency; a cloud subscription alone is not an operational guarantee.

@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { DesignEditor } from "./design-editor";
+import { CvImporter } from "./cv-importer";
 import { SectionsEditor } from "./section-editor";
 import { useUser } from "./studio-shell";
 import {
@@ -296,6 +298,30 @@ export function PortfolioEditor({ id }: { id: string }) {
       {tab === "profile" && (
         <div className="editor-grid">
           <div>
+            {admin && (
+              <CvImporter
+                siteId={id}
+                media={assets}
+                document={document}
+                enabled={aiEnabled}
+                pending={
+                  !!data.jobs.some(
+                    (j) =>
+                      j.kind === "cv-import" &&
+                      ["queued", "running"].includes(j.status),
+                  )
+                }
+                error={
+                  data.jobs.find((j) => j.kind === "cv-import")?.status ===
+                  "failed"
+                    ? data.jobs.find((j) => j.kind === "cv-import")?.error ||
+                      "Processing failed."
+                    : undefined
+                }
+                onChange={change}
+                onRefresh={() => load()}
+              />
+            )}
             <section className="panel">
               <h2>The person behind the research.</h2>
               <p className="panel-description">
@@ -612,136 +638,7 @@ export function PortfolioEditor({ id }: { id: string }) {
         </>
       )}
       {tab === "design" && admin && (
-        <>
-          <section className="panel">
-            <h2>A design that feels like them.</h2>
-            <p className="panel-description">
-              Three carefully composed styles, with room to make each one
-              personal.
-            </p>
-            <div className="theme-options">
-              {(["editorial", "modern", "classic"] as const).map((style) => (
-                <button
-                  key={style}
-                  className={`theme-option ${document.theme.style === style ? "active" : ""}`}
-                  onClick={() =>
-                    change({ ...document, theme: { ...document.theme, style } })
-                  }
-                >
-                  <strong>{style[0].toUpperCase() + style.slice(1)}</strong>
-                  <small>
-                    {
-                      {
-                        editorial: "Literary, balanced, and considered.",
-                        modern: "Crisp, confident, and contemporary.",
-                        classic: "Centered, timeless, and academic.",
-                      }[style]
-                    }
-                  </small>
-                </button>
-              ))}
-            </div>
-          </section>
-          <section className="panel">
-            <h2>Make it personal</h2>
-            <p className="panel-description">
-              Preview your changes on desktop and mobile before publishing.
-            </p>
-            <div className="form-grid">
-              <Field label="Accent color">
-                <input
-                  type="color"
-                  value={document.theme.accent}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: { ...document.theme, accent: e.target.value },
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Page background">
-                <input
-                  type="color"
-                  value={document.theme.background}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: { ...document.theme, background: e.target.value },
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Heading typography">
-                <select
-                  value={document.theme.font}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: {
-                        ...document.theme,
-                        font: e.target.value as "serif" | "sans",
-                      },
-                    })
-                  }
-                >
-                  <option value="serif">Serif — academic & editorial</option>
-                  <option value="sans">Sans serif — clean & modern</option>
-                </select>
-              </Field>
-              <Field label="Content width">
-                <select
-                  value={document.theme.width}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: {
-                        ...document.theme,
-                        width: e.target.value as "standard" | "wide",
-                      },
-                    })
-                  }
-                >
-                  <option value="standard">Standard</option>
-                  <option value="wide">Wide</option>
-                </select>
-              </Field>
-              <Field label="Corners">
-                <select
-                  value={document.theme.roundness}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: {
-                        ...document.theme,
-                        roundness: e.target.value as "sharp" | "soft",
-                      },
-                    })
-                  }
-                >
-                  <option value="soft">Soft</option>
-                  <option value="sharp">Sharp</option>
-                </select>
-              </Field>
-              <label className="check-row">
-                <input
-                  type="checkbox"
-                  checked={document.theme.showAgencyCredit}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      theme: {
-                        ...document.theme,
-                        showAgencyCredit: e.target.checked,
-                      },
-                    })
-                  }
-                />{" "}
-                Show agency credit in footer
-              </label>
-            </div>
-          </section>
-        </>
+        <DesignEditor document={document} onChange={change} />
       )}
       {tab === "seo" && admin && (
         <>
