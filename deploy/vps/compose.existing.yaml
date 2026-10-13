@@ -1,0 +1,15 @@
+# Docker Compose >= 2.24.4. Keeps the existing host web server on 80/443.
+services:
+  web:
+    environment:
+      VPS_PROXY_MODE: existing
+  worker:
+    environment:
+      VPS_PROXY_MODE: existing
+  migrate:
+    environment:
+      VPS_PROXY_MODE: existing
+  caddy:
+    ports: !override ["127.0.0.1:8088:8080"]
+    volumes:
+      - ./Caddyfile.existing:/etc/caddy/Caddyfile:ro

@@ -25,8 +25,11 @@ jobs:
         run: |
           bash -n deploy/vps/configure.sh
           bash -n deploy/vps/backup.sh
+          bash -n deploy/vps/inspect-server.sh
       - name: Validate Compose configuration
-        run: docker compose -f deploy/vps/compose.yaml config --quiet
+        run: |
+          docker compose -f deploy/vps/compose.yaml config --quiet
+          docker compose -f deploy/vps/compose.yaml -f deploy/vps/compose.existing.yaml config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); ports=[p for s in c["services"].values() for p in s.get("ports",[])]; assert len(ports)==1 and ports[0]["host_ip"]=="127.0.0.1" and str(ports[0]["published"])=="8088", "Existing-server mode must publish only loopback port 8088"'
       - name: Build production container
         run: docker build -t brilliancy:ci .
       - name: Validate HTTPS proxy configuration
@@ -35,6 +38,12 @@ jobs:
           -e MEDIA_HOST=media.example.test -e ACME_EMAIL=test@example.test
           -v "$PWD/deploy/vps:/etc/caddy:ro" caddy:2-alpine
           caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Validate existing-server proxy configuration
+        run: >-
+          docker run --rm -e STUDIO_HOST=studio.example.test
+          -e MEDIA_HOST=media.example.test
+          -v "$PWD/deploy/vps:/etc/caddy:ro" caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile.existing --adapter caddyfile
       - name: Test production database migrations and container startup
         working-directory: deploy/vps
         run: |
@@ -42,6 +51,13 @@ jobs:
           docker compose run --rm migrate
           docker compose up -d --wait --wait-timeout 120 web worker
           docker compose exec -T web node -e "fetch('http://127.0.0.1:3000/login').then(async r=>{const h=await r.text();if(!r.ok||!r.headers.get('content-security-policy')?.includes('nonce-')||!h.includes('nonce='))process.exit(1)})"
+      - name: Verify existing-server HTTP routing and private media isolation
+        working-directory: deploy/vps
+        run: |
+          docker compose -f compose.yaml -f compose.existing.yaml up -d --wait --wait-timeout 120 web caddy
+          curl --fail --retry 5 --retry-connrefused -H 'Host: studio.example.test' http://127.0.0.1:8088/api/status
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: media.example.test' http://127.0.0.1:8088/private/test.pdf)" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: unknown.example.test' http://127.0.0.1:8088/)" = 404
       - name: Clean up isolated CI containers
         if: always()
         run: docker compose -f deploy/vps/compose.yaml down -v

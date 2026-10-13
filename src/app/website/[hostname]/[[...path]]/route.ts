@@ -25,6 +25,18 @@ export async function GET(
       status: 404,
       headers: { "Cache-Control": "no-store" },
     });
+  if (params.path?.length === 1 && params.path[0] === "login") {
+    // One authentication origin keeps cookies, MFA and permissions consistent.
+    // Do not forward arbitrary query parameters or credentials from a domain URL.
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: new URL("/login", config().appUrl).href,
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+      },
+    });
+  }
   return portfolio(request, {
     params: Promise.resolve({ slug: site.slug, path: params.path }),
   });

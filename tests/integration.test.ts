@@ -1138,6 +1138,28 @@ describe.sequential(
           "form-action 'self' http://localhost:3000",
         );
         expect(await publicPage.text()).toContain("Retention fixture");
+        const loginRequest = (hostname: string) =>
+          researcherDomain(
+            new NextRequest(
+              `https://${hostname}/login?next=https://untrusted.example&token=do-not-forward`,
+            ),
+            { params: Promise.resolve({ hostname, path: ["login"] }) },
+          );
+        const signIn = await loginRequest("researcher.example.test");
+        expect(signIn.status).toBe(302);
+        expect(signIn.headers.get("Location")).toBe(
+          "http://localhost:3000/login",
+        );
+        expect(signIn.headers.get("Cache-Control")).toBe("no-store");
+        expect(signIn.headers.get("Referrer-Policy")).toBe("no-referrer");
+        expect((await loginRequest("unknown.example.test")).status).toBe(404);
+        await database.query(
+          "UPDATE domains SET activated_at=NULL WHERE site_id=$1",
+          [id],
+        );
+        expect((await loginRequest("researcher.example.test")).status).toBe(
+          404,
+        );
       } finally {
         delete process.env.RELEASE_RETENTION;
         delete process.env.DEPLOYMENT_MODE;

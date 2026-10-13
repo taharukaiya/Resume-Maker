@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { closeDb, db } from "../src/lib/db";
 import { config } from "../src/lib/config";
+import { vpsDomainConfig } from "../src/lib/vps-domain-config";
 
 // Operator-only: invoked over SSH; never exposes a remote configuration endpoint.
 const [action, hostname] = process.argv.slice(2);
@@ -26,20 +27,9 @@ try {
       "Add this domain in the editor and verify its TXT record first.",
     );
   if (action === "config") {
-    console.log(`${hostname} {
-    encode zstd gzip
-    @read method GET HEAD
-    handle @read {
-        rewrite * /website/${hostname}{uri}
-        reverse_proxy web:3000 {
-            header_up -Cookie
-            header_down -Set-Cookie
-        }
-    }
-    handle {
-        respond "Method not allowed." 405
-    }
-}`);
+    console.log(
+      vpsDomainConfig(hostname, process.env.VPS_PROXY_MODE === "existing"),
+    );
   } else {
     await database.query(
       `UPDATE domains SET activated_at=${action === "activate" ? "now()" : "NULL"} WHERE id=$1`,

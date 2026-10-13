@@ -68,7 +68,7 @@ Browser tests use the installed Chrome on a local Windows machine, an isolated d
 
 ## Production
 
-Follow the [Hostinger VPS launch guide](docs/HOSTINGER_VPS_LAUNCH.md). cPanel is not required. The authenticated `/guide` page explains the portfolio workflow without infrastructure setup instructions.
+For the agency's live VPS, start with [Deploy alongside existing Hostinger portfolios](docs/HOSTINGER_EXISTING_VPS.md). Use the [new-server launch guide](docs/HOSTINGER_VPS_LAUNCH.md) only for an empty server. cPanel is not required. The authenticated `/guide` page explains the portfolio workflow without infrastructure setup instructions.
 
 Read the [pre-deployment audit](docs/PRE_DEPLOYMENT_AUDIT.md) for checks completed and the remaining server-side acceptance gates.
 

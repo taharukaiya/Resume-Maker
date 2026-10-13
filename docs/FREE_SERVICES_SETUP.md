@@ -42,7 +42,7 @@ If browser AI does not work on your computer, the existing Gemini integration ca
 
 ## 3. Apply the configuration on Hostinger
 
-Complete the new-server, SSH, DNS and firewall steps in [Hostinger VPS launch](HOSTINGER_VPS_LAUNCH.md). These commands run in the VPS Linux terminal:
+For the agency's already-used VPS, complete the inventory and compatibility checks in [Existing VPS deployment](HOSTINGER_EXISTING_VPS.md) first. Select **existing** when generating configuration. Use the [new-server guide](HOSTINGER_VPS_LAUNCH.md) only for an empty server. The following commands run in the VPS Linux terminal after those checks:
 
 ```bash
 cd /opt/brilliancy

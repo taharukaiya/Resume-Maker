@@ -292,6 +292,7 @@ export const documentSchema = z
         new Set(addresses).size !== addresses.length ||
         addresses.some((slug) =>
           [
+            "login",
             "publications",
             "assets",
             "fonts",
@@ -335,9 +336,13 @@ export const documentSchema = z
       ctx.addIssue({ code: "custom", message: "Page slugs must be unique." });
     if (
       doc.pages.some((p) =>
-        ["publications", "sitemap.xml", "robots.txt", "assets"].includes(
-          p.slug,
-        ),
+        [
+          "login",
+          "publications",
+          "sitemap.xml",
+          "robots.txt",
+          "assets",
+        ].includes(p.slug),
       )
     )
       ctx.addIssue({

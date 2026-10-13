@@ -1,5 +1,7 @@
 # Hostinger VPS launch — no cPanel
 
+**The agency has confirmed this VPS already hosts portfolios. Follow [Existing VPS deployment](HOSTINGER_EXISTING_VPS.md) instead.** This document applies only to a separate empty server.
+
 Use this guide for a **new VPS or a confirmed empty server**. Do not reinstall an existing server, replace an existing web-server configuration, or change the DNS of a live researcher website while following the initial setup. The agency’s existing sites remain on their current hosting until a separately approved cutover.
 
 The account credentials in `hostinger.txt` are not server connection details. Keep that file private. They do not establish which plan is purchased, the VPS IP, operating system, or permission to interrupt an existing website.
@@ -66,6 +68,8 @@ bash deploy/vps/configure.sh
 ```
 
 The configure script prompts for the two hostnames and email addresses and generates fresh passwords, session encryption and setup secrets in `deploy/vps/.env` with private permissions. It refuses to overwrite an existing configuration. Enter real values; never copy development `.env` into production blindly.
+
+For this empty-server guide, select **new** at the initial mode prompt. The default **existing** mode is for a VPS whose current web server must retain ports 80/443.
 
 Edit the server file privately:
 

@@ -5,6 +5,13 @@ if [[ -e .env ]]; then
   printf 'Configuration already exists. Edit deploy/vps/.env privately; existing secrets were kept.\n'
   exit 1
 fi
+read -rp 'Server mode: existing websites or empty server? [existing/new, default existing]: ' mode
+mode=${mode:-existing}
+case "$mode" in
+  existing) compose_files=compose.yaml:compose.existing.yaml ;;
+  new) compose_files=compose.yaml ;;
+  *) printf 'Enter existing or new.\n'; exit 1 ;;
+esac
 read -rp 'Studio hostname (a NEW subdomain, no https://): ' studio
 read -rp 'Media hostname (a NEW separate subdomain): ' media
 read -rp 'Your email for HTTPS certificate notices: ' contact
@@ -18,6 +25,7 @@ for email in "$contact" "$sender"; do
 done
 umask 077
 cat > .env <<EOF
+COMPOSE_FILE=$compose_files
 STUDIO_HOST=$studio
 MEDIA_HOST=$media
 ACME_EMAIL=$contact
