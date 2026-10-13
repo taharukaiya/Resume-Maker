@@ -1,0 +1,19 @@
+# Copy to a separately managed file in /etc/easypanel/traefik/config/.
+# Replace both example hostnames. Keep EasyPanel's HTTP redirect domain entries.
+# Names/priority are deliberately distinct from EasyPanel's generated routes.
+http:
+  routers:
+    brilliancy-preserve-host:
+      rule: "Host(`studio.example.test`) || Host(`media.example.test`)"
+      entryPoints:
+        - https
+      priority: 100
+      service: brilliancy-preserve-host
+      tls:
+        certResolver: letsencrypt
+  services:
+    brilliancy-preserve-host:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://brilliancy-portfolio-gateway:8080/

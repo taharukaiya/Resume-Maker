@@ -129,9 +129,31 @@ In **EasyPanel → Domains → Add Domain**, add each approved hostname with:
 | Public path                 | `/`                                                        |
 | HTTPS                       | Enabled, using the existing automatic certificate resolver |
 | Destination/custom upstream | `http://brilliancy-portfolio-gateway:8080/`                |
-| Preserve original Host      | Enabled/default; do not replace it with the upstream name  |
+| Preserve original Host      | Required; apply the separate routing file below on 2.32.1  |
 
 Both public names use the same destination. The gateway distinguishes studio from media by hostname. EasyPanel's form labels vary by version; if it does not offer a custom destination, send that form's screenshot before saving. Do not select `education_web-master` as the target. Do not enable caching on the studio/API route. Keep request body limits at least 22 MB and upstream timeouts at least 120 seconds if overriding them. Existing Traefik must sanitize incoming forwarded headers; do not enable `forwardedHeaders.insecure`. The gateway uses right-to-left forwarded-IP parsing and trusts only the configured overlay CIDR, overwriting user-supplied `X-Brilliancy-IP`.
+
+### Preserve the hostname with EasyPanel custom destinations
+
+The inspected EasyPanel 2.32.1 installation generates `passHostHeader: false` for custom destinations. This makes Caddy receive `brilliancy-portfolio-gateway` as the host and return its fallback 404, even when the application and TLS are healthy. There is no preserve-host switch in the inspected domain form. Do not edit generated `main.yaml`; EasyPanel can overwrite it.
+
+Use [the separate Traefik configuration template](../deploy/vps/traefik.easypanel.yaml.example). Replace `studio.example.test` and `media.example.test` with the exact configured names. Install the completed file as `/etc/easypanel/traefik/config/brilliancy-host-routing.yaml`, checking that this filename is unused first. Prepare it outside the watched config directory, then move it into place so Traefik never reads a partially written file. Keep this file in the server configuration backup.
+
+The template adds one HTTPS router scoped to those two hosts and a distinct service with `passHostHeader: true`. Priority 100 outranks the inspected generated routes (priority 0, whose effective priority is their shorter rule length). It reuses the observed `https` entrypoint and `letsencrypt` resolver. Keep the existing EasyPanel domain entries for their HTTP-to-HTTPS redirects. Other domains do not match this route. Confirm entrypoint/resolver names and competing priorities before using the template on a different installation.
+
+Wait a few seconds for Traefik's file watcher, then run:
+
+```bash
+curl -i --max-time 20 https://YOUR_STUDIO_HOST/api/status
+curl -I --max-time 20 https://YOUR_STUDIO_HOST/login
+curl -i --max-time 20 https://YOUR_MEDIA_HOST/private/test.pdf
+```
+
+Expect status 200 with JSON for `/api/status`, a working login page, and 404 for private media. If these still fail, inspect recent Traefik logs and whether the file provider watches this directory before scheduling a shared-proxy restart. EasyPanel's general guide suggests a restart, but avoid restarting the shared proxy automatically during this pilot. To roll back, move only `brilliancy-host-routing.yaml` out of the config directory and recheck; never remove `main.yaml` or unrelated custom files.
+
+The custom file is independently managed: later host, destination or middleware changes in EasyPanel's form do not update this higher-priority route. Update or remove the corresponding custom rule too. For each future portfolio domain, explicitly add its approved hostname to the rule (or use a separate uniquely named router/service with `passHostHeader: true`) only after its internal Caddy route and DNS are ready. Do not use a catch-all public host rule.
+
+References: [EasyPanel custom configuration](https://easypanel.io/docs/guides/custom-traefik-config), [Traefik host forwarding](https://doc.traefik.io/traefik/reference/routing-configuration/http/load-balancing/service/).
 
 Check in the browser:
 
