@@ -652,15 +652,17 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   ).toBe(true);
   await page.getByRole("tab", { name: "Review & publish" }).click();
   await page
-    .getByRole("button", { name: "Delete draft portfolio", exact: true })
+    .getByRole("button", { name: "Delete portfolio", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Permanently delete draft" }),
+    page.getByRole("button", { name: "Permanently delete portfolio" }),
   ).toBeDisabled();
   await page
     .getByLabel(`Type design-${stamp} to confirm deletion`)
     .fill(`design-${stamp}`);
-  await page.getByRole("button", { name: "Permanently delete draft" }).click();
+  await page
+    .getByRole("button", { name: "Permanently delete portfolio" })
+    .click();
   await expect(page).toHaveURL(/\/studio\/portfolios$/);
   expect((await page.request.get(`/api/sites/${id}`)).status()).toBe(404);
 });

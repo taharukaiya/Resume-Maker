@@ -33,7 +33,7 @@ import { publicationIssues, sectionTypes } from "@/modules/portfolios/schema";
 import { replaceSectionGroup } from "@/modules/portfolios/structure";
 import { PublicationsEditor } from "./publications-editor";
 import { DesignEditor } from "./design-editor";
-import { DeleteDraft } from "./delete-draft";
+import { DeletePortfolio } from "./delete-portfolio";
 import { CvImporter } from "./cv-importer";
 import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PortraitEditor } from "./portrait-editor";
@@ -100,6 +100,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     [document, setDocument] = useState<PortfolioDocument | null>(null),
     [tab, setTab] = useState("profile"),
     [dirty, setDirty] = useState(false),
+    [deleting, setDeleting] = useState(false),
     [preview, setPreview] = useState(false),
     [mobile, setMobile] = useState(false),
     [previewKey, setPreviewKey] = useState(0),
@@ -382,6 +383,15 @@ export function PortfolioEditor({ id }: { id: string }) {
           </div>
         </div>
         <div className="row">
+          {admin && (
+            <Button
+              variant="danger"
+              disabled={feedback.busy}
+              onClick={() => setDeleting(true)}
+            >
+              <Trash2 size={14} /> Delete portfolio
+            </Button>
+          )}
           <Button
             variant="secondary"
             busy={feedback.busy}
@@ -412,6 +422,21 @@ export function PortfolioEditor({ id }: { id: string }) {
           </Button>
         </div>
       </div>
+      {admin && deleting && (
+        <DeletePortfolio
+          id={id}
+          name={data.site.name}
+          slug={data.site.slug}
+          revision={data.site.revision}
+          published={!!data.site.published_release_id}
+          busy={!!hasJobs || feedback.busy}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => {
+            setDirty(false);
+            router.replace("/studio/portfolios");
+          }}
+        />
+      )}
       <Feedback {...feedback} />
       {!admin && (
         <Notice
@@ -1472,16 +1497,6 @@ export function PortfolioEditor({ id }: { id: string }) {
             ))}
             {!data.releases.length && <p className="muted">No releases yet.</p>}
           </section>
-          {!data.site.published_release_id && !data.releases.length && (
-            <DeleteDraft
-              id={id}
-              name={data.site.name}
-              slug={data.site.slug}
-              revision={data.site.revision}
-              busy={!!hasJobs || feedback.busy}
-              onDeleted={() => setDirty(false)}
-            />
-          )}
           {data.site.published_release_id && (
             <section className="panel danger-zone">
               <div className="spread wrap">

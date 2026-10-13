@@ -729,7 +729,7 @@ describe.sequential(
         delete process.env.DEPLOYMENT_MODE;
       }
     });
-    it("publishes, unpublishes and restores a release using transactional demo storage", async () => {
+    it("publishes, restores and explicitly deletes a live portfolio using transactional demo storage", async () => {
       process.env.DEPLOYMENT_MODE = "demo";
       try {
         const slug = `demo-${randomUUID()}`;
@@ -775,6 +775,29 @@ describe.sequential(
           ).status,
         ).toBe(200);
         expect((await liveManifest(slug))?.releaseId).toBe(live!.releaseId);
+        const confirmation = { slug, revision: saved.data.revision };
+        expect(
+          (await request(`sites/${id}`, "DELETE", confirmation)).status,
+        ).toBe(409);
+        expect(await liveManifest(slug)).not.toBeNull();
+        expect(
+          (
+            await request(`sites/${id}`, "DELETE", {
+              ...confirmation,
+              deletePublished: true,
+            })
+          ).status,
+        ).toBe(200);
+        expect(await liveManifest(slug)).toBeNull();
+        expect((await request(`sites/${id}`)).status).toBe(404);
+        expect(
+          await (
+            await db()
+          ).query("SELECT id FROM releases WHERE site_id=$1", [id]),
+        ).toHaveLength(0);
+        expect(await processOneJob()).toBe(true);
+        expect(await processOneJob()).toBe(true);
+        expect(await getObject(live!.routes["index.html"].key)).toBeNull();
       } finally {
         delete process.env.DEPLOYMENT_MODE;
       }
@@ -931,7 +954,7 @@ describe.sequential(
           .inquiries,
       ).toHaveLength(1);
     });
-    it("unpublishes without deleting the saved content", async () => {
+    it("unpublishes without deleting content and allows a former published portfolio to be deleted", async () => {
       expect(
         (
           await request(`sites/${siteId}`, "DELETE", {
@@ -952,7 +975,20 @@ describe.sequential(
             revision,
           })
         ).status,
-      ).toBe(409);
+      ).toBe(200);
+      expect((await request(`sites/${siteId}`)).status).toBe(404);
+      expect(
+        await (
+          await db()
+        ).query("SELECT id FROM releases WHERE site_id=$1", [siteId]),
+      ).toHaveLength(0);
+      expect(
+        await (
+          await db()
+        ).query("SELECT id FROM inquiries WHERE site_id=$1", [siteId]),
+      ).toHaveLength(0);
+      expect(await processOneJob()).toBe(true);
+      expect(await processOneJob()).toBe(true);
     });
     it("deletes only a confirmed unused draft, retains audit history and cleans private and failed-release files", async () => {
       const created = await request("sites", "POST", {

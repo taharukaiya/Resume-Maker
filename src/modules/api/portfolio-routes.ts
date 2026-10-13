@@ -84,7 +84,11 @@ export async function portfolioRoutes(
     if (!action && path.length === 2 && method === "DELETE") {
       requireAdmin(user);
       const input = z
-        .object({ slug: z.string(), revision: z.number().int().positive() })
+        .object({
+          slug: z.string(),
+          revision: z.number().int().positive(),
+          deletePublished: z.boolean().default(false),
+        })
         .strict()
         .parse(await body(request));
       await database.transaction(async (tx) => {
@@ -98,16 +102,11 @@ export async function portfolioRoutes(
           409,
           "Confirmation does not match the current draft. Reload and try again.",
         );
-        const releases = await tx.query(
-          "SELECT id FROM releases WHERE site_id=$1 LIMIT 1",
-          [id],
-        );
         invariant(
-          !current.published_release_id &&
-            !releases.length &&
-            current.status !== "published",
+          (!current.published_release_id && current.status !== "published") ||
+            input.deletePublished,
           409,
-          "Only portfolios that have never been published can be deleted here. Use Unpublish to take a published portfolio offline.",
+          "This portfolio is now live. Reload and confirm deletion of the published website, or unpublish it first.",
         );
         const jobs = await tx.query(
           "SELECT id FROM jobs WHERE site_id=$1 AND status IN ('queued','running') LIMIT 1",
@@ -116,7 +115,7 @@ export async function portfolioRoutes(
         invariant(
           !jobs.length,
           409,
-          "Wait for all background jobs to finish before deleting this draft.",
+          "Wait for all background jobs to finish before deleting this portfolio.",
         );
         const domains = await tx.query(
           "SELECT id FROM domains WHERE site_id=$1 AND distribution_id IS NOT NULL LIMIT 1",
@@ -127,6 +126,9 @@ export async function portfolioRoutes(
           409,
           "A provisioned custom domain must be retired before this portfolio can be deleted.",
         );
+        // Remove the public entry point before deleting releases. The site lock
+        // prevents publishing or restoring a release during this transaction.
+        await deleteObject(`sites/${current.slug}/live.json`, tx);
         await tx.query("INSERT INTO storage_cleanup(prefix) VALUES($1),($2)", [
           `private/${id}/`,
           `releases/${id}/`,
@@ -139,6 +141,7 @@ export async function portfolioRoutes(
             name: current.name,
             slug: current.slug,
             revision: current.revision,
+            wasPublished: !!current.published_release_id,
           },
           tx,
         );

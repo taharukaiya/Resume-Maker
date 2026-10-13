@@ -648,6 +648,16 @@ small {
   transform: translateY(-3px);
   box-shadow: 0 8px 20px #2525250a;
 }
+.portfolio-card-link {
+  display: block;
+}
+.portfolio-card-actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 19px 19px;
+}
 .portfolio-thumb {
   height: 120px;
   background: #eeeeee;

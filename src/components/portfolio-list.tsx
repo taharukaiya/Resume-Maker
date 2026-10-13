@@ -9,12 +9,14 @@ import {
   PanelsTopLeft,
   Plus,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "./studio-shell";
 import { NavigationLink } from "./navigation-link";
 import { PageLoading } from "./page-loading";
+import { DeletePortfolio } from "./delete-portfolio";
 import {
   api,
   Badge,
@@ -42,6 +44,7 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [creating, setCreating] = useState(false),
+    [deleteTarget, setDeleteTarget] = useState<Site | null>(null),
     [name, setName] = useState(""),
     [slug, setSlug] = useState(""),
     [clientId, setClientId] = useState(""),
@@ -219,39 +222,61 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
       ) : visible.length ? (
         <div className="portfolio-grid">
           {(overview ? visible.slice(0, 6) : visible).map((site) => (
-            <NavigationLink
-              prefetchOnIntent
+            <article
               key={site.id}
-              href={`/studio/portfolios/${site.id}`}
               className="portfolio-card"
+              aria-label={site.name}
             >
-              <div className="portfolio-thumb">
-                <span className="portfolio-monogram">
-                  {site.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join("")}
-                </span>
-                <div className="portfolio-lines" aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
-                  <i />
+              <NavigationLink
+                prefetchOnIntent
+                href={`/studio/portfolios/${site.id}`}
+                className="portfolio-card-link"
+              >
+                <div className="portfolio-thumb">
+                  <span className="portfolio-monogram">
+                    {site.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                  <div className="portfolio-lines" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                  <span style={{ position: "absolute", right: 13, top: 12 }}>
+                    <Badge value={site.status} />
+                  </span>
                 </div>
-                <span style={{ position: "absolute", right: 13, top: 12 }}>
-                  <Badge value={site.status} />
-                </span>
-              </div>
-              <div className="portfolio-card-content">
-                <h3>{site.name}</h3>
-                <p>/portfolio/{site.slug}</p>
-                <div className="card-bottom">
-                  <span>Updated {dateTime(site.updated_at)}</span>
-                  <ArrowUpRight size={14} />
+                <div className="portfolio-card-content">
+                  <h3>{site.name}</h3>
+                  <p>/portfolio/{site.slug}</p>
+                  <div className="card-bottom">
+                    <span>Updated {dateTime(site.updated_at)}</span>
+                    <ArrowUpRight size={14} />
+                  </div>
                 </div>
-              </div>
-            </NavigationLink>
+              </NavigationLink>
+              {user.role === "admin" && (
+                <div className="portfolio-card-actions">
+                  <NavigationLink
+                    className="button secondary small"
+                    href={`/studio/portfolios/${site.id}`}
+                  >
+                    <FileEdit size={14} /> Edit portfolio
+                  </NavigationLink>
+                  <Button
+                    variant="danger small"
+                    aria-label={`Delete portfolio for ${site.name}`}
+                    onClick={() => setDeleteTarget(site)}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </Button>
+                </div>
+              )}
+            </article>
           ))}
         </div>
       ) : (
@@ -381,6 +406,26 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
             </div>
           </form>
         </Modal>
+      )}
+      {user.role === "admin" && deleteTarget && (
+        <DeletePortfolio
+          id={deleteTarget.id}
+          name={deleteTarget.name}
+          slug={deleteTarget.slug}
+          revision={deleteTarget.revision}
+          published={!!deleteTarget.published_release_id}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setSites((current) =>
+              current.filter((site) => site.id !== deleteTarget.id),
+            );
+            setDeleteTarget(null);
+            feedback.setError("");
+            feedback.setMessage(
+              `${deleteTarget.name}’s portfolio was deleted.`,
+            );
+          }}
+        />
       )}
     </>
   );
