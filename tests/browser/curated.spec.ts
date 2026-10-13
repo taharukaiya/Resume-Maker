@@ -42,12 +42,14 @@ test("six curated designs, automatic search preview, publications workflow and m
     "Dr. Amina Rahman",
   );
   await expect(
-    page.getByLabel("Search title", { exact: true }),
+    page.getByLabel("Social sharing title", { exact: true }),
   ).not.toBeVisible();
   await page
     .getByText("Customize search & sharing (optional)", { exact: true })
     .click();
-  await expect(page.getByLabel("Search title", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Social sharing title", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("tab", { name: "Publications", exact: true }).click();
   await page
     .getByLabel("Add section", { exact: true })

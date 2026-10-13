@@ -26,6 +26,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
   doc.profile.headline =
     "Understanding a changing world, one question at a time.";
   doc.profile.affiliation = "Environmental Systems Research";
+  doc.seo.title = "A custom sharing title";
   doc.profile.bio =
     "I study the connections between climate, communities, and the places we call home. My research brings together field evidence and computational methods to understand how cities can adapt to environmental change.\n\nI am interested in collaborative work that connects scientific insight with thoughtful public decisions.";
   doc.profile.location = "Dhaka, Bangladesh";
@@ -99,6 +100,21 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       await save();
       await publicPage.setViewportSize({ width: 1440, height: 1000 });
       await publicPage.goto(`/api/sites/${id}/preview`);
+      await expect(publicPage).toHaveTitle(
+        `${doc.profile.name} — ${doc.profile.headline}`,
+      );
+      await expect(publicPage.locator(".hero-copy > :first-child")).toHaveText(
+        doc.profile.name,
+      );
+      await expect(publicPage.locator(".hero .eyebrow")).toHaveCount(0);
+      const affiliation = publicPage.locator(".hero-affiliation");
+      await expect(affiliation).toHaveText(doc.profile.affiliation);
+      await expect(affiliation).toHaveCSS("text-transform", "none");
+      await expect(affiliation).toHaveCSS("font-weight", "400");
+      await expect(publicPage.locator('link[rel="icon"]')).toHaveAttribute(
+        "type",
+        "image/svg+xml",
+      );
       await expect(
         publicPage.getByRole("heading", {
           name: doc.profile.name,
@@ -114,6 +130,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
         .getByRole("navigation", { name: "Main navigation", exact: true })
         .getByRole("link", { name: "About", exact: true })
         .click();
+      await expect(publicPage).toHaveTitle(`About — ${doc.profile.name}`);
       await expect(publicPage.locator(".section-head h2")).toHaveText([
         "About",
         "Education",

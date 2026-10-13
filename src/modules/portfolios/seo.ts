@@ -1,5 +1,13 @@
 import type { PortfolioDocument } from "./schema";
 
+/** Browser identity follows the current person and page, independently of SEO overrides. */
+export function portfolioTabTitle(doc: PortfolioDocument, pageTitle?: string) {
+  const name = doc.profile.name.trim();
+  return pageTitle?.trim()
+    ? `${pageTitle.trim()} — ${name}`
+    : `${name} — ${doc.profile.headline.trim() || "Research portfolio"}`;
+}
+
 /** Derive metadata at render time so edits never leave stale generated values. */
 export function portfolioSeo(doc: PortfolioDocument) {
   const compact = (value: string, length: number) => {

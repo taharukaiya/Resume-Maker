@@ -28,7 +28,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { portfolioSeo } from "@/modules/portfolios/seo";
+import { portfolioSeo, portfolioTabTitle } from "@/modules/portfolios/seo";
 import { publicationIssues, sectionTypes } from "@/modules/portfolios/schema";
 import { replaceSectionGroup } from "@/modules/portfolios/structure";
 import { PublicationsEditor } from "./publications-editor";
@@ -892,7 +892,7 @@ export function PortfolioEditor({ id }: { id: string }) {
             </p>
             <div className="search-preview">
               <span>Search result preview</span>
-              <h3>{seoPreview.title}</h3>
+              <h3>{portfolioTabTitle(document)}</h3>
               <p>{seoPreview.description}</p>
             </div>
             <details className="seo-overrides">
@@ -900,8 +900,8 @@ export function PortfolioEditor({ id }: { id: string }) {
               <div className="form-grid">
                 <div className="full-span">
                   <Field
-                    label="Search title"
-                    hint="Leave blank to update automatically from the profile."
+                    label="Social sharing title"
+                    hint="Optional link preview title. Browser tabs always follow the current researcher and page."
                   >
                     <input
                       maxLength={160}
