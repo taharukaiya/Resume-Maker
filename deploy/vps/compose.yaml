@@ -25,11 +25,11 @@ x-runtime: &runtime
   AWS_REGION: ${AWS_REGION:-ap-southeast-1}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-  AI_PROVIDER: ${AI_PROVIDER:-huggingface-browser}
+  AI_PROVIDER: ${AI_PROVIDER:-gemini}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-  GEMINI_MODEL: ${GEMINI_MODEL:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
 
 x-app: &app
   image: brilliancy:${APP_VERSION:-local}

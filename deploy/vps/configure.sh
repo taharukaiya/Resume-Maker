@@ -51,10 +51,10 @@ RELEASE_RETENTION=3
 AWS_REGION=ap-southeast-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
-AI_PROVIDER=huggingface-browser
+AI_PROVIDER=gemini
 OPENAI_API_KEY=
 OPENAI_MODEL=
 GEMINI_API_KEY=
-GEMINI_MODEL=
+GEMINI_MODEL=gemini-3.5-flash-lite
 EOF
-printf 'Created deploy/vps/.env with unique secrets (not printed). Add your free Resend key privately before launch. Browser AI needs no API key.\n'
+printf 'Created deploy/vps/.env with unique secrets (not printed). Add your Resend and Google AI Studio Free-tier keys privately before launch.\n'

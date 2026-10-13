@@ -14,7 +14,7 @@ The pilot caps total steady-state container memory at 4.5 GiB: web 640 MiB, work
 
 - Confirm an off-server backup of the existing websites, databases and EasyPanel configuration is available before installation. A displayed weekly schedule alone does not establish that restoration works.
 - Approve two unused subdomains, for example `studio.brilliancyresearch.net` and `media.brilliancyresearch.net`. These are proposed names, not automatically created DNS records.
-- Follow [Free services setup](FREE_SERVICES_SETUP.md) to create a Resend Free sending key and verify an unused sending subdomain. Keep the Free plan. Browser AI needs no API key; its hardware/download requirements remain.
+- Follow [Free services setup](FREE_SERVICES_SETUP.md) to create a Resend Free sending key, verify an unused sending subdomain, and create a private Gemini API key for a Free-tier project. Keep both services on their Free tiers. Browser AI is an opt-in alternative with hardware/download requirements.
 - Leave the existing researcher domain entries, applications and pending OS upgrade/reboot unchanged during this test.
 
 ## 2. Allow this VPS to read the private GitHub repository
@@ -74,15 +74,30 @@ Privately edit the generated configuration:
 nano deploy/vps/.env
 ```
 
-Ensure these settings are present; the script sets all except your private Resend key:
+Ensure these settings are present; the script sets the provider/model defaults, and you supply the private keys:
 
 ```dotenv
 COMPOSE_FILE=compose.yaml:compose.easypanel.yaml
 EMAIL_PROVIDER=resend
-AI_PROVIDER=huggingface-browser
+AI_PROVIDER=gemini
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_API_KEY=YOUR_PRIVATE_GEMINI_KEY
 ```
 
-Add `RESEND_API_KEY` and confirm `EMAIL_FROM` belongs to your verified sending domain. Keep the generated `EASYPANEL_PROXY_CIDRS`, database passwords and session secret. Save in nano with **Ctrl+O**, Enter, then **Ctrl+X**. Do not paste the file into chat or run unredacted `docker compose config`.
+Replace the Gemini key placeholder with your private key, add `RESEND_API_KEY`, and confirm `EMAIL_FROM` belongs to your verified sending domain. Keep the generated `EASYPANEL_PROXY_CIDRS`, database passwords and session secret. Save in nano with **Ctrl+O**, Enter, then **Ctrl+X**. Do not paste the file into chat or run unredacted `docker compose config`.
+
+Gemini 3.5 Flash-Lite currently has free input/output on the Free tier, subject to project/model quotas. Keep paid billing disabled for this setup; configuration changes do not change Google billing. Quota exhaustion can temporarily block AI operations. See [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing) and [Free services setup](FREE_SERVICES_SETUP.md) for setup and data-use details. To explicitly choose browser AI instead, set `AI_PROVIDER=huggingface-browser`; it is not an automatic fallback. Existing environment files are not overwritten by the new defaults.
+
+If the application is already running and you are only switching its AI provider to Gemini, edit the existing `.env` as above and apply it with:
+
+```bash
+cd /opt/brilliancy/deploy/vps
+docker compose config --quiet
+docker compose up -d --no-build --force-recreate web worker
+docker compose ps
+```
+
+This provider switch requires no image rebuild or database migration. Once the web service is healthy, test CV extraction and article summarization. The remaining build/start steps are for first installation or application code updates.
 
 ## 4. Build with bounded resources
 
@@ -168,7 +183,7 @@ Do not expose the gateway on the server's public port 8080/8088 if routing fails
 
 Privately read `SETUP_TOKEN` from the server `.env`, open the studio `/setup?token=...` URL, create the administrator and enable authenticator MFA. Clear the setup token afterward and run `docker compose up -d --no-build web worker`.
 
-Create a disposable test portfolio and a test client. Test login/MFA, email invitation and recovery, field permissions, image/CV/article uploads, actual malware scanning, browser AI, publishing, mobile layouts and inquiry delivery to the inbox. Review extracted facts. Confirm an uploaded file and login survive a container restart. Complete an off-server backup/restore test before client use; `backup.sh` covers only this application, not existing Swarm services or EasyPanel's proxy/TLS configuration.
+Create a disposable test portfolio and a test client. Test login/MFA, email invitation and recovery, field permissions, image/CV/article uploads, actual malware scanning, the configured AI provider, publishing, mobile layouts and inquiry delivery to the inbox. Review extracted facts. Confirm an uploaded file and login survive a container restart. Complete an off-server backup/restore test before client use; `backup.sh` covers only this application, not existing Swarm services or EasyPanel's proxy/TLS configuration.
 
 Do not migrate `researchbytresna.com` or any current client yet. A fresh database has none of their existing content or accounts. When an individual portfolio is approved for migration, follow Phase 6 in [Existing VPS guide](HOSTINGER_EXISTING_VPS.md), but connect its EasyPanel domain to **`http://brilliancy-portfolio-gateway:8080/`**, not host port 8088. Generate its internal domain route first, activate it, republish, then change only that domain's destination. `/login` redirects to the new central studio login. Retain the previous destination and old app for rollback.
 

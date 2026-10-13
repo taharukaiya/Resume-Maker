@@ -1,10 +1,34 @@
 "use client";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type InputHTMLAttributes } from "react";
 import { api, Button, Feedback, Field, Notice, useFeedback } from "./ui";
+
+function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="auth-password-field">
+      <input {...props} type={visible ? "text" : "password"} />
+      <button
+        type="button"
+        className="auth-password-toggle"
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-controls={props.id}
+        onClick={() => setVisible((current) => !current)}
+      >
+        {visible ? (
+          <EyeOff size={16} aria-hidden="true" />
+        ) : (
+          <Eye size={16} aria-hidden="true" />
+        )}
+        {visible ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
+
 export function AuthForm({
   mode,
 }: {
@@ -181,8 +205,7 @@ export function AuthForm({
                       : "Use at least 12 characters. A unique passphrase works well."
                   }
                 >
-                  <input
-                    type="password"
+                  <PasswordInput
                     autoComplete={
                       mode === "login" ? "current-password" : "new-password"
                     }
