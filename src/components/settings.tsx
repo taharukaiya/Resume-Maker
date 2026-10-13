@@ -1,27 +1,16 @@
 "use client";
-import { ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "./studio-shell";
-import { api, Badge, Button, Feedback, Field, Notice, useFeedback } from "./ui";
+import { api, Button, Feedback, Field, Notice, useFeedback } from "./ui";
 import { PageLoading } from "./page-loading";
-type Integrations = {
-  ai: boolean;
-  aiProvider?: string;
-  demo?: boolean;
-  email: boolean;
-  storage: string;
-  scanner: boolean;
-  database: string;
-  production: boolean;
-};
 export function Settings() {
   const user = useUser(),
     router = useRouter(),
     feedback = useFeedback();
   const [name, setName] = useState("Brilliancy Research"),
     [loading, setLoading] = useState(true),
-    [integrations, setIntegrations] = useState<Integrations | null>(null),
     [current, setCurrent] = useState(""),
     [password, setPassword] = useState(""),
     [qr, setQr] = useState(""),
@@ -30,12 +19,8 @@ export function Settings() {
   useEffect(() => {
     void feedback
       .run(async () => {
-        const [settings, services] = await Promise.all([
-          api<{ name: string }>("settings"),
-          api<Integrations>("integrations"),
-        ]);
+        const settings = await api<{ name: string }>("settings");
         setName(settings.name);
-        setIntegrations(services);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -46,11 +31,11 @@ export function Settings() {
         <div>
           <div className="eyebrow">THE FOUNDATIONS</div>
           <h1>Settings & security.</h1>
-          <p>Keep your workspace personal, connected, and protected.</p>
+          <p>Manage your agency identity and protect your account.</p>
         </div>
       </div>
       <Feedback {...feedback} />
-      <div className="editor-grid">
+      <div className="settings-content">
         <div>
           {user.role === "admin" && (
             <section className="panel">
@@ -89,7 +74,7 @@ export function Settings() {
             <h2>Two-factor authentication</h2>
             <p className="panel-description">
               Use an authenticator app to add a second layer of protection.
-              Required for administrators in production.
+              Administrators must enable this before managing a live workspace.
             </p>
             {user.mfaEnabled ? (
               <Notice
@@ -201,86 +186,6 @@ export function Settings() {
             </form>
           </section>
         </div>
-        <aside>
-          <section className="panel">
-            <h2>Connected services</h2>
-            <p className="panel-description">
-              Configuration detected for this installation. Configured services
-              still need a successful live test before launch.
-            </p>
-            {integrations &&
-              [
-                {
-                  name: "AI summaries",
-                  ready: integrations.ai,
-                  detail: integrations.ai
-                    ? integrations.aiProvider === "huggingface-browser"
-                      ? "Free Hugging Face model in your browser · WebGPU required"
-                      : integrations.aiProvider === "gemini"
-                        ? "Google Gemini on the server · project quotas apply"
-                        : "OpenAI on the server · usage-based billing"
-                    : "AI provider not configured",
-                },
-                {
-                  name: "Email delivery",
-                  ready: integrations.email,
-                  detail: integrations.email
-                    ? "Amazon SES configured"
-                    : "Amazon SES sender required",
-                },
-                {
-                  name: "Object storage",
-                  ready: ["s3", "vps"].includes(integrations.storage),
-                  detail:
-                    integrations.storage === "s3"
-                      ? "Amazon S3"
-                      : integrations.storage === "vps"
-                        ? "Persistent VPS storage · off-server backups required"
-                        : integrations.storage === "database-demo"
-                          ? "Demo PostgreSQL file storage · 200 MB total"
-                          : "Local development storage",
-                },
-                {
-                  name: "Database",
-                  ready: integrations.database === "postgresql",
-                  detail:
-                    integrations.database === "postgresql"
-                      ? "PostgreSQL"
-                      : "Embedded PostgreSQL · local only",
-                },
-                {
-                  name: "Upload scanning",
-                  ready: integrations.scanner,
-                  detail: integrations.scanner
-                    ? "ClamAV configured"
-                    : "Required before production",
-                },
-              ].map((item) => (
-                <div className="integration-row" key={item.name}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <p>{item.detail}</p>
-                  </div>
-                  <Badge value={item.ready ? "configured" : "setup needed"} />
-                </div>
-              ))}
-          </section>
-          <section className="panel">
-            <h3>Production setup</h3>
-            <p className="panel-description">
-              Follow the account and deployment guide included in this project
-              before connecting a live domain.
-            </p>
-            <a
-              className="guide-link"
-              href="/guide"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read the setup guide <ExternalLink size={13} />
-            </a>
-          </section>
-        </aside>
       </div>
     </>
   );

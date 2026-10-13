@@ -166,7 +166,7 @@ export function DomainManager({
                 <p>
                   {domain.activated_at
                     ? "Connected for publishing. Republish after activation so navigation and search-engine URLs use this domain."
-                    : "Ownership is verified. The domain needs a TLS certificate and hosting connection before it can serve the portfolio."}
+                    : "Ownership is verified. Your website address is waiting to be connected."}
                 </p>
                 {domain.cdn_hostname && (
                   <div className="code-box">
@@ -174,8 +174,8 @@ export function DomainManager({
                   </div>
                 )}
                 <p className="panel-description">
-                  Hosting instructions: see Connecting an individual researcher
-                  domain in the deployment guide supplied with this project.
+                  Your website manager can connect this address. Keep your
+                  current website live until the new address is ready.
                 </p>
               </>
             )}

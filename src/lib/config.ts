@@ -19,6 +19,8 @@ export function config() {
 }
 export function assertProductionConfig() {
   if (!config().production) return;
+  if (!["ses", "resend"].includes(process.env.EMAIL_PROVIDER || "ses"))
+    throw new Error("EMAIL_PROVIDER must be ses or resend.");
   if (![undefined, "", "demo", "vps"].includes(process.env.DEPLOYMENT_MODE))
     throw new Error(
       "Unknown DEPLOYMENT_MODE. Use vps, demo, or leave blank for AWS.",
@@ -62,6 +64,7 @@ export function assertProductionConfig() {
     ...(config().vps
       ? ["DATA_DIR", "DATABASE_URL"]
       : ["S3_BUCKET", "PUBLIC_BUCKET"]),
+    ...(process.env.EMAIL_PROVIDER === "resend" ? ["RESEND_API_KEY"] : []),
   ];
   const missing = required.filter((key) => !process.env[key]);
   if (

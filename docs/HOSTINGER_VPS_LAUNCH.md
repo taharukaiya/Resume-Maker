@@ -73,15 +73,16 @@ Edit the server file privately:
 nano deploy/vps/.env
 ```
 
-Configure `AWS_REGION`, `EMAIL_FROM`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for **Amazon SES only**. The code currently uses SES, not Hostinger mailbox SMTP. Verify the sender/domain, add its SPF/DKIM records without destroying existing records, and request SES production access. Restrict this IAM identity to sending email from the verified agency identity; no S3, EC2 or administrator permissions are needed for the VPS setup. Do not share these values in chat.
+Use the free setup in [Free services setup](FREE_SERVICES_SETUP.md):
 
-Choose one AI option:
+1. Create a Resend Free account, verify a sending subdomain, and create a sending-only API key.
+2. Set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` and `EMAIL_FROM` in the server environment. Keep the Free plan and monitor its daily/monthly allowance. AWS credentials are not needed.
+3. Keep `AI_PROVIDER=huggingface-browser` for AI without API fees. Use a compatible desktop browser; first-use model downloads and hardware requirements are described in the free setup guide. No paid provider fallback is used.
+4. Existing deployments keep their settings until you edit their environment. Do not regenerate passwords or encryption secrets when updating.
 
-- `AI_PROVIDER=openai`: supply an API key and a PDF-capable model ID supported by your account. API billing is separate from ChatGPT Plus. Set project spending limits.
-- `AI_PROVIDER=gemini`: supply a Gemini API key and a model ID available to your project. Evaluate data-handling terms before using real client CVs; free quotas are not a production availability promise.
-- `AI_PROVIDER=huggingface-browser`: no API key, but compatible WebGPU hardware and model downloads are needed on each administrator’s computer. It is not the recommended dependable agency workflow.
+Do not delete current email DNS records. Use an unused sending subdomain and copy only the records requested by Resend. Test invitation and password-reset delivery before launch.
 
-The application can run with AI disabled, but CV extraction and automatic summaries are not launch-verified until real documents pass a live provider test. Keep `DEPLOYMENT_MODE=vps` as defined by Compose; never use demo mode to bypass scanning or configuration checks. Keep `RELEASE_RETENTION=3` unless you revise the storage budget.
+CV extraction and automatic summaries are not launch-verified until real documents pass on the chosen computer or provider. Keep `DEPLOYMENT_MODE=vps` as defined by Compose; never use demo mode to bypass scanning or configuration checks. Keep `RELEASE_RETENTION=3` unless you revise the storage budget.
 
 ## 5. Build, migrate and start
 

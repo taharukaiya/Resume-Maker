@@ -13,6 +13,8 @@ jobs:
       MEDIA_HOST: media.example.test
       ACME_EMAIL: test@example.test
       EMAIL_FROM: test@example.test
+      EMAIL_PROVIDER: resend
+      RESEND_API_KEY: re_ci_fake_never_sent
       POSTGRES_PASSWORD: ci-only-database-password-at-least-32-characters
       APP_DB_PASSWORD: ci-only-app-password-at-least-32-characters
       SESSION_SECRET: ci-only-session-secret-at-least-32-characters

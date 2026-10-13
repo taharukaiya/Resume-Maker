@@ -73,3 +73,5 @@ Follow the [Hostinger VPS launch guide](docs/HOSTINGER_VPS_LAUNCH.md). cPanel is
 Read the [pre-deployment audit](docs/PRE_DEPLOYMENT_AUDIT.md) for checks completed and the remaining server-side acceptance gates.
 
 Live container startup, DNS/HTTPS, malware scanning, real email delivery, AI output evaluation, backups and restoration must be verified in the agency’s accounts before launch. A local build does not establish production availability. Keep existing websites online until the new installation passes acceptance and the agency approves each domain’s cutover.
+
+For deployment without paid AI or AWS email/storage services, follow [Free services setup](docs/FREE_SERVICES_SETUP.md). Existing VPS and domain costs still apply.

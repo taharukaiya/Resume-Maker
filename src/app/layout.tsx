@@ -26,9 +26,7 @@ export default async function RootLayout({
       <body suppressHydrationWarning>
         {config().demo && (
           <div className="demo-banner" role="note">
-            CEO demonstration · Use sample data only · Free database expires
-            after 30 days · Email delivery and malware scanning are not
-            configured
+            Demonstration workspace · Please use sample information only.
           </div>
         )}
         {children}

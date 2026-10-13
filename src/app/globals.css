@@ -2850,3 +2850,8 @@ select:focus {
     padding: 18px;
   }
 }
+
+.settings-content {
+  width: 100%;
+  max-width: 880px;
+}

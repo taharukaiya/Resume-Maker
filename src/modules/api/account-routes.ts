@@ -139,7 +139,10 @@ export async function accountRoutes(
       ai: aiConfig().enabled,
       aiProvider: aiConfig().provider,
       demo: config().demo,
-      email: !!process.env.EMAIL_FROM,
+      email:
+        !!process.env.EMAIL_FROM &&
+        (process.env.EMAIL_PROVIDER !== "resend" ||
+          !!process.env.RESEND_API_KEY),
       storage: config().demo
         ? "database-demo"
         : config().bucket

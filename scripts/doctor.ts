@@ -78,8 +78,17 @@ for (const [name, ready] of [
     "AI summaries (browser hardware or live API still needs checking)",
     aiConfig().enabled,
   ],
-  ["Amazon SES email", !!process.env.EMAIL_FROM],
-  ["Amazon S3 storage", !!(process.env.S3_BUCKET && process.env.PUBLIC_BUCKET)],
+  [
+    "Email delivery",
+    !!process.env.EMAIL_FROM &&
+      (process.env.EMAIL_PROVIDER !== "resend" || !!process.env.RESEND_API_KEY),
+  ],
+  [
+    "Persistent storage",
+    process.env.DEPLOYMENT_MODE === "vps"
+      ? !!process.env.DATA_DIR
+      : !!(process.env.S3_BUCKET && process.env.PUBLIC_BUCKET),
+  ],
   ["Upload malware scanning", !!process.env.CLAMAV_HOST],
 ] as const)
   console.log(`${ready ? "CONFIGURED" : "NOT CONFIGURED"}  ${name}`);
@@ -87,6 +96,6 @@ console.log(
   "\nLocal portfolios, invitations shared by link, review and publishing do not need these external accounts.",
 );
 console.log(
-  "Next steps: docs/COMPLETION_CHECKLIST.md and docs/GETTING_STARTED.md",
+  "Next steps: docs/FREE_SERVICES_SETUP.md and docs/HOSTINGER_VPS_LAUNCH.md",
 );
 process.exitCode = failures ? 1 : 0;
