@@ -32,7 +32,7 @@ jobs:
         run: |
           docker compose -f deploy/vps/compose.yaml config --quiet
           docker compose -f deploy/vps/compose.yaml -f deploy/vps/compose.existing.yaml config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); ports=[p for s in c["services"].values() for p in s.get("ports",[])]; assert len(ports)==1 and ports[0]["host_ip"]=="127.0.0.1" and str(ports[0]["published"])=="8088", "Existing-server mode must publish only loopback port 8088"'
-          docker compose -f deploy/vps/compose.yaml -f deploy/vps/compose.easypanel.yaml config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); services=c["services"]; assert all(not s.get("ports") for s in services.values()), "EasyPanel mode must not publish any ports"; assert [name for name,s in services.items() if "easypanel" in s.get("networks",{})]==["caddy"], "Only the gateway may join the shared overlay"; assert sum(s["mem_limit"] for name,s in services.items() if name!="migrate")==4608*1024*1024, "Unexpected pilot memory budget"'
+          docker compose -f deploy/vps/compose.yaml -f deploy/vps/compose.easypanel.yaml config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); services=c["services"]; assert all(not s.get("ports") for s in services.values()), "EasyPanel mode must not publish any ports"; assert [name for name,s in services.items() if "easypanel" in s.get("networks",{})]==["caddy"], "Only the gateway may join the shared overlay"; assert sum(int(s["mem_limit"]) for name,s in services.items() if name!="migrate")==4608*1024*1024, "Unexpected pilot memory budget"'
       - name: Build production container
         run: |
           bash deploy/vps/build-limited.sh
