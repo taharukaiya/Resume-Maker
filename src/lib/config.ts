@@ -8,6 +8,7 @@ export function config() {
     dataDir: path.resolve(process.env.DATA_DIR || ".data"),
     production: process.env.NODE_ENV === "production",
     demo: process.env.DEPLOYMENT_MODE === "demo",
+    vps: process.env.DEPLOYMENT_MODE === "vps",
     databaseUrl: process.env.DATABASE_URL,
     bucket: process.env.S3_BUCKET,
     publishBucket: process.env.PUBLIC_BUCKET,
@@ -18,6 +19,18 @@ export function config() {
 }
 export function assertProductionConfig() {
   if (!config().production) return;
+  if (![undefined, "", "demo", "vps"].includes(process.env.DEPLOYMENT_MODE))
+    throw new Error(
+      "Unknown DEPLOYMENT_MODE. Use vps, demo, or leave blank for AWS.",
+    );
+  const retention = Number(process.env.RELEASE_RETENTION || 0);
+  if (
+    !Number.isInteger(retention) ||
+    (retention !== 0 && (retention < 3 || retention > 100))
+  )
+    throw new Error(
+      "RELEASE_RETENTION must be 0 (unlimited) or an integer from 3 to 100.",
+    );
   if (config().demo) {
     if (!process.env.DATABASE_URL)
       throw new Error(
@@ -43,11 +56,12 @@ export function assertProductionConfig() {
   const required = [
     "SESSION_SECRET",
     "APP_URL",
-    "S3_BUCKET",
-    "PUBLIC_BUCKET",
     "PUBLIC_ASSET_URL",
     "CLAMAV_HOST",
     "EMAIL_FROM",
+    ...(config().vps
+      ? ["DATA_DIR", "DATABASE_URL"]
+      : ["S3_BUCKET", "PUBLIC_BUCKET"]),
   ];
   const missing = required.filter((key) => !process.env[key]);
   if (
@@ -61,4 +75,31 @@ export function assertProductionConfig() {
     throw new Error("APP_URL must use HTTPS in production.");
   if ((config().secret?.length || 0) < 32)
     throw new Error("SESSION_SECRET must contain at least 32 characters.");
+  for (const key of ["APP_URL", "PUBLIC_ASSET_URL"]) {
+    const url = new URL(process.env[key]!);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    )
+      throw new Error(
+        `${key} must be an HTTPS origin without credentials or a path.`,
+      );
+  }
+  if (new URL(config().appUrl).origin === new URL(config().assetUrl!).origin)
+    throw new Error(
+      "Use a separate PUBLIC_ASSET_URL origin for uploaded files.",
+    );
+  if (
+    config().vps &&
+    (config().bucket ||
+      config().publishBucket ||
+      !path.isAbsolute(process.env.DATA_DIR!))
+  )
+    throw new Error(
+      "VPS mode requires an absolute persistent DATA_DIR and no S3 buckets.",
+    );
 }

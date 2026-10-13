@@ -4,9 +4,7 @@ A multi-tenant academic portfolio application for a scholarship agency. Administ
 
 ## Start locally
 
-For the CEO presentation, follow [the free demo deployment guide](docs/FREE_DEMO.md). If browser AI cannot download or process a model on your computer, follow [AI setup](docs/AI_SETUP.md) for the Gemini free-tier server option or paid OpenAI processing. Read [costs and production requirements](docs/COSTS_AND_LAUNCH.md) before upgrading. The free hosted database expires after 30 days.
-
-Start with the [completion checklist](docs/COMPLETION_CHECKLIST.md) for current blockers, manual account setup, and the acceptance walkthrough. Run `npm run doctor` while the app is running to diagnose local readiness.
+For Hostinger, follow the [VPS launch guide](docs/HOSTINGER_VPS_LAUNCH.md), including account setup, capacity planning, backups and preservation of existing websites. Run `npm run doctor` while the app is running to diagnose local readiness.
 
 Install Node.js 24 LTS, then run from this directory:
 
@@ -18,7 +16,7 @@ npm run dev
 
 Open the private `/setup?token=...` link printed by `setup`. Create your own first administrator. No accounts, portfolios, credentials, or example research are seeded into the real workspace. Local data persists under `.data/` and is excluded from Git.
 
-Local development uses embedded PostgreSQL (PGlite), local storage, and an in-process durable job worker. Do not start two application processes against the same embedded database. Production uses PostgreSQL, private S3 storage, a separate public-artifact bucket, and separate web/worker containers.
+Local development uses embedded PostgreSQL (PGlite), local storage, and an in-process durable job worker. Do not start two application processes against the same embedded database. Production uses PostgreSQL and separate web/worker containers. Hostinger VPS mode uses persistent disk and a separate public-media origin; the AWS option uses private S3 storage and a public-artifact bucket.
 
 ## Implemented workflows
 
@@ -29,10 +27,10 @@ Local development uses embedded PostgreSQL (PGlite), local storage, and an in-pr
 - Tenant-isolated media library, file signature validation, bounded uploads, optimized images, and production ClamAV scanning.
 - Reviewed CV extraction and article summaries through explicit provider selection: Hugging Face in the browser (WebGPU required), Gemini on the server (free project quotas or paid), or paid OpenAI. Server processing uses background jobs and supports native PDF input.
 - Direct profile-photo upload with an optimized preview and automatic draft selection.
-- Eight portfolio compositions, coordinated design presets, adjustable CSS motion, sticky navigation, a section index, and expandable research descriptions without a public JavaScript bundle.
+- Six curated portfolio designs, coordinated typography and colors, optional motion, mobile navigation and expandable research descriptions without a public JavaScript bundle.
 - Contextual browser tab titles and accessible in-app confirmations for editing and destructive actions.
 - Generated HTML, individual publication pages, structured data, canonical URLs, sitemap, robots directives, responsive layouts, and contact forms.
-- Inquiry inbox, audit history, content JSON export, custom-domain ownership verification, and AWS CloudFront provisioning script.
+- Inquiry inbox, audit history, content JSON export, confirmed portfolio deletion, custom-domain ownership verification, VPS domain routing, and AWS CloudFront provisioning script.
 
 ## Project structure
 
@@ -51,6 +49,7 @@ src/
 migrations/               Versioned SQL migrations with checksums
 scripts/                  Setup, migrations, worker, domain provisioning
 infra/                    AWS CDK infrastructure and deployment workflow
+deploy/vps/               Hostinger Compose, HTTPS proxy and backup tooling
 tests/                    Domain, integration, infrastructure, browser tests
 docs/                     Architecture, accounts, deployment, operations
 ```
@@ -69,8 +68,8 @@ Browser tests use the installed Chrome on a local Windows machine, an isolated d
 
 ## Production
 
-Follow the [complete first-deployment walkthrough](docs/LAUNCH_GUIDE.md) for tool installation, AWS sign-in, DNS, AI secrets, deployment commands and verification.
+Follow the [Hostinger VPS launch guide](docs/HOSTINGER_VPS_LAUNCH.md). cPanel is not required. The authenticated `/guide` page explains the portfolio workflow without infrastructure setup instructions.
 
-Start with [the account guide](docs/GETTING_STARTED.md), then [deployment](docs/DEPLOYMENT.md). Read [architecture](docs/ARCHITECTURE.md) and [operations](docs/OPERATIONS.md) before accepting live client data. Run the application’s `/guide` page for the concise onboarding walkthrough.
+Read the [pre-deployment audit](docs/PRE_DEPLOYMENT_AUDIT.md) for checks completed and the remaining server-side acceptance gates.
 
-The repository includes production integrations and deployment definitions. Live AWS provisioning, real email delivery, AI output evaluation, custom-domain HTTPS, and disaster recovery must be verified in the agency’s accounts before launch. A local build or synthesized infrastructure template does not establish production availability.
+Live container startup, DNS/HTTPS, malware scanning, real email delivery, AI output evaluation, backups and restoration must be verified in the agency’s accounts before launch. A local build does not establish production availability. Keep existing websites online until the new installation passes acceptance and the agency approves each domain’s cutover.

@@ -5,6 +5,9 @@ node_modules
 assets/brand/source
 .env*
 !.env.example
+**/.env*
+!**/.env.example
+deploy/vps/domains/*.caddy*
 *.pem
 *.key
 .data

@@ -1,0 +1,31 @@
+import { NextRequest } from "next/server";
+import { config } from "@/lib/config";
+import { db } from "@/lib/db";
+import { GET as portfolio } from "@/app/portfolio/[slug]/[[...path]]/route";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Only explicitly verified, activated domains can resolve to a portfolio.
+// Caddy rewrites researcher-domain requests here without exposing the studio.
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ hostname: string; path?: string[] }> },
+) {
+  const params = await context.params;
+  if (!config().vps) return new Response("Not found.", { status: 404 });
+  const [site] = await (
+    await db()
+  ).query<{ slug: string }>(
+    "SELECT s.slug FROM domains d JOIN sites s ON s.id=d.site_id WHERE d.hostname=$1 AND d.verified_at IS NOT NULL AND d.activated_at IS NOT NULL",
+    [params.hostname.toLowerCase()],
+  );
+  if (!site)
+    return new Response("Not found.", {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    });
+  return portfolio(request, {
+    params: Promise.resolve({ slug: site.slug, path: params.path }),
+  });
+}

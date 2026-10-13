@@ -113,6 +113,8 @@ describe("Legacy published portfolio favicons", () => {
   });
   it("keeps unknown pages and unpublished portfolios private", async () => {
     expect((await request(["unknown"])).status).toBe(404);
+    expect((await request(["__proto__"])).status).toBe(404);
+    expect((await request(["constructor"])).status).toBe(404);
     expect(mocks.query).not.toHaveBeenCalled();
     mocks.liveManifest.mockResolvedValue(null);
     expect((await request(["favicon.png"])).status).toBe(404);

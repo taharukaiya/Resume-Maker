@@ -112,7 +112,11 @@ export async function deleteObject(key: string, transaction?: Sql) {
 
 /** Only portfolio-scoped prefixes may be removed by the deletion outbox. */
 export async function deletePortfolioFiles(prefix: string, transaction?: Sql) {
-  if (!/^(private|releases)\/[0-9a-f-]{36}\/$/.test(prefix))
+  if (
+    !/^(?:private\/[0-9a-f-]{36}\/|releases\/[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/)?)$/.test(
+      prefix,
+    )
+  )
     throw new Error("Invalid portfolio cleanup prefix");
   if (config().demo) {
     await (transaction || (await db())).query(

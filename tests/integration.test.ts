@@ -18,10 +18,15 @@ import {
   type PortfolioDocument,
 } from "../src/modules/portfolios/schema";
 import { processOneJob } from "../src/modules/jobs/worker";
-import { liveManifest } from "../src/modules/publishing/service";
+import {
+  activateRelease,
+  buildRelease,
+  liveManifest,
+} from "../src/modules/publishing/service";
 import { getObject, putObject } from "../src/lib/storage";
 import * as storage from "../src/lib/storage";
 import sharp from "sharp";
+import { GET as researcherDomain } from "../src/app/website/[hostname]/[[...path]]/route";
 import { textPdf } from "./pdf-fixture";
 const educationFixture = () => ({
   id: randomUUID(),
@@ -1063,6 +1068,80 @@ describe.sequential(
       expect(
         await database.query("SELECT * FROM storage_cleanup"),
       ).toHaveLength(0);
+    });
+    it("retains three publications and cleans only expired release files", async () => {
+      const slug = `retention-${randomUUID()}`;
+      const created = await request("sites", "POST", {
+        name: "Retention fixture",
+        slug,
+      });
+      const id = created.data.id;
+      const draft = emptyDocument("Retention fixture");
+      const releases = [];
+      process.env.RELEASE_RETENTION = "3";
+      try {
+        for (let n = 1; n <= 5; n++) {
+          const manifest = await buildRelease(id, {
+            document: draft,
+            revision: n,
+            slug,
+            agencyName: "Test",
+            canonicalUrl: `http://localhost:3000/portfolio/${slug}`,
+          });
+          await (
+            await db()
+          ).transaction((tx) => activateRelease(tx, manifest, draft));
+          releases.push(manifest);
+        }
+        expect(
+          await (
+            await db()
+          ).query("SELECT id FROM releases WHERE site_id=$1", [id]),
+        ).toHaveLength(3);
+        expect((await liveManifest(slug))?.releaseId).toBe(
+          releases[4].releaseId,
+        );
+        expect(await processOneJob()).toBe(true);
+        expect(await processOneJob()).toBe(true);
+        expect(
+          await getObject(releases[0].routes["index.html"].key),
+        ).toBeNull();
+        expect(
+          await getObject(releases[4].routes["index.html"].key),
+        ).not.toBeNull();
+        const database = await db();
+        await database.query(
+          "INSERT INTO domains(id,site_id,hostname,verification_token) VALUES($1,$2,$3,$4)",
+          [randomUUID(), id, "researcher.example.test", "test-only-proof"],
+        );
+        const domainRequest = () =>
+          researcherDomain(
+            new NextRequest("https://researcher.example.test/"),
+            {
+              params: Promise.resolve({ hostname: "researcher.example.test" }),
+            },
+          );
+        process.env.DEPLOYMENT_MODE = "vps";
+        expect((await domainRequest()).status).toBe(404);
+        await database.query(
+          "UPDATE domains SET verified_at=now() WHERE site_id=$1",
+          [id],
+        );
+        expect((await domainRequest()).status).toBe(404);
+        await database.query(
+          "UPDATE domains SET activated_at=now() WHERE site_id=$1",
+          [id],
+        );
+        const publicPage = await domainRequest();
+        expect(publicPage.status).toBe(200);
+        expect(publicPage.headers.get("Content-Security-Policy")).toContain(
+          "form-action 'self' http://localhost:3000",
+        );
+        expect(await publicPage.text()).toContain("Retention fixture");
+      } finally {
+        delete process.env.RELEASE_RETENTION;
+        delete process.env.DEPLOYMENT_MODE;
+      }
     });
     it("disabling a client revokes existing sessions", async () => {
       expect(

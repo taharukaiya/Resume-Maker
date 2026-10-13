@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { config } from "@/lib/config";
+import { connection } from "next/server";
 export const metadata: Metadata = {
   icons: { icon: "/brand/mark.svg" },
   title: {
@@ -11,11 +12,14 @@ export const metadata: Metadata = {
     "A considered home for research, academic achievements, and your next chapter.",
   robots: { index: false, follow: false },
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Studio/authentication pages need per-request CSP nonces. Public portfolios
+  // are served by route handlers and remain generated HTML without hydration.
+  await connection();
   return (
     <html lang="en">
       {/* Browser extensions such as Grammarly add body attributes before hydration. */}

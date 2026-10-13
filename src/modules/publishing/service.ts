@@ -118,6 +118,9 @@ export async function activateRelease(
   manifest: ReleaseManifest,
   document: PortfolioDocument,
 ) {
+  await tx.query("SELECT id FROM sites WHERE id=$1 FOR UPDATE", [
+    manifest.siteId,
+  ]);
   await syncCustomDomains(tx, manifest.siteId, manifest);
   await tx.query(
     "INSERT INTO releases(id,site_id,revision,document,manifest) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",
@@ -139,11 +142,41 @@ export async function activateRelease(
     "UPDATE sites SET published_release_id=$1,status=CASE WHEN revision=$2 THEN 'published' ELSE 'draft' END WHERE id=$3",
     [manifest.releaseId, manifest.revision, manifest.siteId],
   );
+  const keep = Number(process.env.RELEASE_RETENTION || 0);
+  if (Number.isInteger(keep) && keep >= 3) {
+    // Keep the current publication plus the newest remaining releases. Cleanup
+    // is durable and retried; saved editing revisions are unaffected.
+    const expired = await tx.query<{ id: string }>(
+      "SELECT id FROM releases WHERE site_id=$1 AND id<>$2 ORDER BY created_at DESC,id DESC OFFSET $3",
+      [manifest.siteId, manifest.releaseId, keep - 1],
+    );
+    for (const release of expired) {
+      await tx.query(
+        "INSERT INTO storage_cleanup(prefix) VALUES($1) ON CONFLICT DO NOTHING",
+        [`releases/${manifest.siteId}/${release.id}/`],
+      );
+      await tx.query("DELETE FROM releases WHERE id=$1 AND site_id=$2", [
+        release.id,
+        manifest.siteId,
+      ]);
+    }
+  }
 }
 export async function liveManifest(
   slug: string,
 ): Promise<ReleaseManifest | null> {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null;
+  if (config().vps) {
+    // On a single VPS, the committed database publication is authoritative.
+    // A filesystem write cannot be rolled back with a PostgreSQL transaction.
+    const [release] = await (
+      await db()
+    ).query<{ manifest: ReleaseManifest }>(
+      "SELECT r.manifest FROM sites s JOIN releases r ON r.id=s.published_release_id AND r.site_id=s.id WHERE s.slug=$1",
+      [slug],
+    );
+    return release?.manifest || null;
+  }
   const bytes = await getObject(`sites/${slug}/live.json`);
   return bytes ? JSON.parse(bytes.toString()) : null;
 }

@@ -162,7 +162,7 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
   ).toBeVisible();
   await page.getByRole("button", { name: "Close preview" }).click();
   await page.getByRole("tab", { name: "Permissions", exact: true }).click();
-  await page.getByLabel("Biography", { exact: true }).check();
+  await page.getByRole("checkbox", { name: "Biography", exact: true }).check();
   await page.getByRole("button", { name: "Save permissions" }).click();
   await expect(page.getByText("Client permissions updated.")).toBeVisible();
   await page.getByRole("tab", { name: "Review & publish" }).click();

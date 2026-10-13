@@ -144,7 +144,9 @@ export async function accountRoutes(
         ? "database-demo"
         : config().bucket
           ? "s3"
-          : "local",
+          : config().vps
+            ? "vps"
+            : "local",
       scanner: !!process.env.CLAMAV_HOST,
       database:
         config().databaseUrl || process.env.DATABASE_SECRET_ARN

@@ -25,7 +25,7 @@ COPY --from=build /app/src ./src
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/migrations ./migrations
 COPY --from=build /app/tsconfig.json ./tsconfig.json
-RUN mkdir -p /app/.next/cache && chown -R app:app /app/.next/cache
+RUN mkdir -p /app/.next/cache /data && chown -R app:app /app/.next/cache /data
 USER app
 EXPOSE 3000
 CMD ["node","server.js"]

@@ -122,7 +122,7 @@ export function DomainManager({
               <strong>{domain.hostname}</strong>
               <Badge
                 value={
-                  domain.activated_at && domain.distribution_id
+                  domain.activated_at
                     ? "connected"
                     : domain.verified_at
                       ? "HTTPS setup needed"

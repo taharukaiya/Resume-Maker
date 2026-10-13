@@ -54,6 +54,13 @@ export async function publicRoutes(
     return json({ ok: true });
   }
   if (route === "auth/login" && method === "POST") {
+    // The VPS proxy overwrites this header; the web port must stay private.
+    if (config().vps)
+      await rateLimit(
+        `login:ip:${request.headers.get("x-brilliancy-ip") || "unknown"}`,
+        30,
+        900,
+      );
     await rateLimit("login:global", 500, 900);
     const input = z
       .object({

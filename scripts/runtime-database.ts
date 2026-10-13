@@ -4,19 +4,40 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import type { Database } from "../src/lib/db";
 export async function configureRuntimeRole(database: Database) {
-  if (!process.env.APPLICATION_DATABASE_SECRET_ARN) return;
-  const secrets = new SecretsManagerClient({ region: process.env.AWS_REGION });
-  const response = await secrets.send(
-    new GetSecretValueCommand({
-      SecretId: process.env.APPLICATION_DATABASE_SECRET_ARN,
-    }),
-  );
-  if (!response.SecretString)
-    throw new Error("Application database secret is missing.");
-  const credentials = JSON.parse(response.SecretString) as {
-    username: string;
-    password: string;
-  };
+  if (
+    !process.env.APPLICATION_DATABASE_SECRET_ARN &&
+    !process.env.APPLICATION_DATABASE_PASSWORD
+  )
+    return;
+  let credentials: { username: string; password: string };
+  if (process.env.APPLICATION_DATABASE_PASSWORD) {
+    if (
+      process.env.DEPLOYMENT_MODE !== "vps" ||
+      process.env.APPLICATION_DATABASE_PASSWORD.length < 32
+    )
+      throw new Error(
+        "A strong runtime database password is required for VPS provisioning.",
+      );
+    credentials = {
+      username: "brilliancy_app",
+      password: process.env.APPLICATION_DATABASE_PASSWORD,
+    };
+  } else {
+    const secrets = new SecretsManagerClient({
+      region: process.env.AWS_REGION,
+    });
+    const response = await secrets.send(
+      new GetSecretValueCommand({
+        SecretId: process.env.APPLICATION_DATABASE_SECRET_ARN,
+      }),
+    );
+    if (!response.SecretString)
+      throw new Error("Application database secret is missing.");
+    credentials = JSON.parse(response.SecretString) as {
+      username: string;
+      password: string;
+    };
+  }
   if (credentials.username !== "brilliancy_app")
     throw new Error("Unexpected application database role.");
   await database.transaction(async (tx) => {

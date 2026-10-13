@@ -1,0 +1,128 @@
+name: brilliancy
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-runtime: &runtime
+  NODE_ENV: production
+  DEPLOYMENT_MODE: vps
+  APP_URL: https://${STUDIO_HOST:?Configure STUDIO_HOST}
+  PUBLIC_ASSET_URL: https://${MEDIA_HOST:?Configure MEDIA_HOST}
+  DATA_DIR: /data
+  DATABASE_URL: postgresql://brilliancy_app:${APP_DB_PASSWORD:?Configure APP_DB_PASSWORD}@db:5432/brilliancy
+  SESSION_SECRET: ${SESSION_SECRET:?Configure SESSION_SECRET}
+  SETUP_TOKEN: ${SETUP_TOKEN:-}
+  RUN_WORKER: "false"
+  RELEASE_RETENTION: ${RELEASE_RETENTION:-3}
+  CLAMAV_HOST: scanner
+  CLAMAV_PORT: "3310"
+  EMAIL_FROM: ${EMAIL_FROM:?Configure a verified SES sender}
+  AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  AI_PROVIDER: ${AI_PROVIDER:-openai}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-}
+
+x-app: &app
+  image: brilliancy:${APP_VERSION:-local}
+  build:
+    context: ../..
+  environment: *runtime
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  mem_limit: 2g
+  tmpfs:
+    - /tmp:uid=1001,gid=1001,mode=1770,size=256m
+    - /app/.next/cache:uid=1001,gid=1001,mode=0700,size=64m
+  volumes: [data:/data]
+  logging: *logging
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: brilliancy
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d brilliancy"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 2g
+    logging: *logging
+  scanner:
+    image: clamav/clamav:1.4_base
+    restart: unless-stopped
+    volumes: [signatures:/var/lib/clamav]
+    mem_limit: 4g
+    logging: *logging
+  migrate:
+    <<: *app
+    restart: "no"
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/migrate.ts]
+    environment:
+      <<: *runtime
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/brilliancy
+      APPLICATION_DATABASE_PASSWORD: ${APP_DB_PASSWORD}
+    depends_on:
+      db: { condition: service_healthy }
+    profiles: [tools]
+  web:
+    <<: *app
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/api/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+  worker:
+    <<: *app
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/worker.ts]
+    stop_grace_period: 150s
+    depends_on:
+      db: { condition: service_healthy }
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      STUDIO_HOST: ${STUDIO_HOST}
+      MEDIA_HOST: ${MEDIA_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?Configure ACME_EMAIL}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./domains:/etc/caddy/domains:ro
+      - data:/srv/data:ro
+      - certificates:/data
+      - caddy_config:/config
+    depends_on:
+      web: { condition: service_healthy }
+    logging: *logging
+
+volumes:
+  data:
+  database:
+  signatures:
+  certificates:
+  caddy_config:

@@ -3,7 +3,12 @@ import { token } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { AppError, invariant } from "@/lib/errors";
 import { deleteObject, putObject } from "@/lib/storage";
-import { audit, requireAdmin, type User } from "@/modules/auth/service";
+import {
+  audit,
+  rateLimit,
+  requireAdmin,
+  type User,
+} from "@/modules/auth/service";
 import { upload, type Media } from "@/modules/media/service";
 import {
   allowedFieldsSchema,
@@ -230,6 +235,7 @@ export async function portfolioRoutes(
       return json({ ok: true });
     }
     if (action === "media" && method === "POST") {
+      await rateLimit(`upload:${user.id}`, 60, 3600);
       const bytes = await readLimited(request, 21 * 1024 * 1024);
       const form = await new Request(request.url, {
         method: "POST",
@@ -265,8 +271,8 @@ export async function portfolioRoutes(
           "SELECT value FROM settings WHERE key='agency'",
         );
         const [primaryDomain] = await tx.query<{ hostname: string }>(
-          "SELECT hostname FROM domains WHERE site_id=$1 AND activated_at IS NOT NULL AND distribution_id IS NOT NULL ORDER BY created_at LIMIT 1",
-          [id],
+          "SELECT hostname FROM domains WHERE site_id=$1 AND verified_at IS NOT NULL AND activated_at IS NOT NULL AND (distribution_id IS NOT NULL OR $2) ORDER BY created_at LIMIT 1",
+          [id, config().vps],
         );
         await tx.query(
           "INSERT INTO jobs(id,site_id,kind,payload) VALUES($1,$2,'publish',$3)",

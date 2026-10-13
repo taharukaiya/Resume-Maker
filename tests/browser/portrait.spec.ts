@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
 import { signInAdmin } from "./admin-session";
+import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
 
 const headers = { origin: "http://localhost:3100" };
 
@@ -94,6 +95,33 @@ test("transparent portraits skip model downloads, and guided publishing saves ch
   });
   expect(created.status()).toBe(201);
   const { id } = await created.json();
+  const draft = emptyDocument("Portrait workflow fixture");
+  draft.sections = [
+    {
+      id: crypto.randomUUID(),
+      type: "education",
+      title: "Education",
+      visible: true,
+      intro: "",
+      entries: [
+        {
+          ...emptyEntry(),
+          title: "MSc",
+          subtitle: "Test university",
+          start: "2020",
+          end: "2022",
+        },
+      ],
+    },
+  ];
+  expect(
+    (
+      await page.request.put(`/api/sites/${id}`, {
+        headers,
+        data: { revision: 1, document: draft },
+      })
+    ).status(),
+  ).toBe(200);
   const downloads: string[] = [];
   page.context().on("request", (request) => {
     if (/huggingface\.co|hf\.co/.test(request.url()))

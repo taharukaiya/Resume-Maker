@@ -230,13 +230,15 @@ export function Settings() {
                 },
                 {
                   name: "Object storage",
-                  ready: integrations.storage === "s3",
+                  ready: ["s3", "vps"].includes(integrations.storage),
                   detail:
                     integrations.storage === "s3"
                       ? "Amazon S3"
-                      : integrations.storage === "database-demo"
-                        ? "Demo PostgreSQL file storage · 200 MB total"
-                        : "Local development storage",
+                      : integrations.storage === "vps"
+                        ? "Persistent VPS storage · off-server backups required"
+                        : integrations.storage === "database-demo"
+                          ? "Demo PostgreSQL file storage · 200 MB total"
+                          : "Local development storage",
                 },
                 {
                   name: "Database",

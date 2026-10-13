@@ -5,16 +5,54 @@ on:
 permissions:
   contents: read
 jobs:
+  vps-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      STUDIO_HOST: studio.example.test
+      MEDIA_HOST: media.example.test
+      ACME_EMAIL: test@example.test
+      EMAIL_FROM: test@example.test
+      POSTGRES_PASSWORD: ci-only-database-password-at-least-32-characters
+      APP_DB_PASSWORD: ci-only-app-password-at-least-32-characters
+      SESSION_SECRET: ci-only-session-secret-at-least-32-characters
+      APP_VERSION: ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell scripts
+        run: |
+          bash -n deploy/vps/configure.sh
+          bash -n deploy/vps/backup.sh
+      - name: Validate Compose configuration
+        run: docker compose -f deploy/vps/compose.yaml config --quiet
+      - name: Build production container
+        run: docker build -t brilliancy:ci .
+      - name: Validate HTTPS proxy configuration
+        run: >-
+          docker run --rm -e STUDIO_HOST=studio.example.test
+          -e MEDIA_HOST=media.example.test -e ACME_EMAIL=test@example.test
+          -v "$PWD/deploy/vps:/etc/caddy:ro" caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Test production database migrations and container startup
+        working-directory: deploy/vps
+        run: |
+          docker compose up -d db
+          docker compose run --rm migrate
+          docker compose up -d --wait --wait-timeout 120 web worker
+          docker compose exec -T web node -e "fetch('http://127.0.0.1:3000/login').then(async r=>{const h=await r.text();if(!r.ok||!r.headers.get('content-security-policy')?.includes('nonce-')||!h.includes('nonce='))process.exit(1)})"
+      - name: Clean up isolated CI containers
+        if: always()
+        run: docker compose -f deploy/vps/compose.yaml down -v
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run typecheck
