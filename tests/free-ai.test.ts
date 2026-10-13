@@ -6,11 +6,30 @@ import {
   validateCv,
 } from "../src/modules/ai/documents";
 import { assertProductionConfig } from "../src/lib/config";
-import { readBrowserDocument } from "../src/modules/ai/pdf";
+import {
+  readBrowserDocument,
+  readPdfLinkEvidence,
+} from "../src/modules/ai/pdf";
 import { textPdf } from "./pdf-fixture";
 
 afterEach(() => vi.unstubAllEnvs());
 describe("Free AI and demo boundaries", () => {
+  it("includes PDF annotation destinations even when the visible caption hides the URL", async () => {
+    const pdf = textPdf(
+      [
+        "LinkedIn",
+        "Synthetic researcher curriculum vitae. Education: MSc in environmental science.",
+        "Research interests: environmental modelling, scientific communication and testing.",
+      ],
+      { label: "LinkedIn", url: "https://www.linkedin.com/in/test-researcher" },
+    );
+    expect(await readPdfLinkEvidence(pdf)).toContain(
+      "https://www.linkedin.com/in/test-researcher",
+    );
+    expect(await readBrowserDocument(pdf, "cv-import")).toContain(
+      "https://www.linkedin.com/in/test-researcher",
+    );
+  });
   it("extracts real PDF text and rejects a PDF without sufficient text", async () => {
     const text = await readBrowserDocument(
       textPdf([

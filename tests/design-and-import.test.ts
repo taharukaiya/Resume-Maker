@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyCvImport,
+  autofillCv,
   type CvExtraction,
 } from "../src/modules/portfolios/cv-import";
 import {
@@ -48,6 +49,59 @@ const extracted: CvExtraction = {
   warnings: [],
 };
 describe("CV review and merge", () => {
+  it("automatically fills all extracted details, keeping text edited during inference", () => {
+    const baseline = emptyDocument("Existing name");
+    const editing = structuredClone(baseline);
+    editing.profile.headline = "Typed while extracting";
+    const result = autofillCv(editing, extracted, baseline, true);
+    expect(result.profile.name).toBe("Extracted name");
+    expect(result.profile.headline).toBe("Typed while extracting");
+    expect(result.profile.bio).toBe("CV biography");
+    expect(result.profile.links).toEqual(extracted.profile.links);
+    expect(
+      result.sections.find((s) => s.type === "education")?.entries,
+    ).toHaveLength(1);
+    expect(autofillCv(baseline, extracted, baseline).profile.name).toBe(
+      "Existing name",
+    );
+  });
+  it("merges into sections on custom pages and normalizes social links without duplicating them", () => {
+    const original = emptyDocument("Existing name");
+    original.profile.links = [
+      { label: "LinkedIn", url: "https://linkedin.com/in/sample/" },
+    ];
+    original.pages = [
+      {
+        id: crypto.randomUUID(),
+        title: "Education",
+        slug: "education",
+        description: "",
+        sections: [
+          {
+            id: crypto.randomUUID(),
+            type: "education",
+            title: "Education",
+            intro: "",
+            visible: true,
+            entries: [],
+          },
+        ],
+      },
+    ];
+    const proposal = structuredClone(extracted);
+    proposal.profile.links = [
+      { label: "My work", url: "www.linkedin.com/in/sample" },
+      { label: "Code", url: "github.com/sample" },
+    ];
+    const result = autofillCv(original, proposal, original);
+    expect(result.pages[0].sections[0].entries).toHaveLength(1);
+    expect(result.sections.some((s) => s.type === "education")).toBe(false);
+    expect(result.profile.links).toHaveLength(2);
+    expect(result.profile.links[1]).toEqual({
+      label: "GitHub",
+      url: "https://github.com/sample",
+    });
+  });
   it("applies valid selected facts while preserving unfinished pages and unrelated edits", () => {
     const original = emptyDocument("Existing name");
     original.pages = [

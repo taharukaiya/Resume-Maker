@@ -856,6 +856,10 @@ describe.sequential(
       ).toBe("wOF2");
       const manifest = await liveManifest("first-researcher");
       expect(manifest).not.toBeNull();
+      expect(manifest!.routes["favicon.svg"].type).toBe("image/svg+xml");
+      expect(
+        (await getObject(manifest!.routes["favicon.svg"].key))?.toString(),
+      ).toContain("<svg");
       expect(manifest!.baseUrl).toBe(
         "http://localhost:3000/portfolio/first-researcher",
       );

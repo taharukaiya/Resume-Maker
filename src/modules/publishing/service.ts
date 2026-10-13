@@ -14,6 +14,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { syncCustomDomains } from "./cdn";
 import { renderPortfolio } from "./render";
+import sharp from "sharp";
 export type ReleaseManifest = {
   siteId: string;
   releaseId: string;
@@ -43,6 +44,7 @@ export async function buildRelease(
   );
   const routes: ReleaseManifest["routes"] = {};
   const assetPaths = new Map<string, string>();
+  let faviconUrl: string | undefined;
   for (const id of assets) {
     const file = media.find((m) => m.id === id);
     invariant(file, 400, "A referenced file no longer exists.");
@@ -53,6 +55,17 @@ export async function buildRelease(
       key = `releases/${siteId}/${releaseId}/${route}`;
     await putObject(key, bytes, file.mime);
     routes[route] = { key, type: file.mime };
+    if (id === document.profile.portraitId && file.mime.startsWith("image/")) {
+      const iconKey = `releases/${siteId}/${releaseId}/favicon.png`;
+      const icon = await sharp(bytes)
+        .rotate()
+        .resize(64, 64, { fit: "cover", position: "attention" })
+        .png()
+        .toBuffer();
+      await putObject(iconKey, icon, "image/png");
+      routes["favicon.png"] = { key: iconKey, type: "image/png" };
+      faviconUrl = `${payload.canonicalUrl}/favicon.png?v=${releaseId}`;
+    }
     assetPaths.set(
       id,
       config().assetUrl
@@ -72,6 +85,7 @@ export async function buildRelease(
     routes[route] = { key, type: "font/woff2" };
   }
   const rendered = renderPortfolio(document, {
+    faviconUrl,
     baseUrl: payload.canonicalUrl,
     agencyName: payload.agencyName,
     asset: (id) => assetPaths.get(id) || "",
@@ -80,11 +94,13 @@ export async function buildRelease(
   });
   for (const [route, html] of Object.entries(rendered)) {
     const key = `releases/${siteId}/${releaseId}/${route}`,
-      type = route.endsWith(".xml")
-        ? "application/xml; charset=utf-8"
-        : route.endsWith(".txt")
-          ? "text/plain; charset=utf-8"
-          : "text/html; charset=utf-8";
+      type = route.endsWith(".svg")
+        ? "image/svg+xml"
+        : route.endsWith(".xml")
+          ? "application/xml; charset=utf-8"
+          : route.endsWith(".txt")
+            ? "text/plain; charset=utf-8"
+            : "text/html; charset=utf-8";
     await putObject(key, html, type);
     routes[route] = { key, type };
   }

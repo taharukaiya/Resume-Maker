@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { orderSections } from "./structure";
+import { profileLinkKey, socialPlatform } from "./social-profiles";
 import {
   documentSchema,
   emptyEntry,
@@ -86,6 +87,36 @@ export type CvSelection = {
 };
 export const cvEntryKey = (section: number, entry: number) =>
   `${section}:${entry}`;
+
+export function allCvDetails(
+  result: CvExtraction,
+  replace = false,
+): CvSelection {
+  return {
+    profile: [...cvProfileFields],
+    entries: result.sections.flatMap((section, si) =>
+      section.entries.map((_, ei) => cvEntryKey(si, ei)),
+    ),
+    links: true,
+    replace,
+  };
+}
+
+/** Keep edits made during inference, even when replacing the starting profile. */
+export function autofillCv(
+  document: PortfolioDocument,
+  result: CvExtraction,
+  baseline: PortfolioDocument,
+  replace = false,
+) {
+  const selection = allCvDetails(result, replace);
+  selection.profile = selection.profile.filter(
+    (key) =>
+      document.profile[key as (typeof cvProfileFields)[number]] ===
+      baseline.profile[key as (typeof cvProfileFields)[number]],
+  );
+  return applyCvImport(document, result, selection);
+}
 export function applyCvImport(
   document: PortfolioDocument,
   result: CvExtraction,
@@ -101,7 +132,12 @@ export function applyCvImport(
       next.profile[key] = documentSchema.shape.profile.shape[key].parse(
         result.profile[key],
       );
-      if (key === "bio" && !next.sections.some((s) => s.type === "about"))
+      if (
+        key === "bio" &&
+        ![...next.sections, ...next.pages.flatMap((p) => p.sections)].some(
+          (s) => s.type === "about",
+        )
+      )
         next.sections.unshift({
           id: crypto.randomUUID(),
           type: "about",
@@ -114,20 +150,28 @@ export function applyCvImport(
   }
   if (selection.links)
     for (const link of result.profile.links) {
+      const validated =
+        documentSchema.shape.profile.shape.links.element.parse(link);
+      validated.label =
+        socialPlatform(validated.url) || validated.label || "Website";
       if (
-        link.url &&
-        !next.profile.links.some((existing) => existing.url === link.url)
+        validated.url &&
+        !next.profile.links.some(
+          (existing) =>
+            profileLinkKey(existing.url) === profileLinkKey(validated.url),
+        )
       )
-        next.profile.links.push(
-          documentSchema.shape.profile.shape.links.element.parse(link),
-        );
+        next.profile.links.push(validated);
     }
   result.sections.forEach((section, si) => {
     const chosen = section.entries.filter((_, ei) =>
       selection.entries.includes(cvEntryKey(si, ei)),
     );
     if (!chosen.length) return;
-    let target = next.sections.find(
+    let target = [
+      ...next.sections,
+      ...next.pages.flatMap((p) => p.sections),
+    ].find(
       (s) =>
         s.type === section.type &&
         (s.type !== "custom" || s.title === section.title),

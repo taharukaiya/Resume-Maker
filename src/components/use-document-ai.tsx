@@ -9,8 +9,14 @@ export function useDocumentAi() {
   useEffect(() => () => controller.current?.abort(), []);
   async function run(id: string, task: AiTask, browser: boolean) {
     if (!browser) {
-      await api(`media/${id}/${task}`, { method: "POST" });
-      return "Processing queued. This page will update when the proposal is ready.";
+      const { jobId } = await api<{ jobId: string }>(`media/${id}/${task}`, {
+        method: "POST",
+      });
+      return {
+        jobId,
+        message:
+          "Processing queued. This page will update when the proposal is ready.",
+      };
     }
     controller.current = new AbortController();
     const signal = controller.current.signal;
@@ -29,7 +35,11 @@ export function useDocumentAi() {
         body: JSON.stringify({ task, result }),
         signal,
       });
-      return "Proposal ready. Review it against the original document before applying or publishing.";
+      return {
+        result,
+        message:
+          "Proposal ready. Review it against the original document before applying or publishing.",
+      };
     } finally {
       setProgress("");
       controller.current = null;

@@ -35,6 +35,7 @@ import { PublicationsEditor } from "./publications-editor";
 import { DesignEditor } from "./design-editor";
 import { DeleteDraft } from "./delete-draft";
 import { CvImporter } from "./cv-importer";
+import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PortraitEditor } from "./portrait-editor";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
@@ -435,7 +436,7 @@ export function PortfolioEditor({ id }: { id: string }) {
           </select>
         </Field>
       </div>
-      {tab === "profile" && (
+      <div hidden={tab !== "profile"}>
         <div className="editor-grid">
           <div>
             {admin && (
@@ -446,6 +447,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 enabled={aiEnabled}
                 browserAi={browserAi}
                 aiProvider={aiProvider}
+                jobs={data.jobs}
                 pending={
                   !!data.jobs.some(
                     (j) =>
@@ -570,7 +572,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     onClick={() =>
                       profile("links", [
                         ...document.profile.links,
-                        { label: "", url: "" },
+                        { label: "Website", url: "" },
                       ])
                     }
                   >
@@ -584,11 +586,10 @@ export function PortfolioEditor({ id }: { id: string }) {
                 </p>
               )}
               {document.profile.links.map((link, index) => (
-                <div className="row" key={index} style={{ marginBottom: 12 }}>
-                  <Field label="Label">
-                    <input
+                <div className="profile-link-row" key={index}>
+                  <Field label="Platform">
+                    <select
                       value={link.label}
-                      maxLength={200}
                       disabled={!canEdit("profile.links")}
                       onChange={(e) =>
                         profile(
@@ -598,7 +599,20 @@ export function PortfolioEditor({ id }: { id: string }) {
                           ),
                         )
                       }
-                    />
+                    >
+                      {!socialPlatforms.some(
+                        (label) => label === link.label,
+                      ) && (
+                        <option value={link.label}>
+                          {link.label || "Choose a platform"}
+                        </option>
+                      )}
+                      {socialPlatforms.map((label) => (
+                        <option key={label} value={label}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                   <div style={{ flex: 1 }}>
                     <Field
@@ -687,7 +701,7 @@ export function PortfolioEditor({ id }: { id: string }) {
             </section>
           </aside>
         </div>
-      )}
+      </div>
       {tab === "sections" && (
         <SectionsEditor
           sections={orderSections(
@@ -1131,7 +1145,11 @@ export function PortfolioEditor({ id }: { id: string }) {
                       uploadPurpose === "article" &&
                       file.type === "application/pdf"
                     ) {
-                      const message = await ai.run(result.id, "abstract", true);
+                      const { message } = await ai.run(
+                        result.id,
+                        "abstract",
+                        true,
+                      );
                       await load();
                       feedback.setMessage(message);
                       return;
@@ -1213,7 +1231,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                       disabled={!aiEnabled || feedback.busy}
                       onClick={() =>
                         void feedback.run(async () => {
-                          const message = await ai.run(
+                          const { message } = await ai.run(
                             file.id,
                             "abstract",
                             browserAi,

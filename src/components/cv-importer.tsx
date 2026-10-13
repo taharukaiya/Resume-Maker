@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Media } from "@/modules/media/service";
 import {
   applyCvImport,
+  autofillCv,
+  cvExtractionSchema,
   cvEntryKey,
   cvProfileFields,
   type CvSelection,
@@ -18,6 +20,7 @@ export function CvImporter({
   enabled,
   browserAi = false,
   aiProvider = "openai",
+  jobs,
   pending,
   error,
   onChange,
@@ -29,6 +32,7 @@ export function CvImporter({
   enabled: boolean;
   browserAi?: boolean;
   aiProvider?: string;
+  jobs: { id: string; status: string; error: string | null }[];
   pending: boolean;
   error?: string;
   onChange: (doc: PortfolioDocument) => void;
@@ -42,10 +46,48 @@ export function CvImporter({
     replace: false,
   });
   const [review, setReview] = useState(false);
+  const [replace, setReplace] = useState(false);
+  const [waiting, setWaiting] = useState<{
+    jobId: string;
+    mediaId: string;
+    baseline: PortfolioDocument;
+    replace: boolean;
+  } | null>(null);
+  const latestDocument = useRef(document);
+  latestDocument.current = document;
   const feedback = useFeedback();
   const ai = useDocumentAi();
   const selected = media.find((m) => m.id === mediaId);
   const result = selected?.cv_import;
+  useEffect(() => {
+    if (!waiting) return;
+    const job = jobs.find((item) => item.id === waiting.jobId);
+    if (job?.status === "failed") {
+      setWaiting(null);
+      feedback.setMessage("");
+      feedback.setError(
+        job.error || "CV extraction failed. Your draft is unchanged.",
+      );
+      return;
+    }
+    const extracted = media.find(
+      (item) => item.id === waiting.mediaId,
+    )?.cv_import;
+    if (job?.status !== "done" || !extracted) return;
+    setWaiting(null);
+    void feedback.run(async () => {
+      onChange(
+        autofillCv(
+          latestDocument.current,
+          extracted,
+          waiting.baseline,
+          waiting.replace,
+        ),
+      );
+      setSelection({ profile: [], entries: [], links: false, replace: false });
+      setReview(false);
+    }, "CV details filled into your draft. Existing records and edits made during extraction were kept. Review the fields, then save.");
+  }, [waiting, jobs, media]);
   const toggle = (kind: "profile" | "entries", key: string) =>
     setSelection((s) => ({
       ...s,
@@ -58,13 +100,13 @@ export function CvImporter({
       <p className="eyebrow">A faster starting point</p>
       <h2>Fill from CV</h2>
       <p className="panel-description">
-        Upload a PDF resume or choose an existing file. AI proposes the profile
-        and academic records for your review. Applying a proposal changes this
-        draft; save and publish when you are ready.
+        Upload a PDF resume or choose an existing file. Extract details fills
+        empty profile fields, academic records and social links into your draft.
+        You can edit everything afterward; nothing is published automatically.
       </p>
       <Feedback {...feedback} />
       <AiProgress {...ai} />
-      {error && (
+      {error && !feedback.error && (
         <Notice
           message={`CV extraction failed: ${error} You can retry extraction. Any previous successful proposal is still available.`}
         />
@@ -79,6 +121,7 @@ export function CvImporter({
         <Field label="CV or resume PDF">
           <select
             value={mediaId}
+            disabled={feedback.busy || !!waiting}
             onChange={(e) => {
               setMediaId(e.target.value);
               setReview(false);
@@ -101,7 +144,7 @@ export function CvImporter({
           <input
             type="file"
             accept="application/pdf,.pdf"
-            disabled={feedback.busy}
+            disabled={feedback.busy || !!waiting}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
@@ -130,16 +173,53 @@ export function CvImporter({
             : "Extract details sends this CV to OpenAI for processing. Use a CV you have permission to process."}{" "}
         Check names, dates and every academic claim before publishing.
       </p>
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={replace}
+          disabled={feedback.busy || !!waiting}
+          onChange={(event) => setReplace(event.target.checked)}
+        />
+        Also replace existing profile text with details from this CV
+      </label>
+      {result &&
+        !review &&
+        result.warnings.map((warning, index) => (
+          <Notice key={index} tone="info" message={warning} />
+        ))}
       <div className="actions">
         <Button
-          disabled={!enabled || !mediaId || pending}
+          disabled={!enabled || !mediaId || pending || !!waiting}
           busy={feedback.busy}
           onClick={() =>
             void feedback.run(async () => {
-              const message = await ai.run(mediaId, "cv-import", browserAi);
+              const baseline = structuredClone(latestDocument.current);
+              const outcome = await ai.run(mediaId, "cv-import", browserAi);
               setReview(false);
+              if (outcome.result) {
+                onChange(
+                  autofillCv(
+                    latestDocument.current,
+                    cvExtractionSchema.parse(outcome.result),
+                    baseline,
+                    replace,
+                  ),
+                );
+                feedback.setMessage(
+                  "CV details filled into your draft. Review the fields, then save. You can change any extracted detail.",
+                );
+              } else if (outcome.jobId) {
+                setWaiting({
+                  jobId: outcome.jobId,
+                  mediaId,
+                  baseline,
+                  replace,
+                });
+                feedback.setMessage(
+                  "Extracting CV. Keep this editor open; details will fill automatically when ready.",
+                );
+              }
               await onRefresh();
-              feedback.setMessage(message);
             })
           }
         >

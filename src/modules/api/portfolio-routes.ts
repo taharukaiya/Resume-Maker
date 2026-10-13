@@ -399,11 +399,21 @@ export async function portfolioRoutes(
         appUrl: config().appUrl,
       });
       const route = path.slice(3).join("/");
-      const html = rendered[route ? `${route}/index.html` : "index.html"];
+      const html =
+        rendered[
+          route === "favicon.svg"
+            ? route
+            : route
+              ? `${route}/index.html`
+              : "index.html"
+        ];
       invariant(html, 404, "Draft page not found.");
       return new Response(html, {
         headers: {
-          "Content-Type": "text/html; charset=utf-8",
+          "Content-Type":
+            route === "favicon.svg"
+              ? "image/svg+xml"
+              : "text/html; charset=utf-8",
           "Cache-Control": "no-store",
           "X-Robots-Tag": "noindex, nofollow",
           "Content-Security-Policy":

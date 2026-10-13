@@ -19,12 +19,14 @@ test("saving from Design normalizes profile URLs and reveals invalid links", asy
   try {
     await page.goto(`/studio/portfolios/${id}`);
     await page.getByRole("button", { name: "Add link", exact: true }).click();
+    await page.getByLabel("Platform", { exact: true }).selectOption("LinkedIn");
     const url = page.locator('[data-profile-link="0"]');
     await url.fill("  linkedin.com/in/researcher  ");
     await page.getByRole("tab", { name: "Design", exact: true }).click();
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
     let saved = await (await page.request.get(`/api/sites/${id}`)).json();
+    expect(saved.site.draft.profile.links[0].label).toBe("LinkedIn");
     expect(saved.site.draft.profile.links[0].url).toBe(
       "https://linkedin.com/in/researcher",
     );

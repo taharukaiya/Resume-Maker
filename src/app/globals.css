@@ -194,6 +194,29 @@ small {
     transform: rotate(360deg);
   }
 }
+.profile-link-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) minmax(0, 1fr) 32px;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.profile-link-row > * {
+  min-width: 0;
+}
+.profile-link-row > .icon-button {
+  margin-top: 26px;
+}
+@media (max-width: 640px) {
+  .profile-link-row {
+    grid-template-columns: minmax(0, 1fr) 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .profile-link-row > .field {
+    grid-column: 1 / -1;
+  }
+}
 .studio {
   min-height: 100vh;
   display: flex;

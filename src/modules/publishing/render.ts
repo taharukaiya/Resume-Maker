@@ -1,6 +1,7 @@
 import { fonts, fontFaceCss } from "@/modules/portfolios/design";
 import { portfolioSeo } from "@/modules/portfolios/seo";
 import { publicCss } from "./styles";
+import { initialsFavicon, nameInitials } from "./favicon";
 export { publicCss } from "./styles";
 import { readableInk } from "@/lib/colors";
 import { defaultLabels } from "@/modules/portfolios/schema";
@@ -37,6 +38,7 @@ export function formatDate(value: string, locale = "en") {
   }).format(new Date(Date.UTC(year, month - 1, day || 1)));
 }
 export type RenderOptions = {
+  faviconUrl?: string;
   baseUrl: string;
   fontUrl?: (file: string) => string;
   agencyName: string;
@@ -51,6 +53,12 @@ export function renderPortfolio(
 ): Record<string, string> {
   const { baseUrl, asset, agencyName } = options;
   const seo = portfolioSeo(doc);
+  const faviconUrl =
+    options.faviconUrl ||
+    (doc.profile.portraitId
+      ? asset(doc.profile.portraitId)
+      : `${baseUrl}/favicon.svg?v=${encodeURIComponent(doc.profile.name + doc.theme.accent)}`);
+  const favicon = `<link rel="icon" type="${options.faviconUrl ? "image/png" : doc.profile.portraitId ? "image/webp" : "image/svg+xml"}" href="${e(faviconUrl)}">`;
   const pages: Record<string, string> = {};
   const labels = { ...defaultLabels, ...doc.labels };
   const plan = portfolioPages(doc);
@@ -157,13 +165,7 @@ export function renderPortfolio(
   const signature = ["atlas", "noir", "horizon", "lumen", "archive"].includes(
     doc.theme.style,
   );
-  const initials = profile.name
-    .replace(/^(dr|prof|professor)\.?\s+/i, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((name) => name[0])
-    .join("");
+  const initials = nameInitials(profile.name);
   const index =
     doc.theme.researchIndex && visibleSections.length
       ? `<nav class="research-index" aria-label="${e(labels.researchIndex)}"><p class="eyebrow">${e(labels.researchIndex)}</p><div>${visibleSections.map((section, i) => `<a href="#${section.id}"><span class="index-number">${String(i + 1).padStart(2, "0")}</span><span>${e(section.title)}</span><span aria-hidden="true">&#8599;</span></a>`).join("")}</div></nav>`
@@ -285,5 +287,10 @@ export function renderPortfolio(
       .join("")}</urlset>`;
   pages["robots.txt"] =
     `User-agent: *\n${doc.seo.indexable ? "Allow: /" : "Disallow: /"}\nSitemap: ${baseUrl}/sitemap.xml\n`;
+  pages["favicon.svg"] = initialsFavicon(doc.profile.name, doc.theme.accent);
+  for (const route of Object.keys(pages)) {
+    if (route.endsWith(".html"))
+      pages[route] = pages[route].replace("</title>", `</title>${favicon}`);
+  }
   return pages;
 }

@@ -5,6 +5,7 @@ import { invariant } from "@/lib/errors";
 export async function generateWithGemini<T>(options: {
   bytes: Buffer;
   text?: string;
+  linkEvidence?: string;
   instructions: string;
   schema: z.ZodType<T>;
   maxTokens: number;
@@ -49,6 +50,9 @@ export async function generateWithGemini<T>(options: {
                         data: options.bytes.toString("base64"),
                       },
                     },
+                    ...(options.linkEvidence
+                      ? [{ text: options.linkEvidence }]
+                      : []),
                   ],
             },
           ],

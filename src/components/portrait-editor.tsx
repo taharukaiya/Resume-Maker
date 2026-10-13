@@ -110,7 +110,7 @@ export function PortraitEditor({
           label="Profile photo"
           hint={
             editable && uploadAllowed
-              ? "The original stays in your media library. Save the draft to keep your selection."
+              ? "Also used as the published browser-tab icon. Without a photo, the icon uses the researcher’s initials. Save the draft to keep your selection."
               : "Managed by your administrator"
           }
         >

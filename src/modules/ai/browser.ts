@@ -122,7 +122,7 @@ export async function inferInBrowser(
           );
           parts.push(
             validateCv(
-              await generate(chunk, cvExtractionSchema, cvInstructions, 3500),
+              await generate(chunk, cvExtractionSchema, cvInstructions, 6000),
             ),
           );
         }
