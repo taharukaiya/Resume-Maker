@@ -1,6 +1,6 @@
 # Hostinger VPS launch — no cPanel
 
-**The agency has confirmed this VPS already hosts portfolios. Follow [Existing VPS deployment](HOSTINGER_EXISTING_VPS.md) instead.** This document applies only to a separate empty server.
+**The agency's existing VPS runs EasyPanel. Follow [EasyPanel deployment](HOSTINGER_EASYPANEL.md) instead.** This document applies only to a separate empty server.
 
 Use this guide for a **new VPS or a confirmed empty server**. Do not reinstall an existing server, replace an existing web-server configuration, or change the DNS of a live researcher website while following the initial setup. The agency’s existing sites remain on their current hosting until a separately approved cutover.
 

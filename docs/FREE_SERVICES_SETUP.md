@@ -42,7 +42,7 @@ If browser AI does not work on your computer, the existing Gemini integration ca
 
 ## 3. Apply the configuration on Hostinger
 
-For the agency's already-used VPS, complete the inventory and compatibility checks in [Existing VPS deployment](HOSTINGER_EXISTING_VPS.md) first. Select **existing** when generating configuration. Use the [new-server guide](HOSTINGER_VPS_LAUNCH.md) only for an empty server. The following commands run in the VPS Linux terminal after those checks:
+For this agency's inspected EasyPanel VPS, follow the build/start commands in [EasyPanel deployment](HOSTINGER_EASYPANEL.md), selecting **easypanel** mode. Its bounded build replaces `docker compose build` below. For other occupied servers, use [Existing VPS deployment](HOSTINGER_EXISTING_VPS.md); the [new-server guide](HOSTINGER_VPS_LAUNCH.md) is only for an empty server. These generic commands are for those other topologies:
 
 ```bash
 cd /opt/brilliancy

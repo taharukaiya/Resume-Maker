@@ -12,6 +12,6 @@ docker compose stop caddy web worker
 docker compose exec -T db pg_dump -U postgres -d brilliancy -Fc > "$target/database.dump"
 docker compose run --rm --no-deps -T --entrypoint tar web -C /data -czf - . > "$target/files.tar.gz"
 docker compose run --rm --no-deps -T --entrypoint tar caddy -C /data -czf - . > "$target/certificates.tar.gz"
-tar -czf "$target/config.tar.gz" .env compose.yaml compose.existing.yaml Caddyfile Caddyfile.existing domains
+tar -czf "$target/config.tar.gz" .env compose.yaml compose.existing.yaml compose.easypanel.yaml Caddyfile Caddyfile.existing Caddyfile.easypanel domains
 sha256sum "$target"/* > "$target/SHA256SUMS"
 printf 'Backup saved to %s\nCopy it off the VPS using encrypted backup storage and test restoration.\n' "$target"

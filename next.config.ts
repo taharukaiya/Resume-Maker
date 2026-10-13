@@ -6,7 +6,11 @@ const config: NextConfig = {
   devIndicators: false,
   cacheMaxMemorySize: 0,
   serverExternalPackages: ["@electric-sql/pglite", "pg", "pdf-parse", "sharp"],
-  experimental: { serverActions: { bodySizeLimit: "1mb" } },
+  experimental: {
+    // The VPS image build runs in a resource-limited builder on a shared server.
+    ...(process.env.BRILLIANCY_SMALL_BUILD === "true" ? { cpus: 1 } : {}),
+    serverActions: { bodySizeLimit: "1mb" },
+  },
   async redirects() {
     return [
       {

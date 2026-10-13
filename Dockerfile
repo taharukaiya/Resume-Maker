@@ -8,7 +8,7 @@ RUN npm ci
 
 FROM dependencies AS build
 COPY . .
-RUN npm run build
+RUN BRILLIANCY_SMALL_BUILD=true NODE_OPTIONS=--max-old-space-size=1536 npm run build
 
 FROM base AS production-dependencies
 COPY package.json package-lock.json ./

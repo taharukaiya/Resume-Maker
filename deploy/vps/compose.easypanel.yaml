@@ -1,0 +1,50 @@
+# For the verified attachable EasyPanel overlay. No host ports are published.
+services:
+  web:
+    environment:
+      VPS_PROXY_MODE: existing
+      NODE_OPTIONS: --max-old-space-size=384
+    mem_limit: 640m
+    memswap_limit: 640m
+    cpus: 0.75
+  worker:
+    environment:
+      VPS_PROXY_MODE: existing
+      NODE_OPTIONS: --max-old-space-size=320
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.5
+  migrate:
+    environment:
+      VPS_PROXY_MODE: existing
+      NODE_OPTIONS: --max-old-space-size=320
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.5
+  db:
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=40]
+  scanner:
+    mem_limit: 3g
+    memswap_limit: 3g
+    cpus: 0.75
+  caddy:
+    ports: !reset []
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    environment:
+      EASYPANEL_PROXY_CIDRS: ${EASYPANEL_PROXY_CIDRS:?Run configure.sh in easypanel mode}
+    volumes:
+      - ./Caddyfile.easypanel:/etc/caddy/Caddyfile:ro
+    networks:
+      default:
+      easypanel:
+        aliases: [brilliancy-portfolio-gateway]
+
+networks:
+  easypanel:
+    external: true
+    name: easypanel

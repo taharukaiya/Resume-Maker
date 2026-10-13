@@ -5,12 +5,22 @@ if [[ -e .env ]]; then
   printf 'Configuration already exists. Edit deploy/vps/.env privately; existing secrets were kept.\n'
   exit 1
 fi
-read -rp 'Server mode: existing websites or empty server? [existing/new, default existing]: ' mode
+read -rp 'Server mode [easypanel/existing/new, default existing]: ' mode
 mode=${mode:-existing}
+proxy_cidrs=
 case "$mode" in
+  easypanel)
+    [[ "$(docker network inspect easypanel --format '{{.Driver}} {{.Attachable}}')" == 'overlay true' ]] || { printf 'An attachable EasyPanel overlay is required.\n'; exit 1; }
+    proxy_cidrs=$(docker network inspect easypanel --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}')
+    [[ -n "$proxy_cidrs" ]] || { printf 'EasyPanel network has no subnet.\n'; exit 1; }
+    for cidr in $proxy_cidrs; do
+      [[ "$cidr" =~ ^[0-9a-fA-F:.]+/[0-9]{1,3}$ ]] || { printf 'Unexpected network subnet.\n'; exit 1; }
+    done
+    compose_files=compose.yaml:compose.easypanel.yaml
+    ;;
   existing) compose_files=compose.yaml:compose.existing.yaml ;;
   new) compose_files=compose.yaml ;;
-  *) printf 'Enter existing or new.\n'; exit 1 ;;
+  *) printf 'Enter easypanel, existing or new.\n'; exit 1 ;;
 esac
 read -rp 'Studio hostname (a NEW subdomain, no https://): ' studio
 read -rp 'Media hostname (a NEW separate subdomain): ' media
@@ -26,6 +36,7 @@ done
 umask 077
 cat > .env <<EOF
 COMPOSE_FILE=$compose_files
+EASYPANEL_PROXY_CIDRS="$proxy_cidrs"
 STUDIO_HOST=$studio
 MEDIA_HOST=$media
 ACME_EMAIL=$contact

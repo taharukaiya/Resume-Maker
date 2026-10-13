@@ -1,5 +1,7 @@
 # Deploy alongside existing Hostinger portfolios
 
+**Server inspection is complete: this agency uses EasyPanel with an attachable Docker overlay. Follow [the EasyPanel-specific walkthrough](HOSTINGER_EASYPANEL.md).** The host-proxy instructions below remain for other server types; do not use their loopback destination for EasyPanel's containerized Traefik.
+
 **Start here for the agency's existing VPS.** Do not follow the empty-server instructions to replace its web server. The current sites, including `researchbytresna.com`, must stay on their current application until a planned migration.
 
 ## What has been prepared
