@@ -55,6 +55,13 @@ jobs:
           -e MEDIA_HOST=media.example.test -e EASYPANEL_PROXY_CIDRS
           -v "$PWD/deploy/vps:/etc/caddy:ro" caddy:2-alpine
           caddy validate --config /etc/caddy/Caddyfile.easypanel --adapter caddyfile
+      - name: Test media routing in all proxy configurations
+        run: |
+          proxy_image=$(docker create caddy:2-alpine)
+          trap 'docker rm "$proxy_image" >/dev/null' EXIT
+          docker cp "$proxy_image:/usr/bin/caddy" "$RUNNER_TEMP/caddy-routing-test"
+          chmod +x "$RUNNER_TEMP/caddy-routing-test"
+          python3 scripts/test-vps-proxy.py "$RUNNER_TEMP/caddy-routing-test"
       - name: Test production database migrations and container startup
         working-directory: deploy/vps
         run: |
@@ -67,8 +74,10 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.existing.yaml up -d --wait --wait-timeout 120 web caddy
           curl --fail --retry 5 --retry-connrefused -H 'Host: studio.example.test' http://127.0.0.1:8088/api/status
-          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: media.example.test' http://127.0.0.1:8088/private/test.pdf)" = 404
-          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: unknown.example.test' http://127.0.0.1:8088/)" = 404
+          media_status=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: media.example.test' http://127.0.0.1:8088/private/test.pdf)
+          test "$media_status" = 404 || { echo "Private media: expected 404, got $media_status"; exit 1; }
+          unknown_status=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: unknown.example.test' http://127.0.0.1:8088/)
+          test "$unknown_status" = 404 || { echo "Unknown host: expected 404, got $unknown_status"; exit 1; }
       - name: Verify EasyPanel overlay and constrained application startup
         working-directory: deploy/vps
         run: |
