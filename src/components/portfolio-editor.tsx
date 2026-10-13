@@ -28,6 +28,10 @@ import {
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { portfolioSeo } from "@/modules/portfolios/seo";
+import { publicationIssues, sectionTypes } from "@/modules/portfolios/schema";
+import { replaceSectionGroup } from "@/modules/portfolios/structure";
+import { PublicationsEditor } from "./publications-editor";
 import { DesignEditor } from "./design-editor";
 import { DeleteDraft } from "./delete-draft";
 import { CvImporter } from "./cv-importer";
@@ -283,10 +287,11 @@ export function PortfolioEditor({ id }: { id: string }) {
       {
         profile: "Profile",
         sections: "Academic sections",
+        publications: "Publications",
         pages: "Pages",
         design: "Design",
-        seo: "SEO & labels",
-        media: "Files & articles",
+        seo: "Search & sharing",
+        media: "File library",
         permissions: "Permissions",
         publish: "Review & publish",
         history: "History",
@@ -310,19 +315,22 @@ export function PortfolioEditor({ id }: { id: string }) {
   const tabs = [
     ["profile", "Profile"],
     ["sections", "Academic sections"],
+    ["publications", "Publications"],
     ...(admin
       ? [
           ["pages", "Pages"],
           ["design", "Design"],
           ["publish", "Review & publish"],
-          ["seo", "SEO & labels"],
+          ["seo", "Search & sharing"],
         ]
       : []),
-    ["media", "Files & articles"],
+    ["media", "File library"],
     ...(admin ? [["permissions", "Permissions"]] : []),
     ["history", "History"],
   ];
   const assets = data.media;
+  const seoPreview = portfolioSeo(document);
+  const readiness = publicationIssues(document);
   const currentStep = portfolioSteps.findIndex(([key]) => key === tab);
   function selectTab(key: string) {
     setTab(key);
@@ -483,7 +491,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     <Field
                       label={
                         {
-                          name: "Full name",
+                          name: "Full name *",
                           headline: "Academic headline",
                           affiliation: "Current affiliation",
                           location: "Location",
@@ -497,6 +505,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                       }
                     >
                       <input
+                        required={key === "name"}
                         type={key === "email" ? "email" : "text"}
                         value={document.profile[key]}
                         disabled={!canEdit(`profile.${key}`)}
@@ -682,16 +691,21 @@ export function PortfolioEditor({ id }: { id: string }) {
       {tab === "sections" && (
         <SectionsEditor
           sections={orderSections(
-            document.sections,
+            document.sections.filter((s) => s.type !== "publications"),
             document.navigation.sectionOrder,
           )}
+          types={sectionTypes.filter((type) => type !== "publications")}
           order={document.navigation.sectionOrder || "academic"}
           placement={document.navigation.layout !== "single"}
           onChange={(sections, sectionOrder) =>
             change({
               ...document,
               sections: admin
-                ? sections
+                ? replaceSectionGroup(
+                    document.sections,
+                    sections,
+                    (s) => s.type !== "publications",
+                  )
                 : document.sections.map(
                     (section) =>
                       sections.find((next) => next.id === section.id) ||
@@ -706,6 +720,16 @@ export function PortfolioEditor({ id }: { id: string }) {
           media={assets}
           admin={admin}
           allowed={data.site.editable_fields}
+        />
+      )}
+      {tab === "publications" && (
+        <PublicationsEditor
+          document={document}
+          onChange={change}
+          media={assets}
+          admin={admin}
+          allowed={data.site.editable_fields}
+          onFiles={() => selectTab("media")}
         />
       )}
       {tab === "pages" && admin && (
@@ -848,173 +872,188 @@ export function PortfolioEditor({ id }: { id: string }) {
           <section className="panel">
             <h2>Help the right people find this work.</h2>
             <p className="panel-description">
-              Metadata is included in the generated HTML of every published
-              page.
+              Search titles, descriptions, sharing images, page addresses and
+              sitemaps are prepared automatically. You can leave these settings
+              as they are.
             </p>
-            <div className="form-grid">
-              <div className="full-span">
-                <Field
-                  label="Search title"
-                  hint="Leave blank to use the researcher’s name."
-                >
-                  <input
-                    maxLength={160}
-                    value={document.seo.title}
-                    onChange={(e) =>
-                      change({
-                        ...document,
-                        seo: { ...document.seo, title: e.target.value },
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-              <div className="full-span">
-                <Field label="Search description">
-                  <textarea
-                    rows={3}
-                    maxLength={320}
-                    value={document.seo.description}
-                    onChange={(e) =>
-                      change({
-                        ...document,
-                        seo: { ...document.seo, description: e.target.value },
-                      })
-                    }
-                  />
-                </Field>
-              </div>
-              <Field label="Social sharing image">
-                <select
-                  value={document.seo.socialImageId}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      seo: { ...document.seo, socialImageId: e.target.value },
-                    })
-                  }
-                >
-                  <option value="">No image</option>
-                  {assets
-                    .filter((m) => m.mime.startsWith("image/"))
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.filename}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <Field label="Content language">
-                <select
-                  value={document.seo.language}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      seo: {
-                        ...document.seo,
-                        language: e.target.value as "en" | "bn",
-                      },
-                    })
-                  }
-                >
-                  <option value="en">English</option>
-                  <option value="bn">Bengali</option>
-                </select>
-              </Field>
-              <label className="check-row full-span">
-                <input
-                  type="checkbox"
-                  checked={document.seo.indexable}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      seo: { ...document.seo, indexable: e.target.checked },
-                    })
-                  }
-                />{" "}
-                Allow search engines to index the published website
-              </label>
+            <div className="search-preview">
+              <span>Search result preview</span>
+              <h3>{seoPreview.title}</h3>
+              <p>{seoPreview.description}</p>
             </div>
+            <details className="seo-overrides">
+              <summary>Customize search & sharing (optional)</summary>
+              <div className="form-grid">
+                <div className="full-span">
+                  <Field
+                    label="Search title"
+                    hint="Leave blank to update automatically from the profile."
+                  >
+                    <input
+                      maxLength={160}
+                      placeholder={seoPreview.title}
+                      value={document.seo.title}
+                      onChange={(e) =>
+                        change({
+                          ...document,
+                          seo: { ...document.seo, title: e.target.value },
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+                <div className="full-span">
+                  <Field label="Search description">
+                    <textarea
+                      rows={3}
+                      maxLength={320}
+                      placeholder={seoPreview.description}
+                      value={document.seo.description}
+                      onChange={(e) =>
+                        change({
+                          ...document,
+                          seo: { ...document.seo, description: e.target.value },
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+                <Field label="Social sharing image">
+                  <select
+                    value={document.seo.socialImageId}
+                    onChange={(e) =>
+                      change({
+                        ...document,
+                        seo: { ...document.seo, socialImageId: e.target.value },
+                      })
+                    }
+                  >
+                    <option value="">Automatic — profile portrait</option>
+                    {assets
+                      .filter((m) => m.mime.startsWith("image/"))
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.filename}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+                <Field label="Content language">
+                  <select
+                    value={document.seo.language}
+                    onChange={(e) =>
+                      change({
+                        ...document,
+                        seo: {
+                          ...document.seo,
+                          language: e.target.value as "en" | "bn",
+                        },
+                      })
+                    }
+                  >
+                    <option value="en">English</option>
+                    <option value="bn">Bengali</option>
+                  </select>
+                </Field>
+                <label className="check-row full-span">
+                  <input
+                    type="checkbox"
+                    checked={document.seo.indexable}
+                    onChange={(e) =>
+                      change({
+                        ...document,
+                        seo: { ...document.seo, indexable: e.target.checked },
+                      })
+                    }
+                  />{" "}
+                  Allow search engines to find the published website
+                </label>
+              </div>
+            </details>
           </section>
           <section className="panel">
-            <h2>Navigation & labels</h2>
+            <details className="seo-overrides">
+              <summary>Customize navigation & footer (optional)</summary>
+              <p className="panel-description">
+                Personalize the visible header, buttons, and footer.
+              </p>
+              <div className="form-grid">
+                {(
+                  [
+                    "siteTitle",
+                    "contactLabel",
+                    "cvLabel",
+                    "footer",
+                    "copyright",
+                  ] as const
+                ).map((key) => (
+                  <Field
+                    key={key}
+                    label={
+                      {
+                        siteTitle: "Header title",
+                        contactLabel: "Contact button",
+                        cvLabel: "CV button",
+                        footer: "Footer text",
+                        copyright:
+                          "Copyright line (leave blank for automatic year and name)",
+                      }[key]
+                    }
+                  >
+                    <input
+                      value={document.navigation[key] ?? ""}
+                      maxLength={key === "footer" ? 1000 : 200}
+                      onChange={(e) =>
+                        change({
+                          ...document,
+                          navigation: {
+                            ...document.navigation,
+                            [key]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </Field>
+                ))}
+              </div>
+            </details>
+          </section>
+        </>
+      )}
+      {tab === "seo" && admin && (
+        <section className="panel">
+          <details className="seo-overrides">
+            <summary>Customize website wording (optional)</summary>
             <p className="panel-description">
-              Personalize the visible header, buttons, and footer.
+              Edit public buttons, form labels, and messages. These labels also
+              support translating the portfolio.
             </p>
             <div className="form-grid">
               {(
-                [
-                  "siteTitle",
-                  "contactLabel",
-                  "cvLabel",
-                  "footer",
-                  "copyright",
-                ] as const
+                Object.keys(
+                  defaultLabels,
+                ) as (keyof PortfolioDocument["labels"])[]
               ).map((key) => (
                 <Field
                   key={key}
-                  label={
-                    {
-                      siteTitle: "Header title",
-                      contactLabel: "Contact button",
-                      cvLabel: "CV button",
-                      footer: "Footer text",
-                      copyright:
-                        "Copyright line (leave blank for automatic year and name)",
-                    }[key]
-                  }
+                  label={key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (s) => s.toUpperCase())}
                 >
                   <input
-                    value={document.navigation[key] ?? ""}
-                    maxLength={key === "footer" ? 1000 : 200}
+                    value={document.labels[key] ?? defaultLabels[key]}
+                    maxLength={300}
                     onChange={(e) =>
                       change({
                         ...document,
-                        navigation: {
-                          ...document.navigation,
-                          [key]: e.target.value,
-                        },
+                        labels: { ...document.labels, [key]: e.target.value },
                       })
                     }
                   />
                 </Field>
               ))}
             </div>
-          </section>
-        </>
-      )}
-      {tab === "seo" && admin && (
-        <section className="panel">
-          <h2>Website wording</h2>
-          <p className="panel-description">
-            Edit public buttons, form labels, and messages. These labels also
-            support translating the portfolio.
-          </p>
-          <div className="form-grid">
-            {(
-              Object.keys(
-                defaultLabels,
-              ) as (keyof PortfolioDocument["labels"])[]
-            ).map((key) => (
-              <Field
-                key={key}
-                label={key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (s) => s.toUpperCase())}
-              >
-                <input
-                  value={document.labels[key] ?? defaultLabels[key]}
-                  maxLength={300}
-                  onChange={(e) =>
-                    change({
-                      ...document,
-                      labels: { ...document.labels, [key]: e.target.value },
-                    })
-                  }
-                />
-              </Field>
-            ))}
-          </div>
+          </details>
         </section>
       )}
       {tab === "media" && (
@@ -1255,7 +1294,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                             abstractSource: "generated",
                           });
                           change({ ...document, sections });
-                          setTab("sections");
+                          setTab("publications");
                           feedback.setMessage(
                             "Added to the draft. Review the title, authors, dates, and summary before publishing.",
                           );
@@ -1288,6 +1327,29 @@ export function PortfolioEditor({ id }: { id: string }) {
             <div className="spread wrap">
               <div>
                 <h2>Ready for the world?</h2>
+                {readiness.length > 0 ? (
+                  <div className="publish-checklist" role="status">
+                    <strong>
+                      Complete these required details before publishing
+                    </strong>
+                    <ul>
+                      {readiness.map((issue, index) => (
+                        <li key={index}>{issue}</li>
+                      ))}
+                    </ul>
+                    <Button
+                      variant="secondary small"
+                      onClick={() => selectTab("sections")}
+                    >
+                      Review academic details
+                    </Button>
+                  </div>
+                ) : (
+                  <Notice
+                    tone="success"
+                    message="Required details are complete. Review your preview before publishing."
+                  />
+                )}
                 <p className="panel-description">
                   Preview the website and review the changes below. Publishing
                   makes this version available to visitors.
@@ -1295,11 +1357,14 @@ export function PortfolioEditor({ id }: { id: string }) {
               </div>
               <Button
                 busy={feedback.busy}
-                disabled={data.jobs.some(
-                  (j) =>
-                    j.kind === "publish" &&
-                    ["queued", "running"].includes(j.status),
-                )}
+                disabled={
+                  readiness.length > 0 ||
+                  data.jobs.some(
+                    (j) =>
+                      j.kind === "publish" &&
+                      ["queued", "running"].includes(j.status),
+                  )
+                }
                 onClick={() =>
                   void feedback.run(async () => {
                     const revision = dirty ? await save() : data.site.revision;

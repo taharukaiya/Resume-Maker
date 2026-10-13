@@ -12,6 +12,11 @@ export const portfolioSteps = [
     "Review education and research. Academic order keeps the story organized automatically.",
   ],
   [
+    "publications",
+    "Publications",
+    "Add papers, articles and abstracts. Attach PDFs from the file library and review generated summaries.",
+  ],
+  [
     "pages",
     "Pages",
     "Choose where content belongs. Separate pages keep the public website focused and easy to explore.",
@@ -41,7 +46,9 @@ export function EditorWorkflow({
 }) {
   const steps = admin
     ? portfolioSteps
-    : portfolioSteps.filter(([key]) => ["profile", "sections"].includes(key));
+    : portfolioSteps.filter(([key]) =>
+        ["profile", "sections", "publications"].includes(key),
+      );
   const tools = tabs.filter(([key]) => !steps.some(([step]) => key === step));
   const current = steps.find(([key]) => key === tab);
   function navigateTabs(event: KeyboardEvent<HTMLDivElement>) {
@@ -98,7 +105,7 @@ export function EditorWorkflow({
         aria-label="Portfolio tools"
         onKeyDown={navigateTabs}
       >
-        <span className="editor-tools-label">Tools</span>
+        <span className="editor-tools-label">Manage</span>
         {tools.map(([key, label], index) => (
           <button
             key={key}

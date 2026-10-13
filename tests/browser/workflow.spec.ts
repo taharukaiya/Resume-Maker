@@ -137,6 +137,18 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
       "My research explores how evidence can improve decisions across scientific communities.",
     );
   await page.getByRole("tab", { name: "Academic sections" }).click();
+  await page
+    .getByLabel("Add section", { exact: true })
+    .selectOption("education");
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
+  await page
+    .getByLabel("Degree or qualification *", { exact: true })
+    .fill("MSc");
+  await page
+    .getByLabel("Institution *", { exact: true })
+    .fill("Test University");
+  await page.getByLabel("Start date *", { exact: true }).fill("2020");
+  await page.getByLabel("End date *", { exact: true }).fill("2022");
   await page.getByLabel("Add section", { exact: true }).selectOption("about");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
@@ -295,7 +307,7 @@ test("client invitation, permitted submission, files, private pages, and public 
   await expect(page.getByLabel("Biography", { exact: true })).toHaveValue(
     "A biography submitted by the invited researcher.",
   );
-  await page.getByRole("tab", { name: "Files & articles" }).click();
+  await page.getByRole("tab", { name: "File library" }).click();
   const image = await sharp({
     create: { width: 32, height: 32, channels: 3, background: "#234d3e" },
   })
@@ -319,6 +331,30 @@ test("client invitation, permitted submission, files, private pages, and public 
     entries: [],
   };
   data.site.draft.sections = [
+    {
+      ...section,
+      id: crypto.randomUUID(),
+      type: "education",
+      title: "Education",
+      entries: [
+        {
+          id: crypto.randomUUID(),
+          title: "MSc",
+          subtitle: "Test University",
+          start: "2020",
+          end: "2022",
+          current: false,
+          body: "",
+          url: "",
+          mediaId: "",
+          tags: "",
+          authors: "",
+          doi: "",
+          status: "",
+          abstractSource: "",
+        },
+      ],
+    },
     section,
     { ...section, id: crypto.randomUUID(), type: "contact", title: "Contact" },
   ];
@@ -497,10 +533,7 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/studio/portfolios/${id}`);
   await page.getByRole("tab", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Aurora Soft color" }).click();
-  await page.getByRole("button", { name: "Iris & Pearl", exact: true }).click();
-  await page.getByLabel("Heading typography").selectOption("playfair-display");
-  await page.getByLabel("Body typography").selectOption("manrope");
+  await page.getByRole("button", { name: "Archive · Oxblood" }).click();
   await page.screenshot({
     path: ".test-data/design-editor.png",
     fullPage: true,
@@ -574,7 +607,7 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
       "Selected details applied to your unsaved draft. Review, then save.",
     ),
   ).toBeVisible();
-  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Full name *", { exact: true })).toHaveValue(
     "Dr. Amara Rahman",
   );
   await page.getByRole("tab", { name: "Academic sections" }).click();

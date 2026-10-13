@@ -47,6 +47,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
         title: entry,
         subtitle,
         start: "2024",
+        current: true,
         body: "Research shaped by careful observation, open methods, and collaboration across disciplines.",
       },
     ],
@@ -178,7 +179,6 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
     await expect(headings).toHaveText([
       "Education",
       "Research experience",
-      "Selected publications",
       "Awards",
       "Beyond research",
     ]);

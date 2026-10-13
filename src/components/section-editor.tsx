@@ -21,6 +21,7 @@ export function SectionsEditor({
   allowed,
   order = "manual",
   placement = false,
+  types = sectionTypes,
 }: {
   sections: Section[];
   onChange: (sections: Section[], order?: "manual" | "academic") => void;
@@ -29,6 +30,7 @@ export function SectionsEditor({
   allowed: string[];
   order?: "academic" | "manual";
   placement?: boolean;
+  types?: readonly Section["type"][];
 }) {
   const confirm = useConfirmation();
   function update(index: number, next: Section) {
@@ -45,10 +47,14 @@ export function SectionsEditor({
     <>
       <div className="section-title">
         <div>
-          <h2>Build the story.</h2>
+          <h2>
+            {types.length === 1 && types[0] === "publications"
+              ? "Your publication list"
+              : "Build the story."}
+          </h2>
           <p className="panel-description" style={{ marginBottom: 0 }}>
             {order === "academic"
-              ? "Academic order keeps education and research ahead of interests. Move a section to switch to your own sequence."
+              ? "Education is required before publishing. Academic order keeps it ahead of interests; use the arrows to change the sequence."
               : "Use the arrows to arrange sections in your preferred sequence."}
           </p>
         </div>
@@ -79,7 +85,7 @@ export function SectionsEditor({
             }}
           >
             <option value="">＋ Add a section</option>
-            {sectionTypes.map((type) => (
+            {types.map((type) => (
               <option key={type} value={type}>
                 {type[0].toUpperCase() + type.slice(1)}
               </option>
@@ -358,9 +364,16 @@ function EntryEditor({
       <div className="form-grid">
         <div className="full-span">
           <Field
-            label={type === "publications" ? "Publication title" : "Title"}
+            label={
+              type === "publications"
+                ? "Publication title *"
+                : type === "education"
+                  ? "Degree or qualification *"
+                  : "Title *"
+            }
           >
             <input
+              required
               value={entry.title}
               maxLength={200}
               disabled={!editable}
@@ -373,10 +386,13 @@ function EntryEditor({
             label={
               type === "publications"
                 ? "Journal or conference"
-                : "Institution, organization, or subtitle"
+                : type === "education"
+                  ? "Institution *"
+                  : "Institution, organization, or subtitle"
             }
           >
             <input
+              required={type === "education"}
               value={entry.subtitle}
               maxLength={200}
               disabled={!editable}
@@ -385,18 +401,33 @@ function EntryEditor({
           </Field>
         </div>
         <Field
-          label={type === "publications" ? "Publication date" : "Start date"}
+          label={
+            type === "publications"
+              ? "Publication date"
+              : type === "education"
+                ? "Start date *"
+                : "Start date"
+          }
           hint="YYYY, YYYY-MM, or YYYY-MM-DD"
         >
           <input
+            required={type === "education"}
             value={entry.start}
             maxLength={10}
             disabled={!editable}
             onChange={(e) => change("start", e.target.value)}
           />
         </Field>
-        <Field label="End date" hint="Leave blank for a single date.">
+        <Field
+          label={type === "education" ? "End date *" : "End date"}
+          hint={
+            type === "education"
+              ? "Required unless this qualification is ongoing."
+              : "Leave blank for a single date."
+          }
+        >
           <input
+            required={type === "education" && !entry.current}
             value={entry.end}
             maxLength={10}
             disabled={!editable || entry.current}

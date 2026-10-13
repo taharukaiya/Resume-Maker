@@ -24,7 +24,7 @@ Local development uses embedded PostgreSQL (PGlite), local storage, and an in-pr
 
 - First-admin bootstrap with a one-time installation secret; secure password sessions; invitations and password recovery; authenticator-app MFA.
 - Agency accounts and per-portfolio client assignment. Permission enforcement happens on the server.
-- Profile, biography, links, CV, portrait, academic sections, entries, dates, custom pages, section ordering, theme controls, SEO, and website labels.
+- Profile, biography, links, CV, portrait, academic sections, entries, dates, custom pages, section ordering, six curated designs, automatic search metadata with optional overrides, and editable website labels.
 - Versioned drafts, optimistic concurrency, client submissions, administrator review, preview, publication jobs, historical draft restore, release rollback, and unpublishing.
 - Tenant-isolated media library, file signature validation, bounded uploads, optimized images, and production ClamAV scanning.
 - Reviewed CV extraction and article summaries through explicit provider selection: Hugging Face in the browser (WebGPU required), Gemini on the server (free project quotas or paid), or paid OpenAI. Server processing uses background jobs and supports native PDF input.

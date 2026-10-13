@@ -1,5 +1,20 @@
 import type { PortfolioDocument, Section } from "./schema";
 
+/** Edit one section group without moving or removing the other groups. */
+export function replaceSectionGroup(
+  sections: Section[],
+  next: Section[],
+  matches: (section: Section) => boolean,
+) {
+  const remaining = [...next];
+  const merged = sections.flatMap((section) => {
+    if (!matches(section)) return [section];
+    const replacement = remaining.shift();
+    return replacement ? [replacement] : [];
+  });
+  return [...merged, ...remaining];
+}
+
 export const academicOrder = [
   "about",
   "education",

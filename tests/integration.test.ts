@@ -14,6 +14,7 @@ import { db, closeDb } from "../src/lib/db";
 import { hash } from "../src/lib/crypto";
 import {
   emptyEntry,
+  emptyDocument,
   type PortfolioDocument,
 } from "../src/modules/portfolios/schema";
 import { processOneJob } from "../src/modules/jobs/worker";
@@ -22,6 +23,22 @@ import { getObject, putObject } from "../src/lib/storage";
 import * as storage from "../src/lib/storage";
 import sharp from "sharp";
 import { textPdf } from "./pdf-fixture";
+const educationFixture = () => ({
+  id: randomUUID(),
+  type: "education" as const,
+  title: "Education",
+  visible: true,
+  intro: "",
+  entries: [
+    {
+      ...emptyEntry(),
+      title: "MSc",
+      subtitle: "Test university",
+      start: "2020",
+      end: "2022",
+    },
+  ],
+});
 const directory = path.resolve(".test-data", `integration-${randomUUID()}`);
 const adminEmail = "admin@integration.test",
   password = "A long integration passphrase 42!";
@@ -725,6 +742,20 @@ describe.sequential(
         expect(
           (await request(`sites/${id}/publish`, "POST", { revision: 1 }))
             .status,
+        ).toBe(400);
+        const draft = emptyDocument("Demo integration fixture");
+        draft.sections = [educationFixture()];
+        const saved = await request(`sites/${id}`, "PUT", {
+          document: draft,
+          revision: 1,
+        });
+        expect(saved.status).toBe(200);
+        expect(
+          (
+            await request(`sites/${id}/publish`, "POST", {
+              revision: saved.data.revision,
+            })
+          ).status,
         ).toBe(202);
         await processOneJob();
         const live = await liveManifest(slug);
@@ -764,6 +795,7 @@ describe.sequential(
       document.theme.font = "fraunces";
       document.theme.bodyFont = "dm-sans";
       document.sections = [
+        educationFixture(),
         {
           id: randomUUID(),
           type: "about",

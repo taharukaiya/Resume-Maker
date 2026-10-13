@@ -487,6 +487,35 @@ export function collectAssetIds(doc: PortfolioDocument) {
 }
 export function publicationIssues(doc: PortfolioDocument): string[] {
   const issues: string[] = [];
+  if (!doc.profile.name.trim())
+    issues.push("Profile: enter the researcher's full name.");
+  const education = [
+    ...doc.sections,
+    ...doc.pages.flatMap((page) => page.sections),
+  ]
+    .filter((section) => section.visible && section.type === "education")
+    .flatMap((section) => section.entries);
+  if (!education.length)
+    issues.push("Academic sections: add at least one visible education entry.");
+  education.forEach((entry, index) => {
+    if (!entry.subtitle.trim())
+      issues.push(`Education ${index + 1}: enter the institution.`);
+    if (!entry.start)
+      issues.push(`Education ${index + 1}: enter the start year or date.`);
+    if (!entry.current && !entry.end)
+      issues.push(
+        `Education ${index + 1}: enter the end date or select ongoing.`,
+      );
+    if (
+      entry.start &&
+      entry.end &&
+      entry.end.padEnd(10, "9") < entry.start.padEnd(10, "0") &&
+      !entry.current
+    )
+      issues.push(
+        `Education ${index + 1}: the end date must not precede the start date.`,
+      );
+  });
   for (const section of [
     ...doc.sections,
     ...doc.pages.flatMap((page) => page.sections),

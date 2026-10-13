@@ -1,3 +1,4 @@
+import { curatedCss } from "./curated-styles";
 import { signatureCss } from "./signature-styles";
 import { refinedCss } from "./refined-styles";
 import { academicCss } from "./academic-styles";
@@ -16,5 +17,5 @@ body[data-portrait=circle] .portrait{aspect-ratio:1}body[data-spacing=compact] .
 @media(max-width:600px){.nav{align-items:flex-start;flex-direction:column;gap:20px}.nav-links{justify-content:flex-start;gap:10px 18px}.topbar{padding:22px 0}.hero,.folio .hero{grid-template-columns:1fr;padding-block:45px;gap:28px}.hero h1,.folio .hero h1{font-size:clamp(2.8rem,12vw,4.5rem);max-width:100%}.portrait-wrap{width:min(75%,240px);grid-row:1;justify-self:center}.hero:after{bottom:12px}.section,.folio .section{display:block;padding-block:40px}.section-head{margin-bottom:22px}.section-head .number{margin-bottom:12px}.section-head h2{font-size:2rem}.folio .section-content{padding-left:0;border-left:0}.aurora .hero{padding:30px 22px 55px;margin:24px 0}.aurora .hero:after{left:22px}.modern .hero{padding-left:20px;margin-top:24px}.modern .section-head{gap:14px}.modern .section-head h2{font-size:1.8rem}.classic .hero{padding-block:40px}.classic .portrait-wrap{width:150px}.section-contact .section-content{padding:22px}.entry-date{max-width:100%}.footer-inner{flex-direction:column;gap:8px}.article{margin-block:40px}.article h1{font-size:2.5rem}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{.nav-links,.contact-form,.actions,.skip{display:none}.hero:before,.hero:after{display:none!important}body{--paper:#fff!important;--ink:#111!important;--muted:#333!important;--surface:#fff!important;--line:#ddd!important;background:#fff;color:#111}.hero{padding:25px 0!important;margin:0!important}.section{break-inside:avoid;padding:25px 0}.portrait-wrap{box-shadow:none!important;transform:none!important}}
 ${signatureCss}
-${refinedCss}${academicCss}
+${refinedCss}${academicCss}${curatedCss}
 `;

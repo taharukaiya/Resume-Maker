@@ -84,7 +84,7 @@ Sources: [OpenAI API authentication](https://developers.openai.com/api/reference
 The importer does not infer missing credentials, automatically attach the CV
 to the public website, or change client permissions. AI extraction can still
 misread a document, so administrator review is required. If it fails, check
-the Profile error or job history under Files & articles, verify the worker and
+the Profile error or job history under File library, verify the worker and
 model configuration, and retry with a clearer or shorter PDF. A previous
 successful extraction remains available. API usage is billed by OpenAI.
 
@@ -92,34 +92,27 @@ successful extraction remains available. API usage is billed by OpenAI.
 
 New portfolios start with **Academic**, a crisp white layout with restrained blue accents, structured research, and natural portrait presentation. Existing drafts keep their chosen design; apply **Academic · Ink & Blue** to change one deliberately.
 
-The editor follows five steps: **Profile → Academic sections → Pages → Design → Review & publish**. **Save & continue** saves your edits before moving forward. SEO, files, permissions, and history are grouped under Tools. You can jump between steps, and **Save and publish draft** saves pending edits before queueing the release.
+The editor follows six steps: **Profile → Academic sections → Publications → Pages → Design → Review & publish**. Save & continue saves before moving forward. Search & sharing, File library, Permissions and History sit in the Manage toolbar (or the Editing selector on phones).
 
-Open **Design** to choose Lumen, Archive, Editorial, Academic, Classic, Aurora, Folio, Atlas,
-Noir, or Horizon. Apply
-one of eight palettes or set the accent, background, body text and secondary
-colors yourself. Heading and body fonts are independent: Georgia, system sans,
-Fraunces, Cormorant Garamond, Playfair Display, DM Sans, Manrope, and Space Grotesk.
-There are also controls for heading scale, spacing, portrait shape, decoration,
-width and corners. The sidebar shows typography/color changes immediately;
-save and use Preview to inspect the full layout.
+Choose one of six complete designs: **Academic · Ink & Blue**, **Lumen · Sage**, **Archive · Oxblood**, **Atlas · Cobalt**, **Noir · Copper**, or **Horizon · Terracotta**. Each includes fixed colors, fonts, layout and motion. Individual font/color controls are intentionally removed. Existing saved designs remain readable; select a curated design to adopt its full settings, save and publish. The gallery provides miniature layout illustrations; use Preview for the actual saved content.
 
-For a complete coordinated design, choose **Academic · Ink & Blue**, **Lumen · Sage**, **Archive · Oxblood**,
-**Atlas · Cobalt**, **Noir · Copper**,
-or **Horizon · Terracotta** at the top of Design. These presets set the layout,
-colors, fonts, portrait treatment, and motion together; every setting remains
-editable. They do not replace the researcher's content.
+Publications has a dedicated step for papers, articles, authors, dates, abstracts and attached PDFs, including publication sections on custom pages. Upload papers or request summaries using its File library shortcut. Review AI-generated summaries before adding them to the draft. Publications are optional. Clients can only edit the root sections their administrator permits; custom pages remain administrator-controlled.
 
-Home features actual research excerpts and topic tags instead of repeating navigation as page cards. Disable **Show selected research and interests on the home page** under Motion & interaction if preferred. The substantial footer contains contact details, profile links, agency credit, and copyright. Edit the footer message/copyright under **SEO & labels**, and its heading under the editable labels. Leave copyright blank to use the researcher name and the year at publication; a custom value lets you set dates explicitly.
+Drafts can be saved with incomplete academic entries. Publishing requires a full name and at least one visible education entry with a degree/title, institution, start date and end date (or ongoing). Visible entries also need titles. Review & publish lists missing details; the API enforces the same requirements. No qualifications or papers are fabricated to fill gaps.
+
+Search metadata is generated from current profile content when overrides are blank. The profile portrait supplies the default sharing image. Canonical addresses, structured data and sitemaps remain automatic. **Search & sharing** shows a preview and collapsed optional controls for custom search text, navigation/footer wording and labels. Clear an override to restore automatic values. Search indexing cannot be guaranteed by metadata; demo deployments retain their noindex protection.
+
+The default multi-page layout keeps research and contact focused, while Pages still offers a single-page layout. Publication detail pages remain separate in either mode. Public pages use static HTML and CSS, local fonts, lightweight floating shapes and progressive scroll/hover effects. Motion respects reduced-motion preferences and the site stays usable without JavaScript. The footer contains contact details and editable copyright. A custom domain such as researchbyamina.com must be registered, connected and secured separately; publishing alone does not create it.
 
 ### Profile photos and automatic background removal
 
 1. In **Profile**, leave **Automatically remove the portrait background** enabled and upload a JPG, PNG, or WebP.
 2. An image with existing transparent pixels skips model processing. For opaque portraits, the browser downloads the free [MODNet model](https://huggingface.co/Xenova/modnet) on first use and runs it locally in a worker. No paid API, API key, or GPU is required. Keep the editor open; processing speed and downloads depend on the device and connection.
 3. Review the result, especially hair and clothing edges. **Use original** and **Use transparent version** switch between the two; both are in the media library. The original is never replaced by the cutout. The model provider receives model-download requests, not the photo. Normal private media uploads still go to your application server.
-4. Choose **Design → Portrait shape → Natural cutout — no frame or background** to display it without a frame. A transparent photo remains transparent with other shapes, but those may add decorative framing.
+4. Choose **Academic · Ink & Blue** to display it without a frame. A transparent photo remains transparent with other shapes, but those may add decorative framing.
 5. Save, preview, and publish. For an existing selected portrait, use **Remove background from selected photo**. Turn automatic processing off if you want to keep future uploads unchanged.
 
-If downloads are blocked or processing fails, the original remains selected and the app explains how to retry. Cancellation also keeps the original. Clear, well-lit photos of one person work best; background removal cannot guarantee perfect edges. Scientific figures and other images uploaded through Files & articles are not processed as portraits. Large photos are limited to 40 megapixels and processed at up to 1800 pixels on the longest side. The model is Apache-2.0 licensed; see its model card. To run the optional real-model browser check, place the official sample portrait at `.test-data/portrait-source.jpg`, set `RUN_PORTRAIT_MODEL_TEST=true`, and run `npx playwright test tests/browser/portrait.spec.ts`.
+If downloads are blocked or processing fails, the original remains selected and the app explains how to retry. Cancellation also keeps the original. Clear, well-lit photos of one person work best; background removal cannot guarantee perfect edges. Scientific figures and other images uploaded through File library are not processed as portraits. Large photos are limited to 40 megapixels and processed at up to 1800 pixels on the longest side. The model is Apache-2.0 licensed; see its model card. To run the optional real-model browser check, place the official sample portrait at `.test-data/portrait-source.jpg`, set `RUN_PORTRAIT_MODEL_TEST=true`, and run `npx playwright test tests/browser/portrait.spec.ts`.
 
 First-use downloads need a connection to `huggingface.co` and its model CDN (`*.hf.co`). The loader retries an interrupted download once and the operation has a three-minute overall limit. A successful sample cutout was verified during development, but subsequent live checks encountered CDN connection timeouts; availability of this free download service is not guaranteed by the application. Before a demonstration, process a portrait on the actual presentation browser to populate its model cache. If the CDN is unavailable, use the original photo or upload an already-transparent PNG/WebP; both paths work without the model. Ordinary automated checks cover these fallback paths; the live-model check is opt-in because it depends on the external service.
 
@@ -145,13 +138,8 @@ outside-click dismissal, and Escape support. The editor uses an **Editing** sele
 and a keyboard-accessible workspace drawer. Save, preview, and publish to apply
 the new layout to an existing public portfolio; published releases are snapshots.
 
-Under **Motion & interaction**, choose Still, Subtle, or Expressive. You can also
-enable sticky navigation, expandable research descriptions, and an index linking
-to the portfolio's visible sections. Visitors' reduced-motion preferences take
-priority. Entrance and hover effects use CSS; scroll-linked accents appear in
-supporting browsers. Expandable descriptions are native HTML and work without
-JavaScript. The full text remains in the page for accessibility and indexing.
-Edit their button labels under **SEO & labels**.
+Motion, sticky navigation and expandable research descriptions are included in each curated design. Visitors’ reduced-motion preferences take priority. CSS effects progressively enhance the content; no animation framework is downloaded. Expandable descriptions use native HTML and work without JavaScript.
+Edit their button labels under **Search & sharing**.
 
 Choose **Save draft → Preview** to inspect your changes, then **Review & publish**
 to update the public site. Existing published releases keep their design until

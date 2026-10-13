@@ -114,7 +114,7 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
         "default-src 'none'",
       );
       await expect(publicPage).toHaveTitle(
-        "Dr. Maya Rahman — Research portfolio",
+        `${doc.profile.name} — ${doc.profile.headline}`,
       );
       await expect(publicPage.locator("body")).toHaveClass(look.theme.style);
       const index = publicPage.getByRole("navigation", {
@@ -176,7 +176,9 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
     "Dr. Maya Rahman · Design | Brilliancy Research",
   );
   await page.getByRole("button", { name: "Atlas · Cobalt" }).click();
-  await expect(page.getByLabel("Motion style")).toHaveValue("subtle");
+  await expect(
+    page.getByRole("button", { name: "Atlas · Cobalt" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page
     .getByRole("navigation", { name: "Workspace navigation" })
     .getByRole("link", { name: "Portfolios", exact: true })
@@ -209,7 +211,7 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   expect(upload.status()).toBe(201);
   const file = await upload.json();
   await page.reload();
-  await page.getByRole("tab", { name: "Files & articles" }).click();
+  await page.getByRole("tab", { name: "File library" }).click();
   const deleteButton = page.getByRole("button", {
     name: "Delete dialog-example.pdf",
   });
@@ -264,7 +266,7 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   const imageResponse = await page.request.get(`/api/media/${portraitId}`);
   expect(imageResponse.headers()["content-type"]).toBe("image/webp");
   await page
-    .getByLabel("Full name", { exact: true })
+    .getByLabel("Full name *", { exact: true })
     .fill("Dr. Maya Rahman Khan");
   await expect(page).toHaveTitle(
     "Dr. Maya Rahman Khan · Profile | Brilliancy Research",
