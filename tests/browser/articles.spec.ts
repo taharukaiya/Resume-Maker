@@ -98,6 +98,19 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     revision = (await response.json()).revision;
   };
   await save();
+  await page.goto(`/api/sites/${id}/preview`);
+  await expect(page.locator("body")).toHaveClass("shiba");
+  await page.locator('[data-home-category="Finance"]').click();
+  await expect(page.locator("[data-home-article]:visible")).toHaveCount(1);
+  await expect(page.locator("[data-home-article]:visible")).toContainText(
+    second.title,
+  );
+  await page.locator('[data-home-category=""]').click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: ".test-data/shiba-home-desktop.png",
+    fullPage: true,
+  });
   await page.goto(`/api/sites/${id}/preview/article`);
   await expect(
     page.getByRole("heading", { name: "Research Archive" }),
@@ -127,6 +140,23 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   const pdf = await page.request.get(`/api/media/${mediaId}`);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
   expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  const publish = await page.request.post(`/api/sites/${id}/publish`, {
+    headers,
+    data: { revision },
+  });
+  expect(publish.status()).toBe(202);
+  await expect
+    .poll(
+      async () => {
+        const result = await page.request.get(`/api/sites/${id}`);
+        return (await result.json()).site.status;
+      },
+      { timeout: 45000 },
+    )
+    .toBe("published");
+  await page.goto(`/portfolio/${slug}/article/${first.id}`);
+  await page.getByRole("tab", { name: "IEEE", exact: true }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("2025");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: ".test-data/shiba-article-desktop.png",
@@ -162,4 +192,29 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   expect(hidden.status()).toBe(404);
   const home = await page.request.get(`/api/sites/${id}/preview`);
   expect(await home.text()).not.toContain(first.title);
+  expect(
+    (
+      await page.request.post(`/api/sites/${id}/publish`, {
+        headers,
+        data: { revision },
+      })
+    ).status(),
+  ).toBe(202);
+  await expect
+    .poll(
+      async () => {
+        const result = await page.request.get(`/api/sites/${id}`);
+        return (await result.json()).site.status;
+      },
+      { timeout: 45000 },
+    )
+    .toBe("published");
+  expect(
+    (await page.request.get(`/portfolio/${slug}/article/${first.id}`)).status(),
+  ).toBe(404);
+  expect(
+    (
+      await page.request.get(`/portfolio/${slug}/assets/${mediaId}.pdf`)
+    ).status(),
+  ).toBe(404);
 });

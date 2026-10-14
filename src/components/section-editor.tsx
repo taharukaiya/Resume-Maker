@@ -534,6 +534,18 @@ function EntryEditor({
                 />
               </Field>
             </div>
+            <Field label="Citation count">
+              <input
+                type="number"
+                min="0"
+                max="1000000000"
+                value={entry.citationCount || 0}
+                disabled={!editable}
+                onChange={(event) =>
+                  change("citationCount", Number(event.target.value))
+                }
+              />
+            </Field>
             <Field label="Article cover">
               <select
                 value={entry.coverId || ""}

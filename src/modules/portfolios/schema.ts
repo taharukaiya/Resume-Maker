@@ -90,6 +90,7 @@ export const entrySchema = z
     issue: z.string().max(80).optional(),
     pages: z.string().max(80).optional(),
     coverId: asset.optional(),
+    citationCount: z.number().int().min(0).max(1000000000).optional(),
   })
   .strict();
 export const sectionSchema = z
@@ -124,6 +125,9 @@ const baseLabels = {
   receivedMessage: "Your message has been delivered to the portfolio team.",
 };
 const interactionLabels = {
+  recentArticles: "Recent Research Articles",
+  timelineHeading: "Education & Experience",
+  citationHeading: "CITE THIS ARTICLE",
   selectedWork: "Selected research",
   researchAreas: "Research interests",
   footerHeading: "Let’s connect.",
