@@ -3,7 +3,7 @@ import { signatureLooks } from "../src/modules/portfolios/design";
 import {
   canEditDocument,
   documentSchema,
-  emptyDocument,
+  emptyDocument as baseEmptyDocument,
   emptyEntry,
 } from "../src/modules/portfolios/schema";
 import { renderPortfolio } from "../src/modules/publishing/render";
@@ -14,6 +14,18 @@ const options = {
   asset: () => "",
   siteId: crypto.randomUUID(),
   appUrl: "https://studio.example",
+};
+
+// Preserve compatibility with older saved designs.
+const emptyDocument = (name: string) => {
+  const doc = baseEmptyDocument(name);
+  doc.theme = {
+    ...doc.theme,
+    style: "modern",
+    font: "manrope",
+    bodyFont: "dm-sans",
+  };
+  return doc;
 };
 
 describe("Portfolio experience", () => {

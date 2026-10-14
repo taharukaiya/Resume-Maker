@@ -49,6 +49,30 @@ export function PublicationsEditor({
   );
   return (
     <div className="stack">
+      {admin && (
+        <section className="panel">
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={document.navigation.articlesEnabled !== false}
+              onChange={(event) =>
+                onChange({
+                  ...document,
+                  navigation: {
+                    ...document.navigation,
+                    articlesEnabled: event.target.checked,
+                  },
+                })
+              }
+            />{" "}
+            Show the research archive and article pages
+          </label>
+          <p className="panel-description">
+            Turning this off hides articles and their navigation links on the
+            next published release. Your drafts stay available here.
+          </p>
+        </section>
+      )}
       <section className="panel spread wrap">
         <div>
           <p className="eyebrow">Research, made discoverable</p>

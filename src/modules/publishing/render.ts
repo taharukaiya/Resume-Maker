@@ -1,4 +1,5 @@
 import { fonts, fontFaceCss } from "@/modules/portfolios/design";
+import { renderShibaPortfolio } from "./shiba";
 import { portfolioSeo, portfolioTabTitle } from "@/modules/portfolios/seo";
 import { publicCss } from "./styles";
 import { initialsFavicon, nameInitials } from "./favicon";
@@ -51,6 +52,7 @@ export function renderPortfolio(
   doc: PortfolioDocument,
   options: RenderOptions,
 ): Record<string, string> {
+  if (doc.theme.style === "shiba") return renderShibaPortfolio(doc, options);
   const { baseUrl, asset, agencyName } = options;
   const seo = portfolioSeo(doc);
   const faviconUrl =

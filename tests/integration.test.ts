@@ -545,7 +545,17 @@ describe.sequential(
         {
           abstract: "Test research summary grounded in the fixture.",
           keywords: ["testing"],
-          limitations: "Fixture only.",
+          title: "Research fixture",
+          authors: "Ada Lovelace; Alan Turing",
+          date: "2025-02-09",
+          journal: "Test Journal",
+          volume: "1",
+          issue: "2",
+          pages: "3-9",
+          doi: "",
+          category: "Testing",
+          abstractSource: "generated",
+          warnings: ["Fixture only."],
         },
         {
           profile: {
@@ -874,11 +884,11 @@ describe.sequential(
       document = newer;
       expect(await processOneJob()).toBe(true);
       const fontsManifest = await liveManifest("first-researcher");
-      expect(fontsManifest?.routes["fonts/fraunces.woff2"].type).toBe(
+      expect(fontsManifest?.routes["fonts/inter.woff2"].type).toBe(
         "font/woff2",
       );
       expect(
-        (await getObject(fontsManifest!.routes["fonts/dm-sans.woff2"].key))
+        (await getObject(fontsManifest!.routes["fonts/merriweather.woff2"].key))
           ?.subarray(0, 4)
           .toString(),
       ).toBe("wOF2");

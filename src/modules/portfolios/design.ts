@@ -1,5 +1,7 @@
 /** Shared, allowlisted design choices for the editor and static publisher. */
 export const fontIds = [
+  "inter",
+  "merriweather",
   "serif",
   "sans",
   "fraunces",
@@ -14,6 +16,16 @@ export const fonts: Record<
   FontId,
   { label: string; family: string; file?: string }
 > = {
+  inter: {
+    label: "Inter",
+    family: "'Portfolio Inter',sans-serif",
+    file: "inter.woff2",
+  },
+  merriweather: {
+    label: "Merriweather",
+    family: "'Portfolio Merriweather',Georgia,serif",
+    file: "merriweather.woff2",
+  },
   serif: { label: "Georgia · classic serif", family: "Georgia,serif" },
   sans: { label: "System · native sans", family: "system-ui,sans-serif" },
   fraunces: {

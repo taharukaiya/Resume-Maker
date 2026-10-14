@@ -15,7 +15,10 @@ import { randomUUID } from "node:crypto";
 import { syncCustomDomains } from "./cdn";
 import { renderPortfolio } from "./render";
 import sharp from "sharp";
+import { shibaDocument } from "./shiba";
+import { shibaScriptSource } from "./shiba-script";
 export type ReleaseManifest = {
+  scriptSource?: string;
   siteId: string;
   releaseId: string;
   slug: string;
@@ -35,9 +38,26 @@ export async function buildRelease(
   payload: PublishPayload,
   releaseId: string = randomUUID(),
 ): Promise<ReleaseManifest> {
-  const document = documentSchema.parse(payload.document),
+  const document = shibaDocument(documentSchema.parse(payload.document)),
     database = await db();
-  const assets = collectAssetIds(document);
+  const assets = collectAssetIds({
+    ...document,
+    sections: document.sections.filter(
+      (section) =>
+        section.visible &&
+        (document.navigation.articlesEnabled !== false ||
+          section.type !== "publications"),
+    ),
+    pages: document.pages.map((page) => ({
+      ...page,
+      sections: page.sections.filter(
+        (section) =>
+          section.visible &&
+          (document.navigation.articlesEnabled !== false ||
+            section.type !== "publications"),
+      ),
+    })),
+  });
   const media = await database.query<Media>(
     "SELECT * FROM media WHERE site_id=$1",
     [siteId],
@@ -89,6 +109,8 @@ export async function buildRelease(
     baseUrl: payload.canonicalUrl,
     agencyName: payload.agencyName,
     asset: (id) => assetPaths.get(id) || "",
+    isImage: (id) =>
+      !!media.find((file) => file.id === id)?.mime.startsWith("image/"),
     siteId,
     appUrl: config().appUrl,
   });
@@ -105,6 +127,7 @@ export async function buildRelease(
     routes[route] = { key, type };
   }
   return {
+    scriptSource: shibaScriptSource,
     siteId,
     releaseId,
     slug: payload.slug,

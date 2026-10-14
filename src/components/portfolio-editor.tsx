@@ -335,6 +335,47 @@ export function PortfolioEditor({ id }: { id: string }) {
     ["history", "History"],
   ];
   const assets = data.media;
+  function addArticle(file: Media) {
+    if (!document) return;
+    const sections = structuredClone(document.sections);
+    let section = sections.find((s) => s.type === "publications");
+    if (!section) {
+      section = {
+        id: crypto.randomUUID(),
+        type: "publications",
+        title: "Research Articles",
+        visible: true,
+        intro: "",
+        entries: [],
+      };
+      sections.push(section);
+    }
+    const meta = file.article_metadata;
+    section.entries.push({
+      ...emptyEntry(),
+      title: meta?.title || file.filename.replace(/\.pdf$/i, ""),
+      authors: meta?.authors || "",
+      start: meta?.date || "",
+      body: meta?.abstract || file.summary?.abstract || "",
+      abstractSource: meta?.abstractSource || (file.summary ? "generated" : ""),
+      tags: (meta?.keywords || file.summary?.keywords || [])
+        .join(", ")
+        .slice(0, 500),
+      doi: meta?.doi || "",
+      category: meta?.category || "",
+      journal: meta?.journal || "",
+      volume: meta?.volume || "",
+      issue: meta?.issue || "",
+      pages: meta?.pages || "",
+      fullText: file.extracted_text || "",
+      mediaId: file.id,
+    });
+    change({ ...document, sections });
+    setTab("publications");
+    feedback.setMessage(
+      "Added to the draft. Review and edit all article details before publishing.",
+    );
+  }
   const seoPreview = portfolioSeo(document);
   const readiness = publicationIssues(document);
   const currentStep = portfolioSteps.findIndex(([key]) => key === tab);
@@ -564,6 +605,20 @@ export function PortfolioEditor({ id }: { id: string }) {
                   </div>
                 ))}
                 <div className="full-span">
+                  {admin && (
+                    <Field
+                      label="Blue headline phrase"
+                      hint="Enter the exact words from the headline to highlight in blue."
+                    >
+                      <input
+                        value={document.profile.headlineHighlight || ""}
+                        maxLength={200}
+                        onChange={(event) =>
+                          profile("headlineHighlight", event.target.value)
+                        }
+                      />
+                    </Field>
+                  )}
                   <Field
                     label="Biography"
                     hint="Appears on the About page in a separate-page website. In a scrolling layout, add an About section."
@@ -1140,7 +1195,8 @@ export function PortfolioEditor({ id }: { id: string }) {
               <Upload size={24} />
               <strong>Upload a portrait, CV, or research paper</strong>
               <small>
-                PDF, JPG, PNG, or WebP · up to {demo ? 5 : 20} MB per file
+                DOC, DOCX, PDF, JPG, PNG, or WebP · up to {demo ? 5 : 20} MB per
+                file. Word articles become downloadable PDFs.
               </small>
               <div
                 style={{
@@ -1150,7 +1206,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 }}
               >
                 <Field
-                  label="PDF purpose"
+                  label="Document purpose"
                   hint="Server AI summarizes article uploads automatically. Browser AI requires the checkbox below. Images never trigger AI."
                 >
                   <select
@@ -1167,7 +1223,11 @@ export function PortfolioEditor({ id }: { id: string }) {
               <input
                 aria-label="Upload a file"
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                accept={
+                  admin
+                    ? ".doc,.docx,.pdf,.jpg,.jpeg,.png,.webp"
+                    : ".pdf,.jpg,.jpeg,.png,.webp"
+                }
                 disabled={feedback.busy}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -1202,7 +1262,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     }
                     feedback.setMessage(
                       result.summaryQueued
-                        ? "Article uploaded. Research summary generation started automatically."
+                        ? "Article uploaded. AI is extracting editable details and an abstract."
                         : "File uploaded. Select it in the relevant content field to include it in the portfolio.",
                     );
                   });
@@ -1274,6 +1334,14 @@ export function PortfolioEditor({ id }: { id: string }) {
                   {admin && file.mime === "application/pdf" && (
                     <Button
                       variant="secondary small"
+                      onClick={() => addArticle(file)}
+                    >
+                      Add article draft
+                    </Button>
+                  )}
+                  {admin && file.mime === "application/pdf" && (
+                    <Button
+                      variant="secondary small"
                       disabled={!aiEnabled || feedback.busy}
                       onClick={() =>
                         void feedback.run(async () => {
@@ -1287,7 +1355,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                         })
                       }
                     >
-                      <Sparkles size={13} /> Generate summary
+                      <Sparkles size={13} /> Extract details & abstract
                     </Button>
                   )}
                   {admin && (
@@ -1333,36 +1401,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     {admin && (
                       <Button
                         variant="secondary small"
-                        onClick={() => {
-                          const sections = structuredClone(document.sections);
-                          let section = sections.find(
-                            (s) => s.type === "publications",
-                          );
-                          if (!section) {
-                            section = {
-                              id: crypto.randomUUID(),
-                              type: "publications",
-                              title: "Publications",
-                              visible: true,
-                              intro: "",
-                              entries: [],
-                            };
-                            sections.push(section);
-                          }
-                          section.entries.push({
-                            ...emptyEntry(),
-                            title: file.filename.replace(/\.pdf$/i, ""),
-                            body: file.summary!.abstract,
-                            tags: file.summary!.keywords.join(", "),
-                            mediaId: file.id,
-                            abstractSource: "generated",
-                          });
-                          change({ ...document, sections });
-                          setTab("publications");
-                          feedback.setMessage(
-                            "Added to the draft. Review the title, authors, dates, and summary before publishing.",
-                          );
-                        }}
+                        onClick={() => addArticle(file)}
                       >
                         Add to publication draft
                       </Button>

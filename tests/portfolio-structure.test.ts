@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  emptyDocument,
+  emptyDocument as baseEmptyDocument,
   emptyEntry,
   documentSchema,
   canEditDocument,
@@ -27,6 +27,18 @@ const options = {
   asset: () => "",
   siteId: crypto.randomUUID(),
 };
+// Preserve compatibility with older saved designs.
+const emptyDocument = (name: string) => {
+  const doc = baseEmptyDocument(name);
+  doc.theme = {
+    ...doc.theme,
+    style: "modern",
+    font: "manrope",
+    bodyFont: "dm-sans",
+  };
+  return doc;
+};
+
 describe("Portfolio page structure", () => {
   it("places education before hobbies even when added later and preserves custom ordering", () => {
     const items = [

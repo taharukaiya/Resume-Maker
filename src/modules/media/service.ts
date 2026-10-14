@@ -13,7 +13,10 @@ import { randomUUID } from "node:crypto";
 import net from "node:net";
 import sharp from "sharp";
 import { aiConfig } from "@/modules/ai/config";
+import { wordExtension, wordToPdf } from "./word";
 export type Media = {
+  article_metadata?: import("@/modules/ai/article").ArticleMetadata | null;
+  extracted_text?: string | null;
   cv_import?: import("@/modules/portfolios/cv-import").CvExtraction | null;
   id: string;
   site_id: string;
@@ -116,16 +119,27 @@ export async function upload(
   );
   let bytes = Buffer.from(await file.arrayBuffer());
   const kind = await fileTypeFromBuffer(bytes);
+  const word = wordExtension(file.name, kind?.mime);
   invariant(
     kind &&
-      ["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
-        kind.mime,
-      ),
+      (word ||
+        ["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
+          kind.mime,
+        )),
     400,
-    "Supported files: PDF, JPG, PNG, and WebP.",
+    "Supported files: DOC, DOCX, PDF, JPG, PNG, and WebP.",
   );
   await scanFile(bytes);
-  let mime = kind.mime;
+  if (word) {
+    invariant(
+      user.role === "admin" && purpose === "article",
+      403,
+      "Word article uploads are restricted to administrators.",
+    );
+    bytes = Buffer.from(await wordToPdf(bytes, word));
+    await scanFile(bytes);
+  }
+  let mime = word ? "application/pdf" : kind.mime;
   if (mime.startsWith("image/")) purpose = "image";
   const summaryQueued =
     purpose === "article" &&
@@ -133,7 +147,7 @@ export async function upload(
     user.role === "admin" &&
     aiConfig().server;
   if (summaryQueued) await rateLimit(`abstract:${user.id}`, 20, 3600);
-  let extension = kind.ext;
+  let extension = word ? "pdf" : kind.ext;
   if (mime.startsWith("image/")) {
     bytes = Buffer.from(
       await sharp(bytes, { limitInputPixels: 40000000 })
@@ -170,7 +184,9 @@ export async function upload(
         [
           id,
           siteId,
-          file.name.replace(/[\r\n\\/]/g, "").slice(0, 200),
+          (word ? file.name.replace(/\.docx?$/i, ".pdf") : file.name)
+            .replace(/[\r\n\\/]/g, "")
+            .slice(0, 200),
           mime,
           bytes.length,
           key,

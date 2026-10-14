@@ -17,6 +17,8 @@ import {
 import { getSite, saveDocument, type Site } from "@/modules/portfolios/service";
 import { syncCustomDomains } from "@/modules/publishing/cdn";
 import { renderPortfolio } from "@/modules/publishing/render";
+import { shibaDocument } from "@/modules/publishing/shiba";
+import { shibaScriptSource } from "@/modules/publishing/shiba-script";
 import { type ReleaseManifest } from "@/modules/publishing/service";
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -182,7 +184,7 @@ export async function portfolioRoutes(
             )
           : Promise.resolve([]),
         database.query<Media>(
-          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
+          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import,article_metadata,extracted_text" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
           [id],
         ),
         database.query(
@@ -414,7 +416,7 @@ export async function portfolioRoutes(
       const [agency] = await database.query<{ value: { name: string } }>(
         "SELECT value FROM settings WHERE key='agency'",
       );
-      const rendered = renderPortfolio(site.draft, {
+      const rendered = renderPortfolio(shibaDocument(site.draft), {
         baseUrl: `${config().appUrl}/api/sites/${id}/preview`,
         fontUrl: (file) => `${config().appUrl}/fonts/${file}`,
         agencyName: agency?.value.name || "Brilliancy Research",
@@ -442,8 +444,7 @@ export async function portfolioRoutes(
               : "text/html; charset=utf-8",
           "Cache-Control": "no-store",
           "X-Robots-Tag": "noindex, nofollow",
-          "Content-Security-Policy":
-            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src 'self'; frame-ancestors 'self'; form-action 'none'; base-uri 'none'",
+          "Content-Security-Policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src 'self'; script-src ${shibaScriptSource}; frame-ancestors 'self'; form-action 'none'; base-uri 'none'`,
         },
       });
     }

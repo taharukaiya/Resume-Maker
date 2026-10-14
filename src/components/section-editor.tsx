@@ -448,7 +448,10 @@ function EntryEditor({
         {type === "publications" && (
           <>
             <div className="full-span">
-              <Field label="Authors" hint="Separate author names with commas.">
+              <Field
+                label="Authors"
+                hint="Separate people with semicolons. Use Family, Given for precise citation names."
+              >
                 <input
                   value={entry.authors}
                   maxLength={1000}
@@ -499,6 +502,54 @@ function EntryEditor({
                 />
               </Field>
             </div>
+            {(
+              [
+                ["category", "Category"],
+                ["journal", "Journal / publication venue"],
+                ["volume", "Volume"],
+                ["issue", "Issue"],
+                ["pages", "Page range"],
+              ] as const
+            ).map(([key, label]) => (
+              <Field key={key} label={label}>
+                <input
+                  value={entry[key] || ""}
+                  maxLength={key === "category" || key === "journal" ? 200 : 80}
+                  disabled={!editable}
+                  onChange={(event) => change(key, event.target.value)}
+                />
+              </Field>
+            ))}
+            <div className="full-span">
+              <Field
+                label="Full article text"
+                hint="Extracted document text. Review headings and paragraph breaks before publishing."
+              >
+                <textarea
+                  rows={12}
+                  value={entry.fullText || ""}
+                  maxLength={240000}
+                  disabled={!editable}
+                  onChange={(event) => change("fullText", event.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Article cover">
+              <select
+                value={entry.coverId || ""}
+                disabled={!editable}
+                onChange={(event) => change("coverId", event.target.value)}
+              >
+                <option value="">No cover image</option>
+                {media
+                  .filter((file) => file.mime.startsWith("image/"))
+                  .map((file) => (
+                    <option key={file.id} value={file.id}>
+                      {file.filename}
+                    </option>
+                  ))}
+              </select>
+            </Field>
           </>
         )}
         <div className="full-span">

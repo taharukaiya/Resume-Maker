@@ -83,6 +83,13 @@ export const entrySchema = z
       "in-progress",
     ]),
     abstractSource: z.enum(["", "original", "generated"]),
+    fullText: z.string().max(240000).optional(),
+    category: short.optional(),
+    journal: short.optional(),
+    volume: z.string().max(80).optional(),
+    issue: z.string().max(80).optional(),
+    pages: z.string().max(80).optional(),
+    coverId: asset.optional(),
   })
   .strict();
 export const sectionSchema = z
@@ -153,6 +160,7 @@ export const documentSchema = z
       .object({
         name: short.min(1),
         headline: short,
+        headlineHighlight: short.optional(),
         affiliation: short,
         bio: z.string().max(10000),
         location: short,
@@ -176,6 +184,7 @@ export const documentSchema = z
     theme: z
       .object({
         style: z.enum([
+          "shiba",
           "lumen",
           "archive",
           "editorial",
@@ -215,6 +224,7 @@ export const documentSchema = z
       .strict(),
     navigation: z
       .object({
+        articlesEnabled: z.boolean().optional(),
         siteTitle: short,
         contactLabel: short,
         cvLabel: short,
@@ -294,6 +304,7 @@ export const documentSchema = z
           [
             "login",
             "publications",
+            "article",
             "assets",
             "fonts",
             "index",
@@ -339,6 +350,7 @@ export const documentSchema = z
         [
           "login",
           "publications",
+          "article",
           "sitemap.xml",
           "robots.txt",
           "assets",
@@ -404,13 +416,13 @@ export function emptyDocument(name: string): PortfolioDocument {
       indexable: true,
     },
     theme: {
-      style: "modern",
+      style: "shiba",
       accent: "#2254a5",
       background: "#ffffff",
       text: "#162438",
       secondary: "#d9e6fa",
-      font: "manrope",
-      bodyFont: "dm-sans",
+      font: "inter",
+      bodyFont: "merriweather",
       portrait: "cutout",
       width: "standard",
       roundness: "soft",
@@ -484,9 +496,9 @@ export function collectAssetIds(doc: PortfolioDocument) {
         doc.profile.cvId,
         doc.seo.socialImageId,
         ...[...doc.sections, ...doc.pages.flatMap((p) => p.sections)].flatMap(
-          (s) => s.entries.map((e) => e.mediaId),
+          (s) => s.entries.flatMap((e) => [e.mediaId, e.coverId]),
         ),
-      ].filter(Boolean),
+      ].filter((id): id is string => !!id),
     ),
   ];
 }

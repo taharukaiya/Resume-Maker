@@ -88,6 +88,29 @@ export async function saveDocument(
         400,
         "The CV must be a PDF file.",
       );
+      for (const section of [
+        ...document.sections,
+        ...document.pages.flatMap((page) => page.sections),
+      ]) {
+        for (const entry of section.entries) {
+          invariant(
+            !entry.coverId ||
+              media
+                .find((file) => file.id === entry.coverId)
+                ?.mime.startsWith("image/"),
+            400,
+            "Article covers must be image files.",
+          );
+          if (section.type === "publications")
+            invariant(
+              !entry.mediaId ||
+                media.find((file) => file.id === entry.mediaId)?.mime ===
+                  "application/pdf",
+              400,
+              "Article downloads must be PDF files.",
+            );
+        }
+      }
     }
     const next = revision + 1;
     await tx.query(

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { randomUUID } from "node:crypto";
 import {
-  emptyDocument,
+  emptyDocument as baseEmptyDocument,
   emptyEntry,
   documentSchema,
   canEditDocument,
@@ -11,6 +11,18 @@ import {
   escapeHtml,
   formatDate,
 } from "../src/modules/publishing/render";
+// Preserve compatibility with older saved designs.
+const emptyDocument = (name: string) => {
+  const doc = baseEmptyDocument(name);
+  doc.theme = {
+    ...doc.theme,
+    style: "modern",
+    font: "manrope",
+    bodyFont: "dm-sans",
+  };
+  return doc;
+};
+
 describe("Client field permissions", () => {
   const original = emptyDocument("A researcher");
   it("accepts a change to an explicitly unlocked field", () => {

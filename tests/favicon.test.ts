@@ -4,8 +4,23 @@ import {
   nameInitials,
 } from "../src/modules/publishing/favicon";
 import { renderPortfolio } from "../src/modules/publishing/render";
-import { emptyDocument, emptyEntry } from "../src/modules/portfolios/schema";
+import {
+  emptyDocument as baseEmptyDocument,
+  emptyEntry,
+} from "../src/modules/portfolios/schema";
 import { signatureLooks } from "../src/modules/portfolios/design";
+
+// Preserve compatibility with older saved designs.
+const emptyDocument = (name: string) => {
+  const doc = baseEmptyDocument(name);
+  doc.theme = {
+    ...doc.theme,
+    style: "modern",
+    font: "manrope",
+    bodyFont: "dm-sans",
+  };
+  return doc;
+};
 
 describe("Researcher favicons", () => {
   it("keeps every design person-first, with current titles and photo icons across pages", () => {
