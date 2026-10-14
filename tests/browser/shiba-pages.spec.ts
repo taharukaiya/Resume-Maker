@@ -41,6 +41,12 @@ test("reference About and Contact layouts, pipe titles and working collaboration
   doc.profile.logoId = figure;
   doc.profile.cvId = file.id;
   doc.profile.headline = "Research, evidence and impact";
+  doc.profile.heroBadge = "Finance • Risk Analytics • Research";
+  doc.profile.heroHeadline =
+    "Bridging Financial Risk with Data-Driven Intelligence with Moral Philosophy";
+  doc.profile.headlineHighlight = "Data-Driven Intelligence";
+  doc.profile.heroIntro =
+    "Exploring financial risk, banking stability, anti-money laundering, and geopolitical finance through data analytics, explainable AI, and evidence-based research to support smarter financial decision-making.";
   doc.profile.aboutHeadline = "Bridging research with evidence and impact";
   doc.profile.aboutBio =
     "I study how communities respond to changing environments. My research connects institutions, public policy and empirical evidence.\n\nI collaborate across disciplines to develop transparent methods and practical insights.";
@@ -50,6 +56,7 @@ test("reference About and Contact layouts, pipe titles and working collaboration
   doc.profile.mailingAddress = "Example University\nExample City";
   doc.profile.links = [
     { label: "Google Scholar", url: "https://scholar.google.com/" },
+    { label: "GitHub Profile", url: "https://github.com/example" },
   ];
   const section = (
     type: Section["type"],
@@ -152,6 +159,52 @@ test("reference About and Contact layouts, pipe titles and working collaboration
     )
     .toBe("published");
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`/portfolio/${slug}`);
+  await expect(page.locator(".hero h1")).toHaveCSS("font-size", "60px");
+  await expect(page.locator(".hero h1 span")).toHaveText(
+    "Data-Driven Intelligence",
+  );
+  await expect(page.locator(".hero-badge")).toHaveText(doc.profile.heroBadge);
+  await page.screenshot({
+    path: ".test-data/home-identical-desktop.png",
+    fullPage: false,
+  });
+  for (const width of [375, 768, 1024]) {
+    await page.setViewportSize({ width, height: 850 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      `No overflow at ${width}px`,
+    ).toBe(true);
+    if (width === 375) {
+      await expect(page.locator(".brand img")).toBeVisible();
+      await expect(page.locator(".hero h1")).toHaveCSS("font-size", "30px");
+      await expect(page.locator(".hero h1")).toHaveCSS("line-height", "33px");
+      await expect(page.locator(".cv-short")).toBeVisible();
+      await expect(page.locator(".cv-long")).toBeHidden();
+      await page.screenshot({
+        path: ".test-data/home-identical-mobile.png",
+        fullPage: false,
+      });
+      const menu = page.getByRole("button", { name: "Menu", exact: true });
+      await menu.click();
+      await expect(menu).toHaveAttribute("aria-expanded", "true");
+      await expect(
+        page.getByRole("navigation", { name: "Mobile navigation" }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveAttribute("aria-expanded", "false");
+      await menu.click();
+      await page
+        .getByRole("navigation", { name: "Mobile navigation" })
+        .getByRole("link", { name: "ABOUT ME", exact: true })
+        .click();
+      await expect(page).toHaveURL(new RegExp(`/portfolio/${slug}/about$`));
+      await page.goto(`/portfolio/${slug}`);
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/portfolio/${slug}/about`);
   await expect(page).toHaveTitle("About Me | Dr. Amina Rahman");
   await expect(
@@ -216,7 +269,7 @@ test("reference About and Contact layouts, pipe titles and working collaboration
   await page
     .locator('textarea[name="message"]')
     .fill("I would like to discuss a potential collaboration.");
-  await page.getByRole("button", { name: "Send Inquiry", exact: true }).click();
+  await page.getByRole("button", { name: /send inquiry/i }).click();
   await expect(
     page.getByRole("heading", { name: doc.labels.receivedTitle }),
   ).toBeVisible();

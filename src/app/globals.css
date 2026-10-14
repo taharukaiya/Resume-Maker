@@ -207,6 +207,20 @@ small {
 .profile-link-row > .icon-button {
   margin-top: 26px;
 }
+.customizable-profile-link {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.customizable-profile-link .profile-link-url {
+  grid-column: 1 / -1;
+}
+.customizable-profile-link > .icon-button {
+  grid-column: 2;
+  justify-self: end;
+  margin-top: 0;
+}
 @media (max-width: 640px) {
   .profile-link-row {
     grid-template-columns: minmax(0, 1fr) 32px;

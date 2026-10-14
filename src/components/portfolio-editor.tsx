@@ -626,7 +626,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                   )}
                   <Field
                     label="Biography"
-                    hint="Appears on the About page in a separate-page website. In a scrolling layout, add an About section."
+                    hint="Used as the introduction unless you enter separate homepage or About Me text below."
                   >
                     <textarea
                       rows={7}
@@ -665,6 +665,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                 {admin &&
                   (
                     [
+                      [
+                        "heroBadge",
+                        "Homepage badge (topics above the heading)",
+                        200,
+                      ],
+                      ["heroHeadline", "Homepage heading", 200],
+                      ["heroIntro", "Homepage introduction", 10000],
                       ["aboutHeadline", "About Me heading", 200],
                       ["aboutBio", "About Me biography", 10000],
                       ["collaborationNote", "Collaboration note", 1000],
@@ -686,6 +693,29 @@ export function PortfolioEditor({ id }: { id: string }) {
                       </Field>
                     </div>
                   ))}
+                {admin &&
+                  (["portraitPositionX", "portraitPositionY"] as const).map(
+                    (key) => (
+                      <Field
+                        key={key}
+                        label={
+                          key === "portraitPositionX"
+                            ? "Portrait crop: horizontal position"
+                            : "Portrait crop: vertical position"
+                        }
+                      >
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={document.profile[key] ?? 50}
+                          onChange={(event) =>
+                            profile(key, Number(event.target.value))
+                          }
+                        />
+                      </Field>
+                    ),
+                  )}
               </div>
             </section>
             <section className="panel">
@@ -717,9 +747,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                 </p>
               )}
               {document.profile.links.map((link, index) => (
-                <div className="profile-link-row" key={index}>
-                  <Field label="Platform">
-                    <select
+                <div
+                  className="profile-link-row customizable-profile-link"
+                  key={index}
+                >
+                  <Field label="Button label">
+                    <input
+                      list="social-platform-labels"
                       value={link.label}
                       disabled={!canEdit("profile.links")}
                       onChange={(e) =>
@@ -730,22 +764,75 @@ export function PortfolioEditor({ id }: { id: string }) {
                           ),
                         )
                       }
+                    />
+                  </Field>
+                  <Field label="Icon">
+                    <select
+                      value={link.icon || "auto"}
+                      disabled={!canEdit("profile.links")}
+                      onChange={(event) =>
+                        profile(
+                          "links",
+                          document.profile.links.map((l, i) =>
+                            i === index
+                              ? {
+                                  ...l,
+                                  icon: event.target.value as typeof link.icon,
+                                }
+                              : l,
+                          ),
+                        )
+                      }
                     >
-                      {!socialPlatforms.some(
-                        (label) => label === link.label,
-                      ) && (
-                        <option value={link.label}>
-                          {link.label || "Choose a platform"}
-                        </option>
-                      )}
-                      {socialPlatforms.map((label) => (
-                        <option key={label} value={label}>
-                          {label}
+                      {[
+                        "auto",
+                        "scholar",
+                        "github",
+                        "linkedin",
+                        "mail",
+                        "link",
+                        "none",
+                      ].map((icon) => (
+                        <option key={icon} value={icon}>
+                          {icon}
                         </option>
                       ))}
                     </select>
                   </Field>
-                  <div style={{ flex: 1 }}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={link.showInHero !== false}
+                      disabled={!canEdit("profile.links")}
+                      onChange={(event) =>
+                        profile(
+                          "links",
+                          document.profile.links.map((l, i) =>
+                            i === index
+                              ? { ...l, showInHero: event.target.checked }
+                              : l,
+                          ),
+                        )
+                      }
+                    />{" "}
+                    Show in homepage hero
+                  </label>
+                  {canEdit("profile.links") && index > 0 && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const links = [...document.profile.links];
+                        [links[index - 1], links[index]] = [
+                          links[index],
+                          links[index - 1],
+                        ];
+                        profile("links", links);
+                      }}
+                    >
+                      Move up
+                    </Button>
+                  )}
+                  <div className="profile-link-url">
                     <Field
                       label="URL"
                       hint={
@@ -795,6 +882,11 @@ export function PortfolioEditor({ id }: { id: string }) {
                   )}
                 </div>
               ))}
+              <datalist id="social-platform-labels">
+                {socialPlatforms.map((label) => (
+                  <option key={label} value={label} />
+                ))}
+              </datalist>
             </section>
           </div>
           <aside className="editor-aside">
@@ -1130,6 +1222,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     "siteTitle",
                     "contactLabel",
                     "cvLabel",
+                    "mobileCvLabel",
                     "footer",
                     "copyright",
                   ] as const
@@ -1141,6 +1234,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                         siteTitle: "Header title",
                         contactLabel: "Contact button",
                         cvLabel: "CV button",
+                        mobileCvLabel: "Mobile CV button",
                         footer: "Footer text",
                         copyright:
                           "Copyright line (leave blank for automatic year and name)",
@@ -1163,6 +1257,70 @@ export function PortfolioEditor({ id }: { id: string }) {
                   </Field>
                 ))}
               </div>
+              <h3>Footer links</h3>
+              {(document.navigation.footerLinks || []).map((link, index) => (
+                <div className="form-grid" key={index}>
+                  {(["label", "url"] as const).map((key) => (
+                    <Field
+                      key={key}
+                      label={key === "label" ? "Link text" : "Link URL"}
+                    >
+                      <input
+                        value={link[key]}
+                        onChange={(event) =>
+                          change({
+                            ...document,
+                            navigation: {
+                              ...document.navigation,
+                              footerLinks: (
+                                document.navigation.footerLinks || []
+                              ).map((item, i) =>
+                                i === index
+                                  ? { ...item, [key]: event.target.value }
+                                  : item,
+                              ),
+                            },
+                          })
+                        }
+                      />
+                    </Field>
+                  ))}
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      change({
+                        ...document,
+                        navigation: {
+                          ...document.navigation,
+                          footerLinks: document.navigation.footerLinks?.filter(
+                            (_, i) => i !== index,
+                          ),
+                        },
+                      })
+                    }
+                  >
+                    Remove footer link
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="secondary"
+                disabled={(document.navigation.footerLinks?.length || 0) >= 8}
+                onClick={() =>
+                  change({
+                    ...document,
+                    navigation: {
+                      ...document.navigation,
+                      footerLinks: [
+                        ...(document.navigation.footerLinks || []),
+                        { label: "", url: "" },
+                      ],
+                    },
+                  })
+                }
+              >
+                Add footer link
+              </Button>
             </details>
           </section>
         </>

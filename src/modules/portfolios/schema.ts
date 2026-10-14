@@ -140,6 +140,40 @@ const baseLabels = {
   receivedMessage: "Your message has been delivered to the portfolio team.",
 };
 const interactionLabels = {
+  subject: "Subject",
+  downloadPdf: "Download as PDF",
+  researchIntro: "Latest publications and research insights.",
+  researchTopics: "Research topics",
+  allResearch: "All Research",
+  viewAllResearch: "View All Research",
+  category: "Category",
+  pipelineHeading: "Publication Pipeline",
+  pipelineIntro: "Active journals and conference submissions.",
+  researchTitle: "Research title",
+  targetVenue: "Target venue",
+  date: "Date",
+  status: "Status",
+  articlesHeading: "Articles",
+  categories: "Categories",
+  allArticles: "All Articles",
+  mostCited: "Most Cited",
+  trendingTopics: "Trending Topics",
+  viewAbstract: "View Abstract",
+  copyCitation: "Copy Citation",
+  aboutAuthor: "About the author",
+  continueReading: "Continue reading",
+  cvHeading: "Interested in my full background?",
+  cvDescription:
+    "Download my full academic CV including complete publication history, teaching portfolio, and detailed project descriptions.",
+  fullCv: "Download Full CV (PDF)",
+  academicLinks: "Academic Links",
+  quickMessage: "Quick Message",
+  officeHoursHeading: "Office Hours",
+  mailingAddressHeading: "Mailing Address",
+  namePlaceholder: "Your name",
+  emailPlaceholder: "you@university.edu",
+  subjectPlaceholder: "Research Collaboration",
+  messagePlaceholder: "How can I help you?",
   recentArticles: "Recent Research Articles",
   timelineHeading: "Education & Experience",
   citationHeading: "CITE THIS ARTICLE",
@@ -180,6 +214,11 @@ export const documentSchema = z
         name: short.min(1),
         headline: short,
         headlineHighlight: short.optional(),
+        heroBadge: short.optional(),
+        heroHeadline: short.optional(),
+        heroIntro: z.string().max(10000).optional(),
+        portraitPositionX: z.number().min(0).max(100).optional(),
+        portraitPositionY: z.number().min(0).max(100).optional(),
         aboutHeadline: short.optional(),
         aboutBio: z.string().max(10000).optional(),
         collaborationNote: z.string().max(1000).optional(),
@@ -196,7 +235,24 @@ export const documentSchema = z
         portraitId: asset,
         cvId: asset,
         links: z
-          .array(z.object({ label: short, url: profileLinkUrlSchema }))
+          .array(
+            z.object({
+              label: short,
+              url: profileLinkUrlSchema,
+              showInHero: z.boolean().optional(),
+              icon: z
+                .enum([
+                  "auto",
+                  "scholar",
+                  "github",
+                  "linkedin",
+                  "mail",
+                  "link",
+                  "none",
+                ])
+                .optional(),
+            }),
+          )
           .max(20),
       })
       .strict(),
@@ -256,6 +312,11 @@ export const documentSchema = z
         siteTitle: short,
         contactLabel: short,
         cvLabel: short,
+        mobileCvLabel: short.optional(),
+        footerLinks: z
+          .array(z.object({ label: short, url: profileLinkUrlSchema }))
+          .max(8)
+          .optional(),
         footer: z.string().max(1000),
         copyright: z.string().max(300).optional(),
         layout: z.enum(["pages", "single"]).optional(),

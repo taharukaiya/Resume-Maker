@@ -188,4 +188,44 @@ describe("Reference About and Contact layouts", () => {
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
   });
+  it("round-trips independent home copy, link controls and safe footer URLs", () => {
+    const doc = fixture();
+    doc.profile.heroBadge = "CLIMATE | POLICY";
+    doc.profile.heroHeadline = "Evidence for a better future";
+    doc.profile.headlineHighlight = "better future";
+    doc.profile.heroIntro = "<script>unsafe()</script>\n\nEdited introduction.";
+    doc.profile.links = [
+      {
+        label: "Read my work",
+        url: "https://example.com/work",
+        icon: "scholar",
+        showInHero: true,
+      },
+      {
+        label: "Contact-only link",
+        url: "https://example.com/contact",
+        showInHero: false,
+      },
+    ];
+    doc.navigation.footerLinks = [
+      { label: "Privacy policy", url: "https://example.com/privacy" },
+    ];
+    doc.labels.pipelineHeading = "Current manuscripts";
+    const parsed = documentSchema.parse(doc),
+      pages = renderPortfolio(parsed, options);
+    const hero = pages["index.html"]
+      .split('<section class="hero">')[1]
+      .split("</section>")[0];
+    expect(hero).toContain("Evidence for a <span>better future</span>");
+    expect(hero).toContain("&lt;script&gt;unsafe()&lt;/script&gt;");
+    expect(hero).toContain("Read my work");
+    expect(hero).not.toContain("Contact-only link");
+    expect(pages["contact/index.html"]).toContain("Contact-only link");
+    expect(pages["about/index.html"]).toContain("An editable About heading");
+    expect(pages["index.html"]).toContain('href="https://example.com/privacy"');
+    doc.navigation.footerLinks[0].url = "javascript:alert(1)";
+    expect(documentSchema.safeParse(doc).success).toBe(false);
+    doc.profile.portraitPositionX = 101;
+    expect(documentSchema.safeParse(doc).success).toBe(false);
+  });
 });
