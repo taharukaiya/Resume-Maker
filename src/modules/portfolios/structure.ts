@@ -22,6 +22,8 @@ export const academicOrder = [
   "publications",
   "articles",
   "projects",
+  "interests",
+  "conferences",
   "awards",
   "skills",
   "custom",

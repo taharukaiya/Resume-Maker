@@ -14,7 +14,10 @@ export function PagePlanner({
   onChange: (doc: PortfolioDocument) => void;
 }) {
   const navigation = document.navigation;
-  const plan = portfolioPages(document);
+  const plan = portfolioPages({
+    ...document,
+    navigation: { ...navigation, layout: "pages" },
+  });
   function update(values: Partial<PortfolioDocument["navigation"]>) {
     onChange({ ...document, navigation: { ...navigation, ...values } });
   }
@@ -27,17 +30,6 @@ export function PagePlanner({
         in touch. Place individual sections from Academic sections.
       </p>
       <div className="form-grid">
-        <Field label="Website layout">
-          <select
-            value={navigation.layout || "pages"}
-            onChange={(e) =>
-              update({ layout: e.target.value as "pages" | "single" })
-            }
-          >
-            <option value="pages">Separate pages — recommended</option>
-            <option value="single">One scrolling page</option>
-          </select>
-        </Field>
         <Field label="Section sequence">
           <select
             value={navigation.sectionOrder || "academic"}
@@ -66,7 +58,7 @@ export function PagePlanner({
           />
         </Field>
       </div>
-      {navigation.layout !== "single" && (
+      {
         <div className="page-plan-grid">
           {(Object.keys(pageDefaults) as PageDestination[]).map(
             (key, index) => {
@@ -123,7 +115,7 @@ export function PagePlanner({
             },
           )}
         </div>
-      )}
+      }
       <p className="panel-description" style={{ margin: "20px 0 0" }}>
         Existing content is preserved when you switch layouts. Custom pages
         below join the menu; a custom page with the same address adds its

@@ -14,7 +14,7 @@ describe("Curated portfolio workflow", () => {
     const doc = emptyDocument("Amina Rahman");
     doc.profile.headline = "Climate researcher";
     doc.profile.bio = "Private biography";
-    expect(portfolioSeo(doc).title).toBe("Amina Rahman — Climate researcher");
+    expect(portfolioSeo(doc).title).toBe("Amina Rahman | Climate researcher");
     expect(portfolioSeo(doc).description).not.toContain("Private biography");
     doc.profile.name = "Amina Hasan";
     expect(portfolioSeo(doc).title).toContain("Amina Hasan");

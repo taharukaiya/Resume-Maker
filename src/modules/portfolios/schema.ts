@@ -56,6 +56,8 @@ export const sectionTypes = [
   "publications",
   "articles",
   "projects",
+  "interests",
+  "conferences",
   "awards",
   "skills",
   "contact",
@@ -178,6 +180,15 @@ export const documentSchema = z
         name: short.min(1),
         headline: short,
         headlineHighlight: short.optional(),
+        aboutHeadline: short.optional(),
+        aboutBio: z.string().max(10000).optional(),
+        collaborationNote: z.string().max(1000).optional(),
+        contactHeading: short.optional(),
+        contactIntro: z.string().max(1000).optional(),
+        officeHours: z.string().max(2000).optional(),
+        mailingAddress: z.string().max(2000).optional(),
+        contactQuote: z.string().max(2000).optional(),
+        logoId: asset.optional(),
         affiliation: short,
         bio: z.string().max(10000),
         location: short,
@@ -309,7 +320,8 @@ export const documentSchema = z
   })
   .strict()
   .superRefine((doc, ctx) => {
-    if (doc.navigation.layout !== "single") {
+    {
+      // The fixed public design always has separate pages.
       const addresses = ["about", "research", "contact"].map(
         (key) =>
           doc.navigation.pageSettings?.[key as "about" | "research" | "contact"]
@@ -510,6 +522,7 @@ export function collectAssetIds(doc: PortfolioDocument) {
     ...new Set(
       [
         doc.profile.portraitId,
+        doc.profile.logoId,
         doc.profile.cvId,
         doc.seo.socialImageId,
         ...[...doc.sections, ...doc.pages.flatMap((p) => p.sections)].flatMap(

@@ -68,26 +68,26 @@ describe("Researcher favicons", () => {
         '<p class="eyebrow">Example University</p>',
       );
       expect(pages["index.html"]).toContain(
-        "<title>Amina Rahman — Climate researcher</title>",
+        "<title>Amina Rahman | Climate researcher</title>",
       );
       expect(pages["index.html"]).toContain(
         'property="og:title" content="Old custom search title"',
       );
       expect(pages["contact-me/index.html"]).toContain(
-        "<title>Contact — Amina Rahman</title>",
+        "<title>Contact | Amina Rahman</title>",
       );
       expect(pages[`publications/${paper.id}/index.html`]).toContain(
-        "<title>Climate &amp; communities — Amina Rahman</title>",
+        "<title>Climate &amp; communities | Amina Rahman</title>",
       );
     }
     doc.profile.name = "Amina Hasan";
     doc.profile.portraitId = crypto.randomUUID();
     const changed = renderPortfolio(doc, options);
     expect(changed["index.html"]).toContain(
-      "<title>Amina Hasan — Climate researcher</title>",
+      "<title>Amina Hasan | Climate researcher</title>",
     );
     expect(changed["contact-me/index.html"]).toContain(
-      "<title>Contact — Amina Hasan</title>",
+      "<title>Contact | Amina Hasan</title>",
     );
     for (const [route, html] of Object.entries(changed))
       if (route.endsWith(".html")) {

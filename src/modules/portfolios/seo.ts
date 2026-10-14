@@ -4,8 +4,8 @@ import type { PortfolioDocument } from "./schema";
 export function portfolioTabTitle(doc: PortfolioDocument, pageTitle?: string) {
   const name = doc.profile.name.trim();
   return pageTitle?.trim()
-    ? `${pageTitle.trim()} — ${name}`
-    : `${name} — ${doc.profile.headline.trim() || "Research portfolio"}`;
+    ? `${pageTitle.trim()} | ${name}`
+    : `${name} | ${doc.profile.headline.trim() || "Research portfolio"}`;
 }
 
 /** Derive metadata at render time so edits never leave stale generated values. */
@@ -24,7 +24,7 @@ export function portfolioSeo(doc: PortfolioDocument) {
     title:
       doc.seo.title.trim() ||
       compact(
-        `${doc.profile.name} — ${doc.profile.headline || "Research portfolio"}`,
+        `${doc.profile.name} | ${doc.profile.headline || "Research portfolio"}`,
         160,
       ),
     description:

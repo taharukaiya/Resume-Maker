@@ -131,7 +131,7 @@ export function renderPortfolio(
         : formatDate(entry.end, doc.seo.language),
     ]
       .filter(Boolean)
-      .join(" — ");
+      .join(" | ");
   const entryBody = (body: string) => {
     if (doc.theme.expandableEntries === false || body.length <= 320)
       return paragraphs(body);
@@ -243,7 +243,7 @@ export function renderPortfolio(
     pages[`${page.slug}/index.html`] = shell(
       portfolioTabTitle(doc, page.title),
       page.description ||
-        `${page.title} — ${profile.name}. ${page.sections
+        `${page.title} | ${profile.name}. ${page.sections
           .filter((section) => section.visible)
           .map((section) => section.title)
           .join(" · ")}`.slice(0, 320),

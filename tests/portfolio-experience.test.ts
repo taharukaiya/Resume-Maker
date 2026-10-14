@@ -107,7 +107,7 @@ describe("Portfolio experience", () => {
       expect(html.match(/<script\b/g)).toHaveLength(1);
       expect(html).toContain('<script type="application/ld+json">');
       expect(pages["teaching/index.html"]).toContain(
-        "<title>Teaching — Researcher &lt;script&gt;",
+        "<title>Teaching | Researcher &lt;script&gt;",
       );
       doc.theme.expandableEntries = false;
       expect(renderPortfolio(doc, options)["index.html"]).not.toContain(

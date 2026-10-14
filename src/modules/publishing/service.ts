@@ -75,7 +75,10 @@ export async function buildRelease(
       key = `releases/${siteId}/${releaseId}/${route}`;
     await putObject(key, bytes, file.mime);
     routes[route] = { key, type: file.mime };
-    if (id === document.profile.portraitId && file.mime.startsWith("image/")) {
+    if (
+      id === (document.profile.logoId || document.profile.portraitId) &&
+      file.mime.startsWith("image/")
+    ) {
       const iconKey = `releases/${siteId}/${releaseId}/favicon.png`;
       const icon = await sharp(bytes)
         .rotate()

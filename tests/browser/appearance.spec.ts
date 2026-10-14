@@ -114,7 +114,7 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
         "default-src 'none'",
       );
       await expect(publicPage).toHaveTitle(
-        `${doc.profile.name} — ${doc.profile.headline}`,
+        `${doc.profile.name} | ${doc.profile.headline}`,
       );
       await expect(publicPage.locator("body")).toHaveClass(look.theme.style);
       const index = publicPage.getByRole("navigation", {

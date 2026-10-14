@@ -101,7 +101,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       await publicPage.setViewportSize({ width: 1440, height: 1000 });
       await publicPage.goto(`/api/sites/${id}/preview`);
       await expect(publicPage).toHaveTitle(
-        `${doc.profile.name} — ${doc.profile.headline}`,
+        `${doc.profile.name} | ${doc.profile.headline}`,
       );
       await expect(publicPage.locator(".hero-copy > :first-child")).toHaveText(
         doc.profile.name,
@@ -130,7 +130,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
         .getByRole("navigation", { name: "Main navigation", exact: true })
         .getByRole("link", { name: "About", exact: true })
         .click();
-      await expect(publicPage).toHaveTitle(`About — ${doc.profile.name}`);
+      await expect(publicPage).toHaveTitle(`About | ${doc.profile.name}`);
       await expect(publicPage.locator(".section-head h2")).toHaveText([
         "About",
         "Education",
@@ -155,7 +155,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
         .getByRole("navigation", { name: "Mobile navigation", exact: true })
         .getByRole("link", { name: "Contact", exact: true })
         .click();
-      await expect(publicPage).toHaveTitle(`Contact — ${doc.profile.name}`);
+      await expect(publicPage).toHaveTitle(`Contact | ${doc.profile.name}`);
       await expect(
         publicPage.getByLabel("Your name", { exact: true }),
       ).toBeVisible();
@@ -258,7 +258,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       )
       .toBe(200);
     await publicPage.goto(`/portfolio/${slug}/connect`);
-    await expect(publicPage).toHaveTitle(`Get in touch — ${doc.profile.name}`);
+    await expect(publicPage).toHaveTitle(`Get in touch | ${doc.profile.name}`);
     await publicPage
       .getByLabel("Your name", { exact: true })
       .fill("Research Visitor");

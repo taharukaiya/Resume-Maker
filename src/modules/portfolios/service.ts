@@ -72,6 +72,7 @@ export async function saveDocument(
       );
       for (const asset of [
         document.profile.portraitId,
+        document.profile.logoId,
         document.seo.socialImageId,
       ]) {
         invariant(

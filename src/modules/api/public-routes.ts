@@ -146,6 +146,7 @@ export async function publicRoutes(
         name: z.string().trim().min(1).max(120),
         email: emailSchema,
         message: z.string().trim().min(10).max(5000),
+        subject: z.string().trim().max(200).optional(),
         website: z.string().optional(),
       })
       .parse(Object.fromEntries(form));
@@ -165,7 +166,15 @@ export async function publicRoutes(
     invariant(site?.published_release_id, 404, "Portfolio is not published.");
     await database.query(
       "INSERT INTO inquiries(id,site_id,name,email,message) VALUES($1,$2,$3,$4,$5)",
-      [randomUUID(), input.siteId, input.name, input.email, input.message],
+      [
+        randomUUID(),
+        input.siteId,
+        input.name,
+        input.email,
+        input.subject
+          ? `Subject: ${input.subject}\n\n${input.message}`
+          : input.message,
+      ],
     );
     return new Response(
       `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(site.document.labels.receivedTitle)}</title><body style="font:18px system-ui;max-width:600px;margin:15vh auto;padding:24px"><h1>${escapeHtml(site.document.labels.receivedTitle)}</h1><p>${escapeHtml(site.document.labels.receivedMessage)}</p></body></html>`,

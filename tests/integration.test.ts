@@ -953,6 +953,7 @@ describe.sequential(
       const form = new URLSearchParams({
         siteId,
         name: "Visitor",
+        subject: "Climate collaboration",
         email: "visitor@integration.test",
         message: "I would like to discuss your research.",
         website: "",
@@ -968,6 +969,10 @@ describe.sequential(
         (await request("inquiries", "GET", undefined, clientCookie)).data
           .inquiries,
       ).toHaveLength(1);
+      const received = (
+        await request("inquiries", "GET", undefined, clientCookie)
+      ).data.inquiries[0];
+      expect(received.message).toContain("Subject: Climate collaboration");
     });
     it("unpublishes without deleting content and allows a former published portfolio to be deleted", async () => {
       expect(

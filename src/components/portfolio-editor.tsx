@@ -301,7 +301,7 @@ export function PortfolioEditor({ id }: { id: string }) {
         history: "History",
       } as Record<string, string>
     )[tab];
-    window.document.title = `${document.profile.name} · ${label} | Brilliancy Research`;
+    window.document.title = `${document.profile.name} | ${label} | Brilliancy Research`;
   }, [document?.profile.name, tab]);
   if (!document || !data)
     return (
@@ -413,12 +413,12 @@ export function PortfolioEditor({ id }: { id: string }) {
   }
   const assetSelect = (
     label: string,
-    key: "portraitId" | "cvId",
+    key: "portraitId" | "cvId" | "logoId",
     mime: string,
   ) => (
     <Field label={label}>
       <select
-        value={document.profile[key]}
+        value={document.profile[key] || ""}
         disabled={!canEdit(`profile.${key}`)}
         onChange={(e) => profile(key, e.target.value)}
       >
@@ -661,6 +661,31 @@ export function PortfolioEditor({ id }: { id: string }) {
                   }}
                 />
                 {assetSelect("Curriculum vitae", "cvId", "application/pdf")}
+                {admin && assetSelect("Website logo", "logoId", "image/")}
+                {admin &&
+                  (
+                    [
+                      ["aboutHeadline", "About Me heading", 200],
+                      ["aboutBio", "About Me biography", 10000],
+                      ["collaborationNote", "Collaboration note", 1000],
+                      ["contactHeading", "Contact heading", 200],
+                      ["contactIntro", "Contact introduction", 1000],
+                      ["officeHours", "Office hours", 2000],
+                      ["mailingAddress", "Mailing address", 2000],
+                      ["contactQuote", "Contact closing quote", 2000],
+                    ] as const
+                  ).map(([key, label, limit]) => (
+                    <div className="full-span" key={key}>
+                      <Field label={label}>
+                        <textarea
+                          rows={key === "aboutBio" ? 7 : 2}
+                          maxLength={limit}
+                          value={document.profile[key] || ""}
+                          onChange={(event) => profile(key, event.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  ))}
               </div>
             </section>
             <section className="panel">
