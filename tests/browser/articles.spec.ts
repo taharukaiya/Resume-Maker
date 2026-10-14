@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { signInAdmin } from "./admin-session";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
-import { textPdf } from "../pdf-fixture";
+import { readFile } from "node:fs/promises";
 test("fixed portfolio design, archive filters, citations, PDFs and administrator visibility", async ({
   page,
 }) => {
@@ -22,15 +22,20 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
       file: {
         name: "research.pdf",
         mimeType: "application/pdf",
-        buffer: textPdf([
-          "Research document fixture.",
-          "Methods, results and conclusions for software testing.",
-        ]),
+        buffer: await readFile("tests/fixtures/article-figure.pdf"),
       },
     },
   });
   expect(upload.status()).toBe(201);
   const { id: mediaId } = await upload.json();
+  const uploadedSite = await (
+    await page.request.get(`/api/sites/${id}`)
+  ).json();
+  const uploadedMedia = uploadedSite.media.find(
+    (file: { id: string }) => file.id === mediaId,
+  );
+  expect(uploadedMedia.article_assets.imageIds).toHaveLength(1);
+  const figureId = uploadedMedia.article_assets.imageIds[0];
   const doc = emptyDocument("Dr. Amina Rahman");
   doc.profile.headline = "Understanding financial risk through evidence.";
   doc.profile.affiliation = "Financial Risk & Research";
@@ -45,6 +50,14 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     body: "An editable abstract.",
     fullText: "Methods\n\nObserved evidence and limitations.",
     mediaId,
+    coverId: figureId,
+    images: [
+      {
+        mediaId: figureId,
+        alt: "Synthetic figure",
+        caption: "Administrator-edited figure caption",
+      },
+    ],
   };
   const second = {
     ...emptyEntry(),
@@ -81,13 +94,27 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     },
     {
       id: crypto.randomUUID(),
-      type: "publications",
-      title: "Research Articles",
+      type: "articles",
+      title: "Articles",
       visible: true,
       intro: "",
       entries: [first, second],
     },
   ];
+  doc.sections.push({
+    id: crypto.randomUUID(),
+    type: "publications",
+    title: "Research publications",
+    visible: true,
+    intro: "",
+    entries: [
+      {
+        ...emptyEntry(),
+        title: "A separate research paper",
+        category: "Finance",
+      },
+    ],
+  });
   let revision = 1;
   const save = async () => {
     const response = await page.request.put(`/api/sites/${id}`, {
@@ -103,7 +130,7 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await page.locator('[data-home-category="Finance"]').click();
   await expect(page.locator("[data-home-article]:visible")).toHaveCount(1);
   await expect(page.locator("[data-home-article]:visible")).toContainText(
-    second.title,
+    "A separate research paper",
   );
   await page.locator('[data-home-category=""]').click();
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -112,9 +139,7 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     fullPage: true,
   });
   await page.goto(`/api/sites/${id}/preview/article`);
-  await expect(
-    page.getByRole("heading", { name: "Research Archive" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Articles" })).toBeVisible();
   await expect(page.locator("[data-article]:visible")).toHaveCount(2);
   await page.getByRole("searchbox").fill("Coastal");
   await expect(page.locator("[data-article]:visible")).toHaveCount(1);
@@ -126,6 +151,13 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   );
   await page.goto(`/api/sites/${id}/preview/article/${first.id}`);
   await expect(page.getByRole("heading", { name: first.title })).toBeVisible();
+  await expect(page.locator(".article-figure")).toContainText(
+    "Administrator-edited figure caption",
+  );
+  await expect(page.locator(".article-figure img")).toHaveAttribute(
+    "alt",
+    "Synthetic figure",
+  );
   await page.getByRole("tab", { name: "IEEE", exact: true }).click();
   await expect(page.getByRole("tabpanel")).toContainText("2025");
   await expect(page.getByRole("tabpanel")).toContainText("Lovelace");
@@ -137,6 +169,7 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await expect(
     page.getByRole("button", { name: /Copied|Select and copy/ }),
   ).toBeVisible();
+  await expect(page.locator(".entry-image")).toHaveCount(1);
   const pdf = await page.request.get(`/api/media/${mediaId}`);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
   expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
@@ -175,15 +208,27 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     fullPage: true,
   });
   await page.goto(`/studio/portfolios/${id}`);
-  await page
-    .getByRole("combobox", { name: "Editing", exact: true })
-    .selectOption("design");
   await expect(
-    page.getByRole("heading", { name: "The Shiba design" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Six ways to tell your story." }),
+    page
+      .getByRole("combobox", { name: "Editing" })
+      .locator('option[value="design"]'),
   ).toHaveCount(0);
+  await expect(page.getByText("The Shiba design", { exact: true })).toHaveCount(
+    0,
+  );
+  await page
+    .getByRole("combobox", { name: "Editing" })
+    .selectOption("articles");
+  await expect(
+    page.getByRole("heading", { name: "Articles", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: ".test-data/articles-editor.png",
+    fullPage: true,
+  });
+  await page.request
+    .get(`/api/sites/${id}/preview/research`)
+    .then((response) => expect(response.status()).toBe(200));
   doc.navigation.articlesEnabled = false;
   await save();
   const hidden = await page.request.get(

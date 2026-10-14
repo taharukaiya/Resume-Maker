@@ -184,7 +184,7 @@ export async function portfolioRoutes(
             )
           : Promise.resolve([]),
         database.query<Media>(
-          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import,article_metadata,extracted_text" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
+          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import,article_metadata,extracted_text,article_assets" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
           [id],
         ),
         database.query(

@@ -13,18 +13,18 @@ export const portfolioSteps = [
   ],
   [
     "publications",
-    "Publications",
-    "Add papers, articles and abstracts. Attach PDFs from the file library and review generated summaries.",
+    "Research",
+    "Manage research publications and their submission pipeline.",
+  ],
+  [
+    "articles",
+    "Articles",
+    "Upload articles, review extracted text and images, and edit every detail before publishing.",
   ],
   [
     "pages",
     "Pages",
     "Choose where content belongs. Separate pages keep the public website focused and easy to explore.",
-  ],
-  [
-    "design",
-    "Design",
-    "Choose a complete look, then preview it on desktop and mobile.",
   ],
   [
     "publish",
@@ -47,7 +47,7 @@ export function EditorWorkflow({
   const steps = admin
     ? portfolioSteps
     : portfolioSteps.filter(([key]) =>
-        ["profile", "sections", "publications"].includes(key),
+        ["profile", "sections", "publications", "articles"].includes(key),
       );
   const tools = tabs.filter(([key]) => !steps.some(([step]) => key === step));
   const current = steps.find(([key]) => key === tab);

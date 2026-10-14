@@ -48,9 +48,11 @@ export function SectionsEditor({
       <div className="section-title">
         <div>
           <h2>
-            {types.length === 1 && types[0] === "publications"
-              ? "Your publication list"
-              : "Build the story."}
+            {types.length === 1 && types[0] === "articles"
+              ? "Your articles"
+              : types.length === 1 && types[0] === "publications"
+                ? "Your research publications"
+                : "Build the story."}
           </h2>
           <p className="panel-description" style={{ marginBottom: 0 }}>
             {order === "academic"
@@ -288,7 +290,9 @@ export function SectionsEditor({
                   }
                 >
                   <Plus size={13} /> Add{" "}
-                  {section.type === "publications" ? "publication" : "entry"}
+                  {["publications", "articles"].includes(section.type)
+                    ? "publication"
+                    : "entry"}
                 </Button>
               )}
             </div>
@@ -365,7 +369,7 @@ function EntryEditor({
         <div className="full-span">
           <Field
             label={
-              type === "publications"
+              ["publications", "articles"].includes(type)
                 ? "Publication title *"
                 : type === "education"
                   ? "Degree or qualification *"
@@ -384,7 +388,7 @@ function EntryEditor({
         <div className="full-span">
           <Field
             label={
-              type === "publications"
+              ["publications", "articles"].includes(type)
                 ? "Journal or conference"
                 : type === "education"
                   ? "Institution *"
@@ -402,7 +406,7 @@ function EntryEditor({
         </div>
         <Field
           label={
-            type === "publications"
+            ["publications", "articles"].includes(type)
               ? "Publication date"
               : type === "education"
                 ? "Start date *"
@@ -434,7 +438,7 @@ function EntryEditor({
             onChange={(e) => change("end", e.target.value)}
           />
         </Field>
-        {type !== "publications" && (
+        {!["publications", "articles"].includes(type) && (
           <label className="check-row full-span">
             <input
               type="checkbox"
@@ -445,7 +449,7 @@ function EntryEditor({
             Currently ongoing
           </label>
         )}
-        {type === "publications" && (
+        {["publications", "articles"].includes(type) && (
           <>
             <div className="full-span">
               <Field
@@ -562,12 +566,143 @@ function EntryEditor({
                   ))}
               </select>
             </Field>
+            <div className="full-span stack">
+              <h4>Article images</h4>
+              <p className="panel-description">
+                Review extracted figures. Replace images, edit descriptions and
+                captions, or change their order. Upload additional images
+                through the file library.
+              </p>
+              {(entry.images || []).map((image, imageIndex) => (
+                <div className="panel" key={imageIndex}>
+                  <img
+                    src={`/api/media/${image.mediaId}`}
+                    alt={image.alt || "Article figure preview"}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: 160,
+                      objectFit: "contain",
+                    }}
+                  />
+                  <Field label={`Image ${imageIndex + 1}`}>
+                    <select
+                      disabled={!editable}
+                      value={image.mediaId}
+                      onChange={(event) =>
+                        change(
+                          "images",
+                          (entry.images || []).map((item, i) =>
+                            i === imageIndex
+                              ? { ...item, mediaId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      {media
+                        .filter((file) => file.mime.startsWith("image/"))
+                        .map((file) => (
+                          <option key={file.id} value={file.id}>
+                            {file.filename}
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                  <Field label="Image description">
+                    <input
+                      maxLength={500}
+                      disabled={!editable}
+                      value={image.alt}
+                      onChange={(event) =>
+                        change(
+                          "images",
+                          (entry.images || []).map((item, i) =>
+                            i === imageIndex
+                              ? { ...item, alt: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Caption">
+                    <textarea
+                      maxLength={2000}
+                      disabled={!editable}
+                      value={image.caption}
+                      onChange={(event) =>
+                        change(
+                          "images",
+                          (entry.images || []).map((item, i) =>
+                            i === imageIndex
+                              ? { ...item, caption: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  {editable && (
+                    <div className="row">
+                      <Button
+                        variant="secondary small"
+                        disabled={!imageIndex}
+                        onClick={() => {
+                          const images = [...entry.images!];
+                          [images[imageIndex - 1], images[imageIndex]] = [
+                            images[imageIndex],
+                            images[imageIndex - 1],
+                          ];
+                          change("images", images);
+                        }}
+                      >
+                        Move image up
+                      </Button>
+                      <Button
+                        variant="secondary small"
+                        onClick={() =>
+                          change(
+                            "images",
+                            entry.images!.filter((_, i) => i !== imageIndex),
+                          )
+                        }
+                      >
+                        Remove image from article
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {editable && (entry.images || []).length < 24 && (
+                <Field label="Add an image">
+                  <select
+                    value=""
+                    onChange={(event) => {
+                      if (event.target.value)
+                        change("images", [
+                          ...(entry.images || []),
+                          { mediaId: event.target.value, alt: "", caption: "" },
+                        ]);
+                    }}
+                  >
+                    <option value="">Choose an image</option>
+                    {media
+                      .filter((file) => file.mime.startsWith("image/"))
+                      .map((file) => (
+                        <option key={file.id} value={file.id}>
+                          {file.filename}
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              )}
+            </div>
           </>
         )}
         <div className="full-span">
           <Field
             label={
-              type === "publications"
+              ["publications", "articles"].includes(type)
                 ? "Abstract or research summary"
                 : "Description"
             }

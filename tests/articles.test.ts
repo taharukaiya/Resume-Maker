@@ -42,7 +42,7 @@ function fixture() {
   doc.sections = [
     {
       id: crypto.randomUUID(),
-      type: "publications",
+      type: "articles",
       title: "Articles",
       visible: true,
       intro: "",

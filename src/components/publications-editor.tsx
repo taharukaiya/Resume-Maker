@@ -2,6 +2,7 @@
 import type { PortfolioDocument, Section } from "@/modules/portfolios/schema";
 import type { Media } from "@/modules/media/service";
 import { SectionsEditor } from "./section-editor";
+import { replaceSectionGroup } from "@/modules/portfolios/structure";
 import { Button } from "./ui";
 
 /** Replace only publication sections; keep all other content and identities. */
@@ -25,7 +26,9 @@ export function PublicationsEditor({
   admin,
   allowed,
   onFiles,
+  type = "publications",
 }: {
+  type?: "publications" | "articles";
   document: PortfolioDocument;
   onChange: (doc: PortfolioDocument) => void;
   media: Media[];
@@ -39,9 +42,17 @@ export function PublicationsEditor({
     customPage = false,
   ) => (
     <SectionsEditor
-      sections={sections.filter((section) => section.type === "publications")}
-      types={["publications"]}
-      onChange={(next) => onUpdate(replacePublications(sections, next))}
+      sections={sections.filter((section) => section.type === type)}
+      types={[type]}
+      onChange={(next) =>
+        onUpdate(
+          replaceSectionGroup(
+            sections,
+            next,
+            (section) => section.type === type,
+          ),
+        )
+      }
       media={media}
       admin={admin}
       allowed={customPage && !admin ? [] : allowed}
@@ -49,7 +60,7 @@ export function PublicationsEditor({
   );
   return (
     <div className="stack">
-      {admin && (
+      {admin && type === "articles" && (
         <section className="panel">
           <label className="check-row">
             <input
@@ -65,7 +76,7 @@ export function PublicationsEditor({
                 })
               }
             />{" "}
-            Show the research archive and article pages
+            Show the Article page
           </label>
           <p className="panel-description">
             Turning this off hides articles and their navigation links on the
@@ -75,8 +86,12 @@ export function PublicationsEditor({
       )}
       <section className="panel spread wrap">
         <div>
-          <p className="eyebrow">Research, made discoverable</p>
-          <h2>Publications & articles</h2>
+          <p className="eyebrow">
+            {type === "articles"
+              ? "Article library"
+              : "Research, made discoverable"}
+          </p>
+          <h2>{type === "articles" ? "Articles" : "Research publications"}</h2>
           <p className="panel-description">
             Add titles, authors, dates and abstracts. Each paper receives its
             own public page. Papers are optional; only include work the
@@ -84,15 +99,66 @@ export function PublicationsEditor({
           </p>
         </div>
         <Button variant="secondary" onClick={onFiles}>
-          Upload a paper / generate summary
+          Upload a document / extract details
         </Button>
       </section>
+      {admin &&
+        [
+          ...document.sections,
+          ...document.pages.flatMap((page) => page.sections),
+        ].some((section) => section.type === type) && (
+          <section className="panel">
+            <h3>Move a section</h3>
+            <p className="panel-description">
+              Research and articles are separate. Moving a section preserves its
+              entries, files and editable details.
+            </p>
+            <select
+              aria-label="Move section to another collection"
+              value=""
+              onChange={(event) => {
+                const id = event.target.value;
+                if (!id) return;
+                const target =
+                  type === "articles" ? "publications" : "articles";
+                const move = (sections: Section[]) =>
+                  sections.map((section) =>
+                    section.id === id
+                      ? { ...section, type: target as Section["type"] }
+                      : section,
+                  );
+                onChange({
+                  ...document,
+                  sections: move(document.sections),
+                  pages: document.pages.map((page) => ({
+                    ...page,
+                    sections: move(page.sections),
+                  })),
+                });
+              }}
+            >
+              <option value="">
+                Move to {type === "articles" ? "Research" : "Articles"}…
+              </option>
+              {[
+                ...document.sections,
+                ...document.pages.flatMap((page) => page.sections),
+              ]
+                .filter((section) => section.type === type)
+                .map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.title || "Untitled section"}
+                  </option>
+                ))}
+            </select>
+          </section>
+        )}
       {editor(document.sections, (sections) =>
         onChange({ ...document, sections }),
       )}
       {document.pages
         .filter((page) =>
-          page.sections.some((section) => section.type === "publications"),
+          page.sections.some((section) => section.type === type),
         )
         .map((page) => (
           <section key={page.id} className="panel">

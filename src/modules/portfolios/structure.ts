@@ -20,6 +20,7 @@ export const academicOrder = [
   "education",
   "experience",
   "publications",
+  "articles",
   "projects",
   "awards",
   "skills",

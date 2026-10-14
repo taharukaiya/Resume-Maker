@@ -101,7 +101,15 @@ export async function saveDocument(
             400,
             "Article covers must be image files.",
           );
-          if (section.type === "publications")
+          for (const image of entry.images || [])
+            invariant(
+              media
+                .find((file) => file.id === image.mediaId)
+                ?.mime.startsWith("image/"),
+              400,
+              "Article figures must be image files.",
+            );
+          if (["publications", "articles"].includes(section.type))
             invariant(
               !entry.mediaId ||
                 media.find((file) => file.id === entry.mediaId)?.mime ===

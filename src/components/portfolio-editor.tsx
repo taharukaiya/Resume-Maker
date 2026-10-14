@@ -32,7 +32,6 @@ import { portfolioSeo, portfolioTabTitle } from "@/modules/portfolios/seo";
 import { publicationIssues, sectionTypes } from "@/modules/portfolios/schema";
 import { replaceSectionGroup } from "@/modules/portfolios/structure";
 import { PublicationsEditor } from "./publications-editor";
-import { DesignEditor } from "./design-editor";
 import { DeletePortfolio } from "./delete-portfolio";
 import { CvImporter } from "./cv-importer";
 import { socialPlatforms } from "@/modules/portfolios/social-profiles";
@@ -291,9 +290,9 @@ export function PortfolioEditor({ id }: { id: string }) {
       {
         profile: "Profile",
         sections: "Academic sections",
-        publications: "Publications",
+        publications: "Research",
+        articles: "Articles",
         pages: "Pages",
-        design: "Design",
         seo: "Search & sharing",
         media: "File library",
         permissions: "Permissions",
@@ -320,11 +319,11 @@ export function PortfolioEditor({ id }: { id: string }) {
   const tabs = [
     ["profile", "Profile"],
     ["sections", "Academic sections"],
-    ["publications", "Publications"],
+    ["publications", "Research"],
+    ["articles", "Articles"],
     ...(admin
       ? [
           ["pages", "Pages"],
-          ["design", "Design"],
           ["publish", "Review & publish"],
           ["address", "Website address"],
           ["seo", "Search & sharing"],
@@ -338,12 +337,12 @@ export function PortfolioEditor({ id }: { id: string }) {
   function addArticle(file: Media) {
     if (!document) return;
     const sections = structuredClone(document.sections);
-    let section = sections.find((s) => s.type === "publications");
+    let section = sections.find((s) => s.type === "articles");
     if (!section) {
       section = {
         id: crypto.randomUUID(),
-        type: "publications",
-        title: "Research Articles",
+        type: "articles",
+        title: "Articles",
         visible: true,
         intro: "",
         entries: [],
@@ -369,9 +368,15 @@ export function PortfolioEditor({ id }: { id: string }) {
       pages: meta?.pages || "",
       fullText: file.extracted_text || "",
       mediaId: file.id,
+      coverId: file.article_assets?.imageIds[0] || "",
+      images: (file.article_assets?.imageIds || []).map((mediaId) => ({
+        mediaId,
+        alt: "",
+        caption: "",
+      })),
     });
     change({ ...document, sections });
-    setTab("publications");
+    setTab("articles");
     feedback.setMessage(
       "Added to the draft. Review and edit all article details before publishing.",
     );
@@ -806,10 +811,14 @@ export function PortfolioEditor({ id }: { id: string }) {
       {tab === "sections" && (
         <SectionsEditor
           sections={orderSections(
-            document.sections.filter((s) => s.type !== "publications"),
+            document.sections.filter(
+              (s) => !["publications", "articles"].includes(s.type),
+            ),
             document.navigation.sectionOrder,
           )}
-          types={sectionTypes.filter((type) => type !== "publications")}
+          types={sectionTypes.filter(
+            (type) => !["publications", "articles"].includes(type),
+          )}
           order={document.navigation.sectionOrder || "academic"}
           placement={document.navigation.layout !== "single"}
           onChange={(sections, sectionOrder) =>
@@ -819,7 +828,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 ? replaceSectionGroup(
                     document.sections,
                     sections,
-                    (s) => s.type !== "publications",
+                    (s) => !["publications", "articles"].includes(s.type),
                   )
                 : document.sections.map(
                     (section) =>
@@ -837,8 +846,9 @@ export function PortfolioEditor({ id }: { id: string }) {
           allowed={data.site.editable_fields}
         />
       )}
-      {tab === "publications" && (
+      {(tab === "publications" || tab === "articles") && (
         <PublicationsEditor
+          type={tab === "articles" ? "articles" : "publications"}
           document={document}
           onChange={change}
           media={assets}
@@ -978,9 +988,6 @@ export function PortfolioEditor({ id }: { id: string }) {
             />
           )}
         </>
-      )}
-      {tab === "design" && admin && (
-        <DesignEditor document={document} onChange={change} />
       )}
       {tab === "seo" && admin && (
         <>
@@ -1307,6 +1314,12 @@ export function PortfolioEditor({ id }: { id: string }) {
           <div className="file-list">
             {assets.map((file) => (
               <div key={file.id}>
+                {admin && file.article_assets && (
+                  <p className="panel-description">
+                    {file.article_assets.imageIds.length} extracted images.{" "}
+                    {file.article_assets.warnings.join(" ")}
+                  </p>
+                )}
                 <div className="file-row">
                   <div className="file-icon">
                     {file.mime.startsWith("image/") ? (
@@ -1809,8 +1822,7 @@ function Permissions({
       <h2>The right amount of control.</h2>
       <p className="panel-description">
         Clients can edit only the checked fields on this portfolio.
-        Administrators always control publishing, design, pages, and
-        permissions.
+        Administrators always control publishing, pages, and permissions.
       </p>
       <Feedback {...feedback} />
       <Field label="Assigned client">

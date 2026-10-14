@@ -54,6 +54,7 @@ export const sectionTypes = [
   "education",
   "experience",
   "publications",
+  "articles",
   "projects",
   "awards",
   "skills",
@@ -90,6 +91,18 @@ export const entrySchema = z
     issue: z.string().max(80).optional(),
     pages: z.string().max(80).optional(),
     coverId: asset.optional(),
+    images: z
+      .array(
+        z
+          .object({
+            mediaId: z.uuid(),
+            alt: z.string().max(500),
+            caption: z.string().max(2000),
+          })
+          .strict(),
+      )
+      .max(24)
+      .optional(),
     citationCount: z.number().int().min(0).max(1000000000).optional(),
   })
   .strict();
@@ -500,7 +513,12 @@ export function collectAssetIds(doc: PortfolioDocument) {
         doc.profile.cvId,
         doc.seo.socialImageId,
         ...[...doc.sections, ...doc.pages.flatMap((p) => p.sections)].flatMap(
-          (s) => s.entries.flatMap((e) => [e.mediaId, e.coverId]),
+          (s) =>
+            s.entries.flatMap((e) => [
+              e.mediaId,
+              e.coverId,
+              ...(e.images || []).map((image) => image.mediaId),
+            ]),
         ),
       ].filter((id): id is string => !!id),
     ),

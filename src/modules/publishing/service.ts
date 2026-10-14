@@ -46,7 +46,7 @@ export async function buildRelease(
       (section) =>
         section.visible &&
         (document.navigation.articlesEnabled !== false ||
-          section.type !== "publications"),
+          section.type !== "articles"),
     ),
     pages: document.pages.map((page) => ({
       ...page,
@@ -54,7 +54,7 @@ export async function buildRelease(
         (section) =>
           section.visible &&
           (document.navigation.articlesEnabled !== false ||
-            section.type !== "publications"),
+            section.type !== "articles"),
       ),
     })),
   });
@@ -93,8 +93,15 @@ export async function buildRelease(
         : `${config().appUrl}/portfolio/${payload.slug}/${route}`,
     );
   }
-  for (const fontId of selectedFonts(document.theme)) {
-    const file = fonts[fontId].file!;
+  const fontFiles = [
+    ...new Set([
+      ...selectedFonts(document.theme).map((id) => fonts[id].file!),
+      ...(document.theme.style === "shiba"
+        ? ["merriweather-italic.woff2", "geist-mono.woff2"]
+        : []),
+    ]),
+  ];
+  for (const file of fontFiles) {
     const route = `fonts/${file}`,
       key = `releases/${siteId}/${releaseId}/${route}`;
     await putObject(

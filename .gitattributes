@@ -2,3 +2,6 @@
 assets/brand/source/** -text
 *.ai binary
 *.sh text eol=lf
+*.pdf binary
+*.docx binary
+*.woff2 binary

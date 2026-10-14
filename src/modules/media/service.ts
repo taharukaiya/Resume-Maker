@@ -14,7 +14,9 @@ import net from "node:net";
 import sharp from "sharp";
 import { aiConfig } from "@/modules/ai/config";
 import { wordExtension, wordToPdf } from "./word";
+import { extractArticleAssets, type ArticleAssets } from "./article-assets";
 export type Media = {
+  article_assets?: ArticleAssets | null;
   article_metadata?: import("@/modules/ai/article").ArticleMetadata | null;
   extracted_text?: string | null;
   cv_import?: import("@/modules/portfolios/cv-import").CvExtraction | null;
@@ -166,8 +168,30 @@ export async function upload(
   }
   const id = randomUUID(),
     key = `private/${siteId}/${id}.${extension}`;
-  await putObject(key, bytes, mime);
+  const extraction =
+    purpose === "article" && mime === "application/pdf" && user.role === "admin"
+      ? await extractArticleAssets(bytes)
+      : undefined;
+  const figures = (extraction?.images || []).map((data, index) => {
+    const imageId = randomUUID();
+    return {
+      id: imageId,
+      data,
+      key: `private/${siteId}/${imageId}.webp`,
+      filename: `Figure ${index + 1} — ${file.name
+        .replace(/[\r\n\\/]/g, "")
+        .replace(/\.[^.]+$/, "")
+        .slice(0, 150)}.webp`,
+    };
+  });
+  const storedKeys: string[] = [];
   try {
+    await putObject(key, bytes, mime);
+    storedKeys.push(key);
+    for (const figure of figures) {
+      await putObject(figure.key, figure.data, "image/webp");
+      storedKeys.push(figure.key);
+    }
     await database.transaction(async (tx) => {
       await tx.query("SELECT id FROM sites WHERE id=$1 FOR UPDATE", [siteId]);
       const [usage] = await tx.query<{ total: string }>(
@@ -175,7 +199,10 @@ export async function upload(
         [siteId],
       );
       invariant(
-        Number(usage.total) + bytes.length <= 100 * 1024 * 1024,
+        Number(usage.total) +
+          bytes.length +
+          figures.reduce((sum, figure) => sum + figure.data.length, 0) <=
+          100 * 1024 * 1024,
         400,
         "This portfolio has reached its 100 MB media allowance.",
       );
@@ -194,6 +221,31 @@ export async function upload(
           purpose,
         ],
       );
+      if (extraction) {
+        await tx.query(
+          "UPDATE media SET extracted_text=$1,article_assets=$2 WHERE id=$3",
+          [
+            extraction.text,
+            JSON.stringify({
+              imageIds: figures.map((figure) => figure.id),
+              warnings: extraction.warnings,
+            }),
+            id,
+          ],
+        );
+        for (const figure of figures)
+          await tx.query(
+            "INSERT INTO media(id,site_id,filename,mime,bytes,storage_key,uploaded_by,purpose) VALUES($1,$2,$3,'image/webp',$4,$5,$6,'image')",
+            [
+              figure.id,
+              siteId,
+              figure.filename,
+              figure.data.length,
+              figure.key,
+              user.id,
+            ],
+          );
+      }
       if (summaryQueued)
         await tx.query(
           "INSERT INTO jobs(id,site_id,kind,payload) VALUES($1,$2,'abstract',$3)",
@@ -208,7 +260,7 @@ export async function upload(
       );
     });
   } catch (error) {
-    await deleteObject(key);
+    await Promise.all(storedKeys.map((stored) => deleteObject(stored)));
     throw error;
   }
   return { id, summaryQueued };
