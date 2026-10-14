@@ -252,7 +252,7 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
                 </div>
                 <div className="portfolio-card-content">
                   <h3>{site.name}</h3>
-                  <p>/portfolio/{site.slug}</p>
+                  <p>{site.publishedUrl || `/portfolio/${site.slug}`}</p>
                   <div className="card-bottom">
                     <span>Updated {dateTime(site.updated_at)}</span>
                     <ArrowUpRight size={14} />

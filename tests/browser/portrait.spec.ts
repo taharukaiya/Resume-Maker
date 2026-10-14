@@ -189,7 +189,7 @@ test("transparent portraits skip model downloads, and guided publishing saves ch
       .getByLabel("Biography", { exact: true })
       .fill("A revised biography saved at publication.");
     await page
-      .getByRole("tab", { name: "Review & publish", exact: true })
+      .getByRole("tab", { name: "Website address", exact: true })
       .click();
     await page.getByText("Connect a personal domain", { exact: true }).click();
     await expect(
@@ -198,6 +198,9 @@ test("transparent portraits skip model downloads, and guided publishing saves ch
     await expect(
       page.getByText("Connect hosting & HTTPS", { exact: true }),
     ).toBeVisible();
+    await page
+      .getByRole("tab", { name: "Review & publish", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Save and publish draft", exact: true })
       .click();

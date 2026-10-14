@@ -1,7 +1,6 @@
 import { config } from "@/lib/config";
-import { token } from "@/lib/crypto";
 import { db } from "@/lib/db";
-import { AppError, invariant } from "@/lib/errors";
+import { invariant } from "@/lib/errors";
 import { deleteObject, putObject } from "@/lib/storage";
 import {
   audit,
@@ -21,9 +20,16 @@ import { renderPortfolio } from "@/modules/publishing/render";
 import { type ReleaseManifest } from "@/modules/publishing/service";
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
-import { resolveTxt } from "node:dns/promises";
 import { z } from "zod";
 import { body, idSchema, json, readLimited } from "./shared";
+import { domainRoutes } from "./domain-routes";
+
+function publishedAddress(value?: string | null) {
+  return (
+    value?.replace(`${config().appUrl}/p/`, `${config().appUrl}/portfolio/`) ||
+    null
+  );
+}
 
 export async function portfolioRoutes(
   request: NextRequest,
@@ -35,10 +41,15 @@ export async function portfolioRoutes(
     method = request.method;
   if (route === "sites" && method === "GET") {
     const sites = await database.query<Site>(
-      `SELECT s.id,s.name,s.slug,s.revision,s.status,s.published_release_id,s.updated_at,s.created_at,u.name AS client_name FROM sites s LEFT JOIN users u ON s.client_id=u.id ${user.role === "client" ? "WHERE s.client_id=$1" : ""} ORDER BY s.updated_at DESC`,
+      `SELECT s.id,s.name,s.slug,s.revision,s.status,s.published_release_id,s.updated_at,s.created_at,u.name AS client_name,r.manifest->>'baseUrl' AS "publishedUrl" FROM sites s LEFT JOIN users u ON s.client_id=u.id LEFT JOIN releases r ON r.id=s.published_release_id AND r.site_id=s.id ${user.role === "client" ? "WHERE s.client_id=$1" : ""} ORDER BY s.updated_at DESC`,
       user.role === "client" ? [user.id] : [],
     );
-    return json({ sites });
+    return json({
+      sites: sites.map((site) => ({
+        ...site,
+        publishedUrl: publishedAddress(site.publishedUrl),
+      })),
+    });
   }
   if (route === "sites" && method === "POST") {
     requireAdmin(user);
@@ -86,6 +97,9 @@ export async function portfolioRoutes(
     const id = idSchema.parse(path[1]),
       action = path[2] || "",
       site = await getSite(user, id);
+    if (path.length === 3 && ["domains", "verify-domain"].includes(action)) {
+      return domainRoutes(request, action, id, database, user);
+    }
     if (!action && path.length === 2 && method === "DELETE") {
       requireAdmin(user);
       const input = z
@@ -183,11 +197,7 @@ export async function portfolioRoutes(
       return json({
         site,
         publishedDocument: published[0]?.document || null,
-        publishedUrl:
-          published[0]?.manifest?.baseUrl?.replace(
-            `${config().appUrl}/p/`,
-            `${config().appUrl}/portfolio/`,
-          ) || null,
+        publishedUrl: publishedAddress(published[0]?.manifest?.baseUrl),
         media,
         jobs,
         releases,
@@ -270,8 +280,11 @@ export async function portfolioRoutes(
         const [agency] = await tx.query<{ value: { name: string } }>(
           "SELECT value FROM settings WHERE key='agency'",
         );
-        const [primaryDomain] = await tx.query<{ hostname: string }>(
-          "SELECT hostname FROM domains WHERE site_id=$1 AND verified_at IS NOT NULL AND activated_at IS NOT NULL AND (distribution_id IS NOT NULL OR $2) ORDER BY created_at LIMIT 1",
+        const [primaryDomain] = await tx.query<{
+          id: string;
+          hostname: string;
+        }>(
+          "SELECT id,hostname FROM domains WHERE site_id=$1 AND is_primary AND verified_at IS NOT NULL AND activated_at IS NOT NULL AND (distribution_id IS NOT NULL OR $2) LIMIT 1",
           [id, config().vps],
         );
         await tx.query(
@@ -294,7 +307,11 @@ export async function portfolioRoutes(
           user.id,
           id,
           "portfolio.publish_requested",
-          { revision: latest.revision },
+          {
+            revision: latest.revision,
+            domainId: primaryDomain?.id || null,
+            hostname: primaryDomain?.hostname || null,
+          },
           tx,
         );
       });
@@ -453,67 +470,6 @@ export async function portfolioRoutes(
           },
         },
       );
-    if (action === "domains" && method === "GET") {
-      requireAdmin(user);
-      return json({
-        domains: await database.query(
-          "SELECT * FROM domains WHERE site_id=$1 ORDER BY created_at DESC",
-          [id],
-        ),
-      });
-    }
-    if (action === "domains" && method === "POST") {
-      requireAdmin(user);
-      const { hostname } = z
-        .object({
-          hostname: z
-            .string()
-            .trim()
-            .toLowerCase()
-            .regex(
-              /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
-            ),
-        })
-        .parse(await body(request));
-      const domainId = randomUUID();
-      await database.query(
-        "INSERT INTO domains(id,site_id,hostname,verification_token) VALUES($1,$2,$3,$4)",
-        [domainId, id, hostname, token()],
-      );
-      return json({ id: domainId }, 201);
-    }
-    if (action === "verify-domain" && method === "POST") {
-      requireAdmin(user);
-      const { domainId } = z
-        .object({ domainId: idSchema })
-        .parse(await body(request));
-      const [domain] = await database.query<{
-        hostname: string;
-        verification_token: string;
-      }>("SELECT * FROM domains WHERE id=$1 AND site_id=$2", [domainId, id]);
-      invariant(domain, 404, "Domain not found.");
-      let values: string[][] = [];
-      try {
-        values = await resolveTxt(`_brilliancy.${domain.hostname}`);
-      } catch {
-        throw new AppError(
-          400,
-          "The verification TXT record was not found. DNS changes can take time to appear.",
-        );
-      }
-      invariant(
-        values.some((v) => v.join("") === domain.verification_token),
-        400,
-        "The DNS verification token does not match.",
-      );
-      await database.query("UPDATE domains SET verified_at=now() WHERE id=$1", [
-        domainId,
-      ]);
-      await audit(user.id, id, "domain.verified", {
-        hostname: domain.hostname,
-      });
-      return json({ ok: true });
-    }
   }
 
   return null;

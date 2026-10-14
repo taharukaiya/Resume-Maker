@@ -2252,6 +2252,33 @@ select:focus {
 .domain-setup {
   margin-top: 22px;
 }
+.domain-address-form {
+  margin-top: 24px;
+}
+.domain-address-form select {
+  min-width: 0;
+  max-width: 100%;
+}
+.domain-address-form > p {
+  margin-top: 16px;
+}
+.domain-next-url {
+  overflow-wrap: anywhere;
+}
+.domain-suggestion {
+  padding: 16px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  margin: 16px 0;
+}
+.domain-suggestion p {
+  margin: 10px 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
 .domain-setup > summary {
   cursor: pointer;
   font-weight: 600;

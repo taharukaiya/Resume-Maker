@@ -21,6 +21,7 @@ export type Site = {
   updated_at: string;
   created_at: string;
   client_name?: string;
+  publishedUrl?: string | null;
 };
 export async function getSite(user: User, id: string) {
   await siteAccess(user, id);

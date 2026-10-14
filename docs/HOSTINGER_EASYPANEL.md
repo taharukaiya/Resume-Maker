@@ -185,7 +185,96 @@ Privately read `SETUP_TOKEN` from the server `.env`, open the studio `/setup?tok
 
 Create a disposable test portfolio and a test client. Test login/MFA, email invitation and recovery, field permissions, image/CV/article uploads, actual malware scanning, the configured AI provider, publishing, mobile layouts and inquiry delivery to the inbox. Review extracted facts. Confirm an uploaded file and login survive a container restart. Complete an off-server backup/restore test before client use; `backup.sh` covers only this application, not existing Swarm services or EasyPanel's proxy/TLS configuration.
 
-Do not migrate `researchbytresna.com` or any current client yet. A fresh database has none of their existing content or accounts. When an individual portfolio is approved for migration, follow Phase 6 in [Existing VPS guide](HOSTINGER_EXISTING_VPS.md), but connect its EasyPanel domain to **`http://brilliancy-portfolio-gateway:8080/`**, not host port 8088. Generate its internal domain route first, activate it, republish, then change only that domain's destination. `/login` redirects to the new central studio login. Retain the previous destination and old app for rollback.
+Do not migrate `researchbytresna.com` or any current client yet. A fresh database has none of their existing content or accounts. When an individual portfolio is approved for migration, use the custom-domain steps below. Retain the previous destination and old app for rollback.
+
+## 8. Make an owned domain the portfolio's website address
+
+An administrator can choose a connected domain in the portfolio's **Website address** tab, click **Save website address**, then return to **Review & publish** and republish so the site's links and canonical URL use that address. The **Manage website address** button in Review & publish opens the same tab. For example, a connected root domain serves its portfolio at `https://portfolio.example.test/`, without `/portfolio/SLUG`. `portfolio.example.test` is an illustrative placeholder in the commands below: replace it with the exact registered domain you own. Adding or selecting a name in the admin panel does not register it, buy it, change DNS, issue its certificate, or reconfigure EasyPanel.
+
+This flow keeps hosting changes in the operator's terminal and EasyPanel account. The web application does not need the Docker socket or permission to edit the shared proxy. Only administrators can select the website address; clients cannot change it. A domain must be verified and activated before it can be selected. Operator activation makes it eligible but does not silently change the selected address.
+
+### Confirm ownership and prepare the portfolio
+
+The editor automatically suggests `researchby<first name>.com` in **Review & publish** and **Website address**. For example, a portfolio named “Rukaiya Taha” suggests `researchbyrukaiya.com`. This is a proposed name, not a checked or reserved domain. Each chosen `.com` needs its own registration; the app does not create free subdomains or purchase domains automatically. Renaming a portfolio can change its suggestion, while its saved website address stays unchanged.
+
+1. Search for the suggested name at your domain provider. If it is available and you want it, register that exact domain separately; if it is unavailable, choose another name you can register or already own. Confirm that the domain appears in your account and that you can manage its authoritative DNS. The suggestion's availability and ownership are not guaranteed.
+2. If the domain already serves a website, record its current DNS and EasyPanel destination, back up that website, and agree on the change window. Changing the root `@` record or proxy destination moves that website's public traffic.
+3. Publish and review the portfolio at its included shared address first. Open **Website address → Connect a personal domain**. Click **Use suggested name** to fill the Domain name field, or type the exact domain you registered. This button only fills the field. Click **Add domain** to begin verification. Enter the root hostname without a page path; a full HTTPS address ending at `/` is also accepted.
+4. Add the TXT record displayed by the editor at the domain's DNS provider, then click **Verify DNS record**. Keep this ownership record. Verification alone does not move visitors. Apex and `www` are separate hostnames; configure and verify each host that will serve a portfolio, or configure a deliberate `www` redirect separately.
+
+### Install the internal route on this EasyPanel VPS
+
+Run from the deployment directory, using the verified domain in `DOMAIN`. The installed application image and database migrations must match the release being deployed. Generate a temporary file first; the command only prints Caddy configuration and never edits the proxy itself:
+
+```bash
+cd /opt/brilliancy/deploy/vps
+DOMAIN=portfolio.example.test
+pending_route=$(mktemp)
+docker compose exec -T web node node_modules/tsx/dist/cli.mjs scripts/vps-domain.ts config "$DOMAIN" > "$pending_route"
+cat "$pending_route"
+```
+
+Check that generation succeeded and the first line is `http://YOUR_DOMAIN:8080 {`. It must route to this app's `web:3000`, and must not claim public TLS ports. Review any existing `domains/$DOMAIN.caddy` before proceeding. For a new route:
+
+```bash
+test ! -e "domains/$DOMAIN.caddy" &&
+mv -- "$pending_route" "domains/$DOMAIN.caddy" &&
+docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile &&
+docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+```
+
+If validation fails, move only the newly added file back outside `domains`, correct it, and validate again. The running Caddy configuration stays in use until a successful reload. Do not restart the shared EasyPanel proxy or expose public port 8080/8088 for this step.
+
+### Connect DNS, HTTPS and the preserved hostname
+
+At the agreed change window, point only the approved domain's web record to the VPS. For a root domain this is normally an `A` record named `@`; for a subdomain use its DNS label. Review an existing `AAAA` record too: it must reach the same service, or IPv6 visitors may reach the previous host. Keep mail/MX records and unrelated hosts unchanged. If the domain already points here, only its proxy destination may need changing.
+
+In **EasyPanel → Domains**, create or update this exact hostname with **HTTPS enabled**, public path `/`, and custom destination **`http://brilliancy-portfolio-gateway:8080/`**. Record the previous destination if replacing a live site. Retain the HTTP-to-HTTPS redirect. The custom domain uses the same private gateway as studio/media; it does not use the studio URL as an upstream.
+
+This EasyPanel version also needs an exact-host Traefik rule with `passHostHeader: true`, as described in section 6. Either add only the verified hostname to the existing managed preserve-host rule, or install a separate file with unique router/service names. For example, after replacing the placeholder hostname and choosing unique names:
+
+```yaml
+http:
+  routers:
+    brilliancy-portfolio-example:
+      rule: "Host(`portfolio.example.test`)"
+      entryPoints:
+        - https
+      priority: 100
+      service: brilliancy-portfolio-example
+      tls:
+        certResolver: letsencrypt
+  services:
+    brilliancy-portfolio-example:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://brilliancy-portfolio-gateway:8080/
+```
+
+Prepare the completed YAML outside `/etc/easypanel/traefik/config/`, then move it atomically to a new, unused `.yaml` filename inside that directory. Confirm its priority exceeds the generated route for this hostname, and that the observed `https` entrypoint and `letsencrypt` resolver still apply. Never replace generated `main.yaml`, reuse another portfolio's router/service name, or use a catch-all hostname rule. Keep the file in the proxy configuration backup. Verify Traefik accepted it and the certificate covers the exact host. Until activation, this domain can return an application 404 even when the route and TLS are correct.
+
+### Activate, select, then republish
+
+Once the domain's DNS and HTTPS route are ready, activate its verified application mapping:
+
+```bash
+docker compose exec -T web node node_modules/tsx/dist/cli.mjs scripts/vps-domain.ts activate "$DOMAIN"
+curl -I --max-time 20 "https://$DOMAIN/"
+curl -I --max-time 20 "https://$DOMAIN/login"
+```
+
+The homepage should return 200 for the already published portfolio. `/login` should redirect to the central studio login, without granting access or creating a separate admin account. A failed certificate or request is a hosting problem to resolve before selecting this address. A queued or running publish job blocks activation/deactivation; wait for it to finish and retry.
+
+Return to the **Website address** tab, refresh its connected-domain status, choose the connected domain under **Public website address**, and click **Save website address**. Then open **Review & publish**, publish again, and wait for publishing to finish. Selecting an address changes the next publication's URL; it does not rewrite an already generated release immediately. Check the displayed published address, homepage, every navigation link, media, canonical URL and contact form. The default shared address remains available; changing the selected address does not register, transfer or delete a domain.
+
+To return to the included address, select **Shared address** in the **Website address** tab, click **Save website address**, and republish. To retire a domain completely, wait for publishing to finish, then deactivate it:
+
+```bash
+docker compose exec -T web node node_modules/tsx/dist/cli.mjs scripts/vps-domain.ts deactivate "$DOMAIN"
+```
+
+Deactivation clears that domain's primary selection. Select the included address or another connected domain and republish. Remove only the retired hostname's Caddy route and managed Traefik rule, validate/reload Caddy, and update its EasyPanel/DNS destination as planned. If this was a migration rollback, restore that hostname's recorded previous destination and retain the old site and data. Recheck the studio, media host and other existing websites after changes.
 
 ## Capacity and continuing operation
 

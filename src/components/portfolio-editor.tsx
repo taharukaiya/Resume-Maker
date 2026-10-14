@@ -42,6 +42,7 @@ import { SectionsEditor } from "./section-editor";
 import { PagePlanner } from "./page-planner";
 import { EditorWorkflow, portfolioSteps } from "./editor-workflow";
 import { DomainManager } from "./domain-manager";
+import { suggestedPortfolioDomain } from "@/modules/portfolios/domain-suggestion";
 import { orderSections } from "@/modules/portfolios/structure";
 import { useUser } from "./studio-shell";
 import { NavigationLink } from "./navigation-link";
@@ -90,6 +91,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   const [demo, setDemo] = useState(false);
   const [autoSummary, setAutoSummary] = useState(false);
   const [invalidLink, setInvalidLink] = useState<number | null>(null);
+  const [addressDirty, setAddressDirty] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
     feedback = useFeedback();
@@ -296,6 +298,7 @@ export function PortfolioEditor({ id }: { id: string }) {
         media: "File library",
         permissions: "Permissions",
         publish: "Review & publish",
+        address: "Website address",
         history: "History",
       } as Record<string, string>
     )[tab];
@@ -323,6 +326,7 @@ export function PortfolioEditor({ id }: { id: string }) {
           ["pages", "Pages"],
           ["design", "Design"],
           ["publish", "Review & publish"],
+          ["address", "Website address"],
           ["seo", "Search & sharing"],
         ]
       : []),
@@ -335,6 +339,23 @@ export function PortfolioEditor({ id }: { id: string }) {
   const readiness = publicationIssues(document);
   const currentStep = portfolioSteps.findIndex(([key]) => key === tab);
   function selectTab(key: string) {
+    if (tab === "address" && key !== "address" && addressDirty) {
+      void confirm({
+        title: "Leave the unsaved address selection?",
+        description:
+          "The public address selection has not been saved. Your portfolio content edits will be kept.",
+        confirmLabel: "Discard address selection",
+      }).then((approved) => {
+        if (approved) {
+          setAddressDirty(false);
+          openTab(key);
+        }
+      });
+      return;
+    }
+    openTab(key);
+  }
+  function openTab(key: string) {
     setTab(key);
     if (key === "history")
       void feedback.run(async () => {
@@ -1440,11 +1461,28 @@ export function PortfolioEditor({ id }: { id: string }) {
               </a>
             )}
           </section>
-          <DomainManager
-            siteId={id}
-            slug={data.site.slug}
-            publishedUrl={data.publishedUrl}
-          />
+          <section className="panel">
+            <h2>Website address</h2>
+            <p className="panel-description">
+              Connect a personal domain and choose the public address for this
+              portfolio.
+            </p>
+            <p className="domain-suggestion">
+              Suggested domain:{" "}
+              <strong>
+                {suggestedPortfolioDomain(
+                  document.profile.name,
+                  data.site.slug,
+                )}
+              </strong>
+              . Register the domain separately, then connect it under Website
+              address. This is a naming suggestion; availability has not been
+              checked.
+            </p>
+            <Button variant="secondary" onClick={() => selectTab("address")}>
+              Manage website address
+            </Button>
+          </section>
           <section className="panel">
             <h2>Changes since the published version</h2>
             <p className="panel-description">
@@ -1531,6 +1569,19 @@ export function PortfolioEditor({ id }: { id: string }) {
             </section>
           )}
         </>
+      )}
+      {tab === "address" && admin && (
+        <DomainManager
+          siteId={id}
+          slug={data.site.slug}
+          publishedUrl={data.publishedUrl}
+          onReview={() => selectTab("publish")}
+          suggestedDomain={suggestedPortfolioDomain(
+            document.profile.name,
+            data.site.slug,
+          )}
+          onPendingChange={setAddressDirty}
+        />
       )}
       {tab === "history" && (
         <>
