@@ -22,3 +22,13 @@ docker compose exec -T worker node --import tsx scripts/refresh-published-design
 ```
 
 The first command previews the affected published addresses. The second builds new immutable releases from the currently published snapshots, never from drafts. It retains prior releases, leaves editing revisions, status and content unchanged, and stops if another publication wins the race. Back up the application before applying it. Legacy EasyPanel applications, databases and DNS are outside this script's scope.
+
+## Article administration
+
+Archive display controls set page size (1–50) and default sorting. Search, category filters, topic buttons and numbered pagination work together; changing a filter returns to page one. Research and Articles remain separate collections. Archive headings, search text, dates, navigation buttons and sidebar labels are editable through Website wording.
+
+Each article supports editable title, authors, publication date, journal, volume, issue, page range, DOI, abstract, full text, tags, cover, figure descriptions/captions/order and PDF attachment. Article display and citation controls independently show or hide the abstract, full text, figures, author panel, citations and related content. Author name, affiliation and biography may override the portfolio profile. These are presentation controls, not access restrictions on uploaded files.
+
+Separate authors with semicolons. Choose Family, Given for names such as `van der Waals, Johannes Diderik`; ordinary legacy comma-separated names remain supported. Citations use saved publication metadata, never the current year. APA, IEEE, Harvard, MLA, Chicago, Vancouver, BibTeX and RIS have individual exact-text overrides for publisher requirements. Clear an override to resume automatic formatting. Citation styles vary by publisher; review generated citations before publishing.
+
+PDF and Word uploads retain the existing conversion and figure-extraction workflow. AI proposes metadata and abstracts for review; it does not publish them automatically. Editing web-page text does not rewrite the attached PDF: upload a revised source document to replace the downloadable PDF.

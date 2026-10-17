@@ -125,6 +125,65 @@ describe("Fixed Shiba design and articles", () => {
       "year =",
     );
   });
+  it("supports unambiguous citation names, exact overrides and complete RIS metadata", () => {
+    const { article } = fixture();
+    article.authors = "van der Waals, Johannes Diderik";
+    article.authorFormat = "family-given";
+    expect(articleCitation(article, options.baseUrl, "APA")).toContain(
+      "van der Waals, J. D.",
+    );
+    expect(articleCitation(article, options.baseUrl, "Vancouver")).toContain(
+      "van der Waals JD.",
+    );
+    expect(articleCitation(article, options.baseUrl, "RIS")).toContain(
+      "VL  - 2\nIS  - 3\nSP  - 10\nEP  - 20",
+    );
+    article.citationOverrides = { APA: "Publisher-approved citation <exact>" };
+    expect(articleCitation(article, options.baseUrl, "APA")).toBe(
+      "Publisher-approved citation <exact>",
+    );
+    expect(articleCitation(article, options.baseUrl, "IEEE")).toContain(
+      "vol. 2, no. 3, pp. 10–20",
+    );
+  });
+  it("round-trips article controls, escapes overrides and honors each display setting", () => {
+    const { doc, article } = fixture();
+    article.authorDetails = {
+      name: "Guest Writer",
+      affiliation: "Guest University",
+      bio: "Custom author biography",
+    };
+    article.citationOverrides = { APA: "<script>unsafe()</script>" };
+    doc.sections[0].intro = "Editable archive introduction";
+    doc.navigation.archivePageSize = 7;
+    doc.navigation.archiveSort = "title";
+    const saved = documentSchema.parse(doc);
+    let pages = renderPortfolio(saved, options);
+    let page = pages[`article/${article.id}/index.html`];
+    expect(page).toContain("Guest Writer");
+    expect(page).toContain("Custom author biography");
+    expect(page).toContain("&lt;script&gt;unsafe()&lt;/script&gt;");
+    expect(pages["article/index.html"]).toContain(
+      'data-page-size="7" data-sort="title"',
+    );
+    expect(pages["article/index.html"]).toContain(
+      "Editable archive introduction",
+    );
+    article.display = {
+      abstract: false,
+      fullText: false,
+      images: false,
+      author: false,
+      citations: false,
+      related: false,
+    };
+    page = renderPortfolio(doc, options)[`article/${article.id}/index.html`];
+    expect(page).not.toContain('class="abstract article-text"');
+    expect(page).not.toContain("Methods and findings.");
+    expect(page).not.toContain('class="author-card"');
+    expect(page).not.toContain('class="citations" data-citations');
+    expect(page).toContain("Download as PDF");
+  });
   it("reserves article routes and keeps article visibility administrator-controlled", () => {
     const { doc } = fixture();
     const changed = structuredClone(doc);

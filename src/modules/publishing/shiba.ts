@@ -19,6 +19,7 @@ import {
   homeIcon,
   shibaHomeCss,
 } from "./shiba-home";
+import { shibaArticleCss } from "./shiba-article-style";
 import { shibaScript } from "./shiba-script";
 import { portfolioSeo, portfolioTabTitle } from "@/modules/portfolios/seo";
 
@@ -90,10 +91,10 @@ export function renderShibaPortfolio(
           a.start,
           doc.seo.language === "en" ? "en-GB" : doc.seo.language,
         )
-      : "Date not specified";
+      : doc.labels.dateUnknown || "Date not specified";
   const cover = (a: Entry) =>
     a.coverId
-      ? `<img class="cover" src="${e(asset(a.coverId))}" alt="${e(a.title)}" loading="lazy">`
+      ? `<img class="cover" src="${e(asset(a.coverId))}" alt="${e(a.coverAlt || a.title)}" loading="lazy">`
       : "";
   const links = () =>
     `<a href="${e(baseUrl)}">${e(doc.navigation.homeLabel || "HOME")}</a>${researchSections.length ? `<a href="${e(baseUrl)}/${researchSlug}">${e(doc.navigation.pageSettings?.research?.title || "RESEARCH")}</a>` : ""}${articleSections.length ? `<a href="${e(baseUrl)}/article">${e(doc.labels.articlesHeading || "Articles")}</a>` : ""}${bioVisible ? `<a href="${e(baseUrl)}/${aboutSlug}">${e(doc.navigation.pageSettings?.about?.title || "ABOUT ME")}</a>` : ""}${contactVisible ? `<a href="${e(baseUrl)}/${contactSlug}">${e(doc.navigation.contactLabel || "CONTACT")}</a>` : ""}${doc.pages
@@ -117,7 +118,7 @@ export function renderShibaPortfolio(
     schema: unknown = { "@type": "Person", name: p.name },
     description = seo.description,
   ) =>
-    `<!doctype html><html lang="${e(doc.seo.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta name="robots" content="${doc.seo.indexable ? "index,follow" : "noindex,nofollow"}"><link rel="canonical" href="${e(address)}"><link rel="icon" href="${e(options.faviconUrl || `${baseUrl}/favicon.svg`)}"><meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}"><meta property="og:url" content="${e(address)}"><meta property="og:type" content="website">${seo.socialImageId ? `<meta property="og:image" content="${e(asset(seo.socialImageId))}">` : ""}<style>@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("inter.woff2") : `${baseUrl}/fonts/inter.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather.woff2") : `${baseUrl}/fonts/merriweather.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:italic;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather-italic.woff2") : `${baseUrl}/fonts/merriweather-italic.woff2`)}') format('woff2')}@font-face{font-family:'Geist Mono';font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("geist-mono.woff2") : `${baseUrl}/fonts/geist-mono.woff2`)}') format('woff2')}${css}${shibaPagesCss}${shibaHomeCss}</style><script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...(schema as object) }).replace(/</g, "\\u003c")}</script></head><body class="shiba"><a class="skip" href="#main">Skip to content</a><header class="topbar"><div class="container nav"><a class="brand" href="${e(baseUrl)}">${logoId ? `<img class="${p.logoId ? "brand-logo" : "brand-portrait"}" src="${e(asset(logoId))}" alt="">` : ""}<span class="brand-name">${e(doc.navigation.siteTitle || p.name)}</span></a><nav class="nav-links" aria-label="Main navigation">${links()}</nav><div class="nav-actions">${p.cvId ? `<a class="button header-cv" href="${e(asset(p.cvId))}" download>${homeIcon("download")}<span class="cv-long">${e(doc.navigation.cvLabel || "Download CV")}</span><span class="cv-short">${e(doc.navigation.mobileCvLabel || "CV")}</span></a>` : ""}<button class="mobile-menu-toggle" type="button" aria-label="${e(doc.navigation.menuLabel || "Menu")}" aria-expanded="false" aria-controls="mobile-navigation" data-menu-toggle>${homeIcon("menu")}</button></div><nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>${links()}</nav></div></header><main id="main" class="container">${content}</main><footer class="footer"><div class="container"><span>${e(doc.navigation.copyright || `© ${p.name}${p.headline ? " | " + p.headline : ""}`)}</span><span>${e(doc.navigation.footer)}<span class="footer-links">${(
+    `<!doctype html><html lang="${e(doc.seo.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta name="robots" content="${doc.seo.indexable ? "index,follow" : "noindex,nofollow"}"><link rel="canonical" href="${e(address)}"><link rel="icon" href="${e(options.faviconUrl || `${baseUrl}/favicon.svg`)}"><meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}"><meta property="og:url" content="${e(address)}"><meta property="og:type" content="website">${seo.socialImageId ? `<meta property="og:image" content="${e(asset(seo.socialImageId))}">` : ""}<style>@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("inter.woff2") : `${baseUrl}/fonts/inter.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather.woff2") : `${baseUrl}/fonts/merriweather.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:italic;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather-italic.woff2") : `${baseUrl}/fonts/merriweather-italic.woff2`)}') format('woff2')}@font-face{font-family:'Geist Mono';font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("geist-mono.woff2") : `${baseUrl}/fonts/geist-mono.woff2`)}') format('woff2')}${css}${shibaPagesCss}${shibaHomeCss}${shibaArticleCss}</style><script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...(schema as object) }).replace(/</g, "\\u003c")}</script></head><body class="shiba"><a class="skip" href="#main">Skip to content</a><header class="topbar"><div class="container nav"><a class="brand" href="${e(baseUrl)}">${logoId ? `<img class="${p.logoId ? "brand-logo" : "brand-portrait"}" src="${e(asset(logoId))}" alt="">` : ""}<span class="brand-name">${e(doc.navigation.siteTitle || p.name)}</span></a><nav class="nav-links" aria-label="Main navigation">${links()}</nav><div class="nav-actions">${p.cvId ? `<a class="button header-cv" href="${e(asset(p.cvId))}" download>${homeIcon("download")}<span class="cv-long">${e(doc.navigation.cvLabel || "Download CV")}</span><span class="cv-short">${e(doc.navigation.mobileCvLabel || "CV")}</span></a>` : ""}<button class="mobile-menu-toggle" type="button" aria-label="${e(doc.navigation.menuLabel || "Menu")}" aria-expanded="false" aria-controls="mobile-navigation" data-menu-toggle>${homeIcon("menu")}</button></div><nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>${links()}</nav></div></header><main id="main" class="container">${content}</main><footer class="footer"><div class="container"><span>${e(doc.navigation.copyright || `© ${p.name}${p.headline ? " | " + p.headline : ""}`)}</span><span>${e(doc.navigation.footer)}<span class="footer-links">${(
       doc.navigation.footerLinks || []
     )
       .filter((l) => l.url)
@@ -131,7 +132,7 @@ export function renderShibaPortfolio(
   const card = (a: Entry) =>
     `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(a.body)}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
   const entry = (a: Entry) =>
-    `<article class="entry"><p class="eyebrow">${e(a.start)}${a.current ? " | Present" : a.end ? " | " + e(a.end) : ""}</p><h3>${e(a.title)}</h3><p class="meta">${e(a.subtitle)}</p>${prose(a.body)}${a.mediaId && options.isImage?.(a.mediaId) ? `<img class="entry-image" src="${e(asset(a.mediaId))}" alt="${e(a.title)}" loading="lazy">` : ""}${a.url ? `<a href="${e(a.url)}" rel="noopener noreferrer">View resource ↗</a>` : ""}${a.mediaId ? ` <a href="${e(asset(a.mediaId))}">Download file ↓</a>` : ""}</article>`;
+    `<article class="entry"><p class="eyebrow">${e(a.start)}${a.current ? " | Present" : a.end ? " | " + e(a.end) : ""}</p><h3>${e(a.title)}</h3><p class="meta">${e(a.subtitle)}</p>${prose(a.body)}${a.mediaId && options.isImage?.(a.mediaId) ? `<img class="entry-image" src="${e(asset(a.mediaId))}" alt="${e(a.coverAlt || a.title)}" loading="lazy">` : ""}${a.url ? `<a href="${e(a.url)}" rel="noopener noreferrer">View resource ↗</a>` : ""}${a.mediaId ? ` <a href="${e(asset(a.mediaId))}">Download file ↓</a>` : ""}</article>`;
   const section = (s: Section) =>
     `<section class="section section-${s.type}" id="${e(s.id)}"><div class="section-head"><h2>${e(s.title)}</h2>${prose(s.intro)}</div>${s.type === "about" ? prose(p.bio) : ""}<div class="timeline">${s.entries.map(entry).join("")}</div>${s.type === "contact" ? `<form class="contact-form" method="post" action="${e(options.appUrl)}/api/public/inquiry"><input type="hidden" name="siteId" value="${e(options.siteId)}"><label class="honey" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><label>NAME *<input name="name" required maxlength="120" autocomplete="name"></label><label>EMAIL ADDRESS *<input name="email" type="email" required maxlength="254" autocomplete="email"></label><label>MESSAGE *<textarea name="message" rows="5" required minlength="10" maxlength="5000"></textarea></label><button class="button">Send inquiry</button></form>${p.email ? `<p><a href="mailto:${e(p.email)}">${e(p.email)}</a></p>` : ""}` : ""}</section>`;
   const pipeline = research.some((a) => a.status && a.status !== "published")
@@ -201,11 +202,34 @@ export function renderShibaPortfolio(
   }
   if (articleSections.length || researchSections.length) {
     const archiveContent = (items: Entry[], title: string, noun: string) => {
+      const introduction = (
+        noun === "papers" ? researchSections : articleSections
+      )
+        .map((section) => prose(section.intro))
+        .join("");
       const archiveCategories = [
         ...new Set(items.map((a) => a.category || a.subtitle).filter(Boolean)),
       ];
       const archiveCard = (a: Entry) =>
-        `<article class="card archive-card" data-article data-citations="${a.citationCount || 0}" data-title="${e(a.title)}" data-date="${e(a.start)}" data-category="${e(a.category || a.subtitle)}" data-search="${e([a.title, a.authors, a.start, a.tags, a.category, a.body].join(" ").toLocaleLowerCase())}">${cover(a)}<div><p class="meta">${e(date(a))} · ${Math.max(1, Math.ceil((a.fullText || a.body).split(/\s+/).length / 200))} min read</p><h3><a href="${e(url(a))}">${e(a.title)}</a></h3><p class="abstract-excerpt">${e(a.body)}</p><div class="tags"><span class="tag">${e(a.category || a.subtitle || "Research")}</span><a href="${e(url(a))}">${e(doc.labels.viewAbstract || "View Abstract")} →</a></div></div></article>`;
+        `<article class="card archive-card" data-article data-citations="${a.citationCount || 0}" data-title="${e(a.title)}" data-date="${e(a.start)}" data-category="${e(a.category || a.subtitle)}" data-tags="${e(
+          JSON.stringify(
+            a.tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean),
+          ),
+        )}" data-search="${e([a.title, a.authors, a.start, a.tags, a.category, a.body].join(" ").toLocaleLowerCase())}">${cover(a)}<div><p class="meta">${e(date(a))} <span>${Math.max(1, Math.ceil((a.fullText || a.body).split(/\s+/).length / 200))} ${e(doc.labels.minutesRead || "min read")}</span></p><h3><a href="${e(url(a))}">${e(a.title)}</a></h3><p class="abstract-excerpt">${e(a.body)}</p><div class="tags"><span class="tag">${e(a.category || a.subtitle || "Research")}</span>${a.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .slice(0, 2)
+          .map(
+            (t) =>
+              `<button class="tag" data-topic="${e(t)}" aria-pressed="false">${e(t)}</button>`,
+          )
+          .join(
+            "",
+          )}<a href="${e(url(a))}">${e(doc.labels.viewAbstract || "View Abstract")} →</a></div></div></article>`;
       const side = `<aside class="sidebar"><section><h3>${e(doc.labels.categories || "Categories")}</h3><button class="category" data-category="" aria-pressed="true">${e(noun === "papers" ? doc.labels.allResearch || "All Research" : doc.labels.allArticles || "All Articles")} <span>${items.length}</span></button>${archiveCategories.map((c) => `<button class="category" data-category="${e(c)}" aria-pressed="false">${e(c)} <span>${items.filter((a) => (a.category || a.subtitle) === c).length}</span></button>`).join("")}</section><section><h3>${e(doc.labels.mostCited || "Most Cited")}</h3>${[
         ...items,
       ]
@@ -228,13 +252,16 @@ export function renderShibaPortfolio(
         ),
       ]
         .slice(0, 20)
-        .map((t) => `<span class="tag">${e(t)}</span>`)
+        .map(
+          (t) =>
+            `<button class="tag" data-topic="${e(t)}" aria-pressed="false">#${e(t)}</button>`,
+        )
         .join("")}</div></section></aside>`;
-      return `<section class="archive" data-archive data-noun="${e(noun)}"><h1>${e(title)}</h1><div class="search-row"><input type="search" aria-label="Search articles" placeholder="Search by title, keyword, or year..."><select aria-label="Sort articles"><option value="newest">Newest First</option><option value="oldest">Oldest First</option><option value="cited">Most Cited</option><option value="title">Title A–Z</option></select></div><p class="meta" data-result-count aria-live="polite">${items.length} ${e(noun)}</p><div class="columns"><div><div data-article-list>${items.map(archiveCard).join("")}</div><p data-empty hidden>No results found matching your criteria.</p></div>${side}</div></section>`;
+      return `<section class="archive" data-archive data-noun="${e(noun)}" data-page-size="${doc.navigation.archivePageSize || 3}" data-sort="${doc.navigation.archiveSort || "oldest"}"><h1>${e(title)}</h1>${introduction ? `<div class="archive-intro">${introduction}</div>` : ""}<div class="search-row"><input type="search" aria-label="${e(doc.labels.searchArticles || "Search articles")}" placeholder="${e(doc.labels.searchPlaceholder || "Search by title, keyword, or year...")}"><select aria-label="${e(doc.labels.sortArticles || "Sort articles")}"><option value="newest">${e(doc.labels.newestFirst || "Newest First")}</option><option value="oldest">${e(doc.labels.oldestFirst || "Oldest First")}</option><option value="cited">${e(doc.labels.mostCited || "Most Cited")}</option><option value="title">${e(doc.labels.titleSort || "Title A–Z")}</option></select></div><p class="meta" data-result-count aria-live="polite">${items.length} ${e(noun)}</p><div class="columns"><div><div data-article-list>${items.map(archiveCard).join("")}</div><p data-empty hidden>${e(doc.labels.noResults || "No results found matching your criteria.")}</p><nav class="archive-pagination" data-pagination aria-label="Pagination" data-previous="${e(doc.labels.previousPage || "Previous page")}" data-next="${e(doc.labels.nextPage || "Next page")}"></nav></div>${side}</div></section>`;
     };
     if (articleSections.length)
       pages["article/index.html"] = shell(
-        portfolioTabTitle(doc, "Articles"),
+        portfolioTabTitle(doc, doc.labels.articlesHeading || "Articles"),
         archiveContent(
           articles,
           doc.labels.articlesHeading || "Articles",
@@ -276,21 +303,47 @@ export function renderShibaPortfolio(
     for (const a of [...articles, ...research]) {
       const collection = researchIds.has(a.id) ? research : articles;
       const archivePath = researchIds.has(a.id) ? researchSlug : "article";
-      const citations = `<section class="citations" data-citations><h3>${e(doc.labels.citationHeading || "CITE THIS ARTICLE")}</h3><div class="citation-tabs" role="tablist" aria-label="Citation style">${citationStyles.map((style, i) => `<button id="tab-${a.id}-${i}" role="tab" data-citation-tab aria-controls="cite-${a.id}-${i}" aria-selected="${i === 0}">${style}</button>`).join("")}</div>${citationStyles.map((style, i) => `<div id="cite-${a.id}-${i}" role="tabpanel" aria-labelledby="tab-${a.id}-${i}"${i ? " hidden" : ""}><pre>${e(articleCitation(a, url(a), style))}</pre></div>`).join("")}<button class="button outline" data-copy="citation">${e(doc.labels.copyCitation || "Copy Citation")}</button></section>`;
-      const author = `<aside class="sidebar"><section class="author-card"><p class="eyebrow">${e(doc.labels.aboutAuthor || "About the author")}</p>${p.portraitId ? `<img src="${e(asset(p.portraitId))}" alt="${e(p.name)}">` : ""}<h3>${e(p.name)}</h3>${p.affiliation ? `<p class="eyebrow">${e(p.affiliation)}</p>` : ""}${bioVisible ? prose(p.bio) : ""}</section><section><h3>Related ${researchIds.has(a.id) ? "Research" : "Articles"}</h3>${collection
+      const detailAuthor = {
+        name: a.authorDetails?.name || p.name,
+        affiliation: a.authorDetails?.affiliation || p.affiliation,
+        bio: a.authorDetails?.bio || p.bio,
+      };
+      const citations = `<section class="citations" data-citations><h3>${e(doc.labels.citationHeading || "CITE THIS ARTICLE")}</h3><div class="citation-tabs" role="tablist" aria-label="Citation style">${citationStyles.map((style, i) => `<button id="tab-${a.id}-${i}" role="tab" data-citation-tab aria-controls="cite-${a.id}-${i}" aria-selected="${i === 0}">${style}</button>`).join("")}</div>${citationStyles.map((style, i) => `<div id="cite-${a.id}-${i}" role="tabpanel" aria-labelledby="tab-${a.id}-${i}"${i ? " hidden" : ""}><pre>${e(articleCitation(a, url(a), style))}</pre></div>`).join("")}<button class="button outline" data-copy="citation" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${e(doc.labels.copyCitation || "Copy Citation")}</button></section>`;
+      const relatedItems = collection
         .filter((x) => x.id !== a.id)
+        .sort(
+          (x, y) =>
+            Number(y.category === a.category) -
+            Number(x.category === a.category),
+        );
+      const related = relatedItems
         .slice(0, 3)
-        .map((x) => `<p><a href="${e(url(x))}">${e(x.title)}</a></p>`)
-        .join("")}</section><section><h3>Tags</h3><div class="tags">${a.tags
-        .split(",")
-        .filter(Boolean)
-        .map((t) => `<span class="tag">${e(t.trim())}</span>`)
-        .join("")}</div></section></aside>`;
-      const content = `<article class="article"><a class="back" href="${e(baseUrl)}/${archivePath}">← Back to ${researchIds.has(a.id) ? "Research" : "Articles"}</a><div class="columns"><div><span class="pill">${e(a.category || a.subtitle || "Research")}</span><h1>${e(a.title)}</h1><div class="article-byline"><p class="authors">${e(a.authors)}</p><p class="muted">Published ${e(date(a))}</p></div><div class="actions">${a.mediaId ? `<a class="button" href="${e(asset(a.mediaId))}" download>${homeIcon("download")}${e(doc.labels.downloadPdf || "Download as PDF")}</a>` : ""}${a.url ? `<a class="button outline" href="${e(a.url)}" rel="noopener noreferrer">Read publication ↗</a>` : ""}</div><section class="abstract article-text"><h2>${e(doc.labels.abstract)}</h2>${prose(a.body)}${a.abstractSource === "generated" ? `<p class="meta">AI-assisted abstract, reviewed by the administrator.</p>` : ""}</section>${a.coverId && !(a.images || []).some((image) => image.mediaId === a.coverId) ? `<img class="entry-image article-cover" src="${e(asset(a.coverId))}" alt="${e(a.title)}">` : ""}${a.fullText ? `<section class="article-text">${prose(a.fullText)}</section>` : ""}${(a.images || []).map((image) => `<figure class="article-figure"><img class="entry-image" src="${e(asset(image.mediaId))}" alt="${e(image.alt)}" loading="lazy">${image.caption ? `<figcaption>${e(image.caption)}</figcaption>` : ""}</figure>`).join("")}${citations}</div>${author}</div></article><section class="section"><h2>${e(doc.labels.continueReading || "Continue reading")}</h2><a href="${e(baseUrl)}/${archivePath}">VIEW ALL ${researchIds.has(a.id) ? "RESEARCH" : "ARTICLES"}</a><div class="section-grid">${collection
-        .filter((other) => other.id !== a.id)
-        .slice(0, 3)
-        .map(card)
-        .join("")}</div></section>`;
+        .map(
+          (x) =>
+            `<a class="related-item" href="${e(url(x))}">${cover(x)}<div><strong>${e(x.title)}</strong><p class="meta">${e(date(x))}${x.category ? " • " + e(x.category) : ""}</p></div></a>`,
+        )
+        .join("");
+      const author = `<aside class="sidebar">${a.display?.author !== false ? `<section class="author-card"><p class="eyebrow">${e(doc.labels.aboutAuthor || "About the author")}</p>${p.portraitId && !a.authorDetails?.name ? `<img src="${e(asset(p.portraitId))}" alt="${e(detailAuthor.name)}">` : ""}<h3>${e(detailAuthor.name)}</h3>${detailAuthor.affiliation ? `<p class="eyebrow">${e(detailAuthor.affiliation)}</p>` : ""}${bioVisible || a.authorDetails?.bio ? prose(detailAuthor.bio) : ""}</section>` : ""}${a.display?.related !== false && related ? `<section><h3>${e(researchIds.has(a.id) ? doc.labels.relatedResearch || "Related Research" : doc.labels.relatedArticles || "Related Articles")}</h3>${related}</section>` : ""}${
+        a.tags
+          ? `<section><h3>${e(doc.labels.tagsHeading || "Tags")}</h3><div class="tags">${a.tags
+              .split(",")
+              .filter(Boolean)
+              .map(
+                (t) =>
+                  `<a class="tag" href="${e(baseUrl)}/${archivePath}?topic=${e(encodeURIComponent(t.trim()))}">${e(t.trim())}</a>`,
+              )
+              .join("")}</div></section>`
+          : ""
+      }</aside>`;
+      const content = `<article class="article"><a class="back" href="${e(baseUrl)}/${archivePath}">← ${e(researchIds.has(a.id) ? doc.labels.backResearch || "Back to Research Archive" : doc.labels.backArticles || "Back to Articles")}</a><div class="columns"><div><span class="pill">${e(a.category || a.subtitle || "Research")}</span><h1>${e(a.title)}</h1><div class="article-byline"><p class="authors">${e(a.authors)}</p><p class="muted">${e(doc.labels.published || "Published")} ${e(date(a))}</p></div><div class="actions">${a.mediaId ? `<a class="button" href="${e(asset(a.mediaId))}" download>${homeIcon("download")}${e(doc.labels.downloadPdf || "Download as PDF")}</a>` : ""}${a.url ? `<a class="button outline" href="${e(a.url)}" rel="noopener noreferrer">${e(doc.labels.readPublication)} ↗</a>` : ""}<button class="button outline" data-copy-url="${e(url(a))}" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${e(doc.labels.copyUrl || "Copy article URL")}</button></div>${a.display?.abstract !== false ? `<section class="abstract article-text"><h2>${e(doc.labels.abstract)}</h2>${prose(a.body)}${a.abstractSource === "generated" ? `<p class="meta">${e(doc.labels.summaryNote)}</p>` : ""}</section>` : ""}${a.display?.images !== false && a.coverId && !(a.images || []).some((image) => image.mediaId === a.coverId) ? `<img class="entry-image article-cover" src="${e(asset(a.coverId))}" alt="${e(a.coverAlt || a.title)}">` : ""}${a.display?.fullText !== false && a.fullText ? `<section class="article-text">${prose(a.fullText)}</section>` : ""}${(a.display?.images === false ? [] : a.images || []).map((image) => `<figure class="article-figure"><img class="entry-image" src="${e(asset(image.mediaId))}" alt="${e(image.alt)}" loading="lazy">${image.caption ? `<figcaption>${e(image.caption)}</figcaption>` : ""}</figure>`).join("")}${a.display?.citations !== false ? citations : ""}</div>${author}</div></article>${
+        a.display?.related !== false && relatedItems.length
+          ? `<section class="section continue-reading"><h2>${e(doc.labels.continueReading || "Continue reading")}</h2><a href="${e(baseUrl)}/${archivePath}">${e(researchIds.has(a.id) ? doc.labels.viewAllResearch || "View All Research" : doc.labels.viewAllArticles || "View All Articles")}</a><div class="section-grid">${collection
+              .filter((other) => other.id !== a.id)
+              .slice(0, 3)
+              .map(card)
+              .join("")}</div></section>`
+          : ""
+      }`;
       const rendered = shell(
         portfolioTabTitle(doc, a.title),
         content,
@@ -299,7 +352,7 @@ export function renderShibaPortfolio(
           "@type": "ScholarlyArticle",
           headline: a.title,
           abstract: a.body,
-          author: authorNames(a.authors).map((name) => ({
+          author: authorNames(a.authors, a.authorFormat).map((name) => ({
             "@type": "Person",
             name,
           })),

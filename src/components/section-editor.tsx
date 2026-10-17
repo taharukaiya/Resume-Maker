@@ -1,4 +1,5 @@
 "use client";
+import { citationStyles } from "@/modules/publishing/citations";
 import type { Media } from "@/modules/media/service";
 import {
   type Entry,
@@ -464,6 +465,24 @@ function EntryEditor({
                 />
               </Field>
             </div>
+            <Field
+              label="Author name format"
+              hint="Use semicolons between people. Select Family, Given when a name contains a comma."
+            >
+              <select
+                disabled={!editable}
+                value={entry.authorFormat || "names"}
+                onChange={(event) =>
+                  change(
+                    "authorFormat",
+                    event.target.value as "names" | "family-given",
+                  )
+                }
+              >
+                <option value="names">Given Family</option>
+                <option value="family-given">Family, Given</option>
+              </select>
+            </Field>
             <Field label="Publication status">
               <select
                 value={entry.status}
@@ -538,6 +557,94 @@ function EntryEditor({
                 />
               </Field>
             </div>
+            <details className="full-span panel">
+              <summary>Article display and citation controls</summary>
+              <p className="panel-description">
+                These controls affect the web page. The downloadable PDF remains
+                the uploaded document; upload a revised document to change its
+                contents.
+              </p>
+              <div className="form-grid">
+                {(
+                  [
+                    "abstract",
+                    "fullText",
+                    "images",
+                    "author",
+                    "citations",
+                    "related",
+                  ] as const
+                ).map((key) => (
+                  <label className="check-row" key={key}>
+                    <input
+                      type="checkbox"
+                      disabled={!editable}
+                      checked={entry.display?.[key] !== false}
+                      onChange={(event) =>
+                        change("display", {
+                          ...entry.display,
+                          [key]: event.target.checked,
+                        })
+                      }
+                    />
+                    Show {key === "fullText" ? "full article text" : key}
+                  </label>
+                ))}
+                <Field label="Cover image description">
+                  <input
+                    disabled={!editable}
+                    value={entry.coverAlt || ""}
+                    maxLength={500}
+                    onChange={(event) => change("coverAlt", event.target.value)}
+                  />
+                </Field>
+                {(["name", "affiliation", "bio"] as const).map((key) => (
+                  <Field
+                    key={key}
+                    label={`Article author ${key}`}
+                    hint="Leave blank to use the portfolio profile."
+                  >
+                    <textarea
+                      disabled={!editable}
+                      rows={key === "bio" ? 4 : 2}
+                      maxLength={key === "bio" ? 16000 : 200}
+                      value={entry.authorDetails?.[key] || ""}
+                      onChange={(event) =>
+                        change("authorDetails", {
+                          name: "",
+                          affiliation: "",
+                          bio: "",
+                          ...entry.authorDetails,
+                          [key]: event.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                ))}
+              </div>
+              <p className="panel-description">
+                Citations use your saved authors, publication date, DOI and
+                venue. Review each style. For special author names or publisher
+                requirements, supply an exact citation below. Clear an override
+                to restore automatic formatting.
+              </p>
+              {citationStyles.map((style) => (
+                <Field key={style} label={`${style} citation override`}>
+                  <textarea
+                    rows={3}
+                    maxLength={10000}
+                    disabled={!editable}
+                    value={entry.citationOverrides?.[style] || ""}
+                    onChange={(event) =>
+                      change("citationOverrides", {
+                        ...entry.citationOverrides,
+                        [style]: event.target.value,
+                      })
+                    }
+                  />
+                </Field>
+              ))}
+            </details>
             <Field label="Citation count">
               <input
                 type="number"

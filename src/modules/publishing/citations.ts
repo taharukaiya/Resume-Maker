@@ -10,9 +10,12 @@ export const citationStyles = [
   "RIS",
 ] as const;
 export type CitationStyle = (typeof citationStyles)[number];
-export function authorNames(authors: string) {
+export function authorNames(
+  authors: string,
+  format?: "names" | "family-given",
+) {
   return authors
-    .split(authors.includes(";") ? ";" : ",")
+    .split(authors.includes(";") || format === "family-given" ? ";" : ",")
     .map((x) => x.trim())
     .filter(Boolean);
 }
@@ -29,7 +32,9 @@ export function articleCitation(
   url: string,
   style: CitationStyle,
 ) {
-  const names = authorNames(entry.authors),
+  if (entry.citationOverrides?.[style]?.trim())
+    return entry.citationOverrides[style]!.trim();
+  const names = authorNames(entry.authors, entry.authorFormat),
     year = entry.start.slice(0, 4) || "n.d.";
   const initials = names.map((name) => {
     const p = nameParts(name);
@@ -51,6 +56,7 @@ export function articleCitation(
       .join(" ")} ${p.family}`.trim();
   });
   const source = entry.journal || entry.subtitle;
+  const doi = entry.doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "").trim();
   const locator = entry.doi
     ? `https://doi.org/${entry.doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "")}`
     : url;
@@ -81,7 +87,7 @@ export function articleCitation(
         volume: entry.volume,
         number: entry.issue,
         pages: entry.pages,
-        doi: entry.doi,
+        doi,
         url,
       },
     )
@@ -95,7 +101,13 @@ export function articleCitation(
       "TI  - " + safe(entry.title),
       entry.start ? "PY  - " + entry.start : "",
       source ? "JO  - " + safe(source) : "",
-      entry.doi ? "DO  - " + safe(entry.doi) : "",
+      entry.volume ? "VL  - " + safe(entry.volume) : "",
+      entry.issue ? "IS  - " + safe(entry.issue) : "",
+      entry.pages ? "SP  - " + safe(entry.pages.split(/[–-]/)[0]) : "",
+      (entry.pages || "").split(/[–-]/)[1]
+        ? "EP  - " + safe((entry.pages || "").split(/[–-]/)[1])
+        : "",
+      doi ? "DO  - " + safe(doi) : "",
       "UR  - " + url,
       "ER  -",
     ]
@@ -104,12 +116,25 @@ export function articleCitation(
   if (style === "APA")
     return `${initials.length ? join(initials, ", & ").replace(/\.$/, "") + ". " : ""}(${year}). ${entry.title}.${venue ? " " + venue + "." : ""} ${locator}`;
   if (style === "IEEE")
-    return `${ieee.length ? join(ieee, ", and ") + ", " : ""}“${entry.title},” ${venue ? venue + ", " : ""}${year}. [Online]. Available: ${locator}`;
+    return `${ieee.length ? join(ieee, names.length === 2 ? " and " : ", and ") + ", " : ""}“${entry.title},” ${[source, entry.volume && "vol. " + entry.volume, entry.issue && "no. " + entry.issue, entry.pages && "pp. " + entry.pages].filter(Boolean).join(", ")}${venue ? ", " : ""}${year}. ${doi ? "doi: " + doi + "." : "[Online]. Available: " + locator}`;
   if (style === "Harvard")
     return `${initials.length ? join(initials, " and ") + " " : ""}(${year}) ‘${entry.title}’.${venue ? " " + venue + "." : ""} Available at: ${locator}`;
   if (style === "MLA")
     return `${names.length ? nameParts(names[0]).family + (nameParts(names[0]).given ? ", " + nameParts(names[0]).given : "") + (names.length > 2 ? ", et al." : names.length === 2 ? ", and " + names[1] : "") + ". " : ""}“${entry.title}.” ${venue ? venue + ", " : ""}${year}, ${locator}.`;
   if (style === "Chicago")
     return `${names.length ? join(names, ", and ") + ". " : ""}“${entry.title}.” ${venue ? venue + " " : ""}(${year}). ${locator}.`;
-  return `${initials.length ? initials.join(", ").replace(/, ([A-Z])\./g, " $1") + ". " : ""}${entry.title}. ${source ? source + ". " : ""}${year}${entry.volume ? ";" + entry.volume : ""}${entry.issue ? "(" + entry.issue + ")" : ""}${entry.pages ? ":" + entry.pages : ""}. ${locator}`;
+  const vancouver = names.map((name) => {
+    const p = nameParts(name);
+    return (
+      p.family +
+      (p.given
+        ? " " +
+          p.given
+            .split(/\s+/)
+            .map((x) => x[0])
+            .join("")
+        : "")
+    );
+  });
+  return `${vancouver.length ? vancouver.join(", ") + ". " : ""}${entry.title}. ${source ? source + ". " : ""}${year}${entry.volume ? ";" + entry.volume : ""}${entry.issue ? "(" + entry.issue + ")" : ""}${entry.pages ? ":" + entry.pages : ""}. ${locator}`;
 }

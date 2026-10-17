@@ -41,12 +41,14 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   doc.profile.affiliation = "Financial Risk & Research";
   doc.profile.bio =
     "A researcher studying the connections between institutions and markets.";
+  doc.navigation.archivePageSize = 1;
   const first = {
     ...emptyEntry(),
     title: "Coastal resilience",
     authors: "Ada Lovelace; Alan Turing",
     start: "2025-02-09",
     category: "Climate",
+    tags: "Evidence, Oceans",
     body: "An editable abstract.",
     fullText: "Methods\n\nObserved evidence and limitations.",
     mediaId,
@@ -140,7 +142,22 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   });
   await page.goto(`/api/sites/${id}/preview/article`);
   await expect(page.getByRole("heading", { name: "Articles" })).toBeVisible();
-  await expect(page.locator("[data-article]:visible")).toHaveCount(2);
+  await expect(page.locator("[data-article]:visible")).toHaveCount(1);
+  await expect(page.locator("[data-article]:visible")).toContainText(
+    "Financial risk",
+  );
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await expect(page.locator("[data-article]:visible")).toContainText(
+    "Coastal resilience",
+  );
+  await page
+    .getByRole("button", { name: "Previous page", exact: true })
+    .click();
+  await page.getByRole("button", { name: "#Oceans", exact: true }).click();
+  await expect(page.locator("[data-article]:visible")).toContainText(
+    "Coastal resilience",
+  );
+  await page.getByRole("button", { name: "#Oceans", exact: true }).click();
   await page.getByRole("searchbox").fill("Coastal");
   await expect(page.locator("[data-article]:visible")).toHaveCount(1);
   await page.getByRole("searchbox").fill("");
@@ -149,6 +166,18 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await expect(page.locator("[data-article]:visible")).toContainText(
     "Financial risk",
   );
+  for (const width of [375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `.test-data/article-archive-${width}.png`,
+      fullPage: false,
+    });
+  }
   await page.goto(`/api/sites/${id}/preview/article/${first.id}`);
   await expect(page.getByRole("heading", { name: first.title })).toBeVisible();
   await expect(page.locator(".article-figure")).toContainText(
@@ -158,6 +187,9 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     "alt",
     "Synthetic figure",
   );
+  await expect(
+    page.getByRole("button", { name: "Copy article URL", exact: true }),
+  ).toBeVisible();
   await page.getByRole("tab", { name: "IEEE", exact: true }).click();
   await expect(page.getByRole("tabpanel")).toContainText("2025");
   await expect(page.getByRole("tabpanel")).toContainText("Lovelace");
@@ -222,6 +254,38 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await expect(
     page.getByRole("heading", { name: "Articles", exact: true }),
   ).toBeVisible();
+  const editor = page.locator(".entry-editor").filter({
+    has: page.getByRole("heading", { name: first.title, exact: true }),
+  });
+  await editor
+    .getByText("Article display and citation controls", { exact: true })
+    .click();
+  await editor
+    .getByRole("textbox", { name: "APA citation override", exact: true })
+    .fill("Administrator verified citation (2025).");
+  await editor
+    .getByRole("textbox", { name: "Article author name", exact: true })
+    .fill("Guest Author");
+  await editor
+    .getByRole("checkbox", { name: "Show full article text", exact: true })
+    .uncheck();
+  const savedResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/sites/${id}`) &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  expect((await savedResponse).ok()).toBe(true);
+  const savedSite = await (await page.request.get(`/api/sites/${id}`)).json();
+  revision = savedSite.site.revision;
+  const savedArticle = savedSite.site.draft.sections.find(
+    (s: { type: string }) => s.type === "articles",
+  ).entries[0];
+  expect(savedArticle.citationOverrides.APA).toBe(
+    "Administrator verified citation (2025).",
+  );
+  expect(savedArticle.authorDetails.name).toBe("Guest Author");
+  expect(savedArticle.display.fullText).toBe(false);
   await page.screenshot({
     path: ".test-data/articles-editor.png",
     fullPage: true,

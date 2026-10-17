@@ -60,6 +60,59 @@ export function PublicationsEditor({
   );
   return (
     <div className="stack">
+      {admin && (
+        <details className="panel">
+          <summary>Archive display</summary>
+          <div className="form-grid">
+            <label>
+              Articles per page
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={document.navigation.archivePageSize || 3}
+                onChange={(event) =>
+                  onChange({
+                    ...document,
+                    navigation: {
+                      ...document.navigation,
+                      archivePageSize: Math.max(
+                        1,
+                        Math.min(50, Number(event.target.value) || 3),
+                      ),
+                    },
+                  })
+                }
+              />
+            </label>
+            <label>
+              Default order
+              <select
+                value={document.navigation.archiveSort || "oldest"}
+                onChange={(event) =>
+                  onChange({
+                    ...document,
+                    navigation: {
+                      ...document.navigation,
+                      archiveSort: event.target.value as
+                        "oldest" | "newest" | "cited" | "title",
+                    },
+                  })
+                }
+              >
+                <option value="oldest">Oldest first</option>
+                <option value="newest">Newest first</option>
+                <option value="cited">Most cited</option>
+                <option value="title">Title</option>
+              </select>
+            </label>
+          </div>
+          <p className="panel-description">
+            Shared by the Research and Article archives. Edit public headings
+            and button text in Website wording.
+          </p>
+        </details>
+      )}
       {admin && type === "articles" && (
         <section className="panel">
           <label className="check-row">

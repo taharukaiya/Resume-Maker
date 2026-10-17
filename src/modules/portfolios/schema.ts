@@ -105,6 +105,36 @@ export const entrySchema = z
       )
       .max(24)
       .optional(),
+    authorFormat: z.enum(["names", "family-given"]).optional(),
+    coverAlt: z.string().max(500).optional(),
+    authorDetails: z
+      .object({ name: short, affiliation: short, bio: z.string().max(16000) })
+      .strict()
+      .optional(),
+    citationOverrides: z
+      .object({
+        APA: z.string().max(10000).optional(),
+        IEEE: z.string().max(10000).optional(),
+        Harvard: z.string().max(10000).optional(),
+        MLA: z.string().max(10000).optional(),
+        Chicago: z.string().max(10000).optional(),
+        Vancouver: z.string().max(10000).optional(),
+        BibTeX: z.string().max(10000).optional(),
+        RIS: z.string().max(10000).optional(),
+      })
+      .strict()
+      .optional(),
+    display: z
+      .object({
+        abstract: z.boolean().optional(),
+        fullText: z.boolean().optional(),
+        images: z.boolean().optional(),
+        author: z.boolean().optional(),
+        citations: z.boolean().optional(),
+        related: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     citationCount: z.number().int().min(0).max(1000000000).optional(),
   })
   .strict();
@@ -140,6 +170,31 @@ const baseLabels = {
   receivedMessage: "Your message has been delivered to the portfolio team.",
 };
 const interactionLabels = {
+  searchArticles: "Search articles",
+  searchPlaceholder: "Search by title, keyword, or year...",
+  sortArticles: "Sort articles",
+  newestFirst: "Newest First",
+  oldestFirst: "Oldest First",
+  titleSort: "Title A–Z",
+  noResults: "No results found matching your criteria.",
+  minutesRead: "min read",
+  published: "Published",
+  dateUnknown: "Date not specified",
+  relatedResearch: "Related Research",
+  relatedArticles: "Related Articles",
+  tagsHeading: "Tags",
+  backResearch: "Back to Research Archive",
+  backArticles: "Back to Articles",
+  viewAllArticles: "View All Articles",
+  copyUrl: "Copy article URL",
+  copied: "Copied",
+  copyFallback: "Select and copy",
+  previousPage: "Previous page",
+  nextPage: "Next page",
+  titleJournal: "Title & Journal",
+  year: "Year",
+  viewConference: "View conference",
+  noConferences: "No conferences available.",
   subject: "Subject",
   downloadPdf: "Download as PDF",
   researchIntro: "Latest publications and research insights.",
@@ -309,6 +364,8 @@ export const documentSchema = z
     navigation: z
       .object({
         articlesEnabled: z.boolean().optional(),
+        archivePageSize: z.number().int().min(1).max(50).optional(),
+        archiveSort: z.enum(["newest", "oldest", "cited", "title"]).optional(),
         siteTitle: short,
         contactLabel: short,
         cvLabel: short,
