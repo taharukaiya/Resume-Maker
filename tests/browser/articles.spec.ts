@@ -349,6 +349,43 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   const editor = page.locator(".entry-editor").filter({
     has: page.getByRole("heading", { name: first.title, exact: true }),
   });
+  const imageResponse = await page.request.get(`/api/media/${figureId}`);
+  const imageBytes = await imageResponse.body();
+  const coverUpload = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/sites/${id}/media`) &&
+      response.request().method() === "POST",
+  );
+  await editor
+    .getByLabel("Upload cover image", { exact: true })
+    .setInputFiles({
+      name: "article-cover.png",
+      mimeType: "image/png",
+      buffer: imageBytes,
+    });
+  const newCover = await (await coverUpload).json();
+  await expect(
+    editor.getByRole("combobox", { name: "Article cover", exact: true }),
+  ).toHaveValue(newCover.id);
+  const figureUpload = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/sites/${id}/media`) &&
+      response.request().method() === "POST",
+  );
+  await editor
+    .getByLabel("Upload article image", { exact: true })
+    .setInputFiles({
+      name: "article-image.png",
+      mimeType: "image/png",
+      buffer: imageBytes,
+    });
+  const newFigure = await (await figureUpload).json();
+  await expect(
+    editor.getByRole("combobox", { name: "Image 2", exact: true }),
+  ).toHaveValue(newFigure.id);
+  await expect(
+    editor.getByRole("textbox", { name: "Publication title *", exact: true }),
+  ).toHaveValue(first.title);
   await expect(
     editor.getByRole("textbox", { name: "Full article text", exact: true }),
   ).toBeVisible();

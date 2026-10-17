@@ -1,4 +1,5 @@
 "use client";
+import type { ArticleImageUpload } from "./article-image-upload";
 import type { PortfolioDocument, Section } from "@/modules/portfolios/schema";
 import type { Media } from "@/modules/media/service";
 import { SectionsEditor } from "./section-editor";
@@ -26,8 +27,10 @@ export function PublicationsEditor({
   admin,
   allowed,
   onFiles,
+  onUploadImage,
   type = "publications",
 }: {
+  onUploadImage?: ArticleImageUpload;
   type?: "publications" | "articles";
   document: PortfolioDocument;
   onChange: (doc: PortfolioDocument) => void;
@@ -54,6 +57,7 @@ export function PublicationsEditor({
         )
       }
       media={media}
+      onUploadImage={onUploadImage}
       admin={admin}
       allowed={customPage && !admin ? [] : allowed}
     />

@@ -3,6 +3,7 @@ import {
   articleContent,
   cleanUntouchedImport,
 } from "@/modules/media/article-content";
+import type { ArticleImageUpload } from "./article-image-upload";
 import type { Media } from "@/modules/media/service";
 import {
   type PortfolioDocument,
@@ -249,6 +250,39 @@ export function PortfolioEditor({ id }: { id: string }) {
       window.document.removeEventListener("click", navigate, true);
     };
   }, [dirty, confirm, router]);
+  const uploadArticleImage: ArticleImageUpload = async (
+    entryId,
+    file,
+    target,
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("purpose", "image");
+    const uploaded = await api<{ id: string }>(`sites/${id}/media`, {
+      method: "POST",
+      body: form,
+    });
+    await load();
+    setDocument((current) => {
+      if (!current) return current;
+      const next = structuredClone(current);
+      for (const section of [
+        ...next.sections,
+        ...next.pages.flatMap((page) => page.sections),
+      ]) {
+        const entry = section.entries.find((entry) => entry.id === entryId);
+        if (!entry) continue;
+        if (target === "cover") entry.coverId = uploaded.id;
+        else if ((entry.images || []).length < 24)
+          entry.images = [
+            ...(entry.images || []),
+            { mediaId: uploaded.id, alt: "", caption: "" },
+          ];
+      }
+      return next;
+    });
+    setDirty(true);
+  };
   function change(next: PortfolioDocument) {
     setDocument(next);
     setDirty(true);
@@ -1027,6 +1061,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       </div>
       {tab === "sections" && (
         <SectionsEditor
+          onUploadImage={admin || !demo ? uploadArticleImage : undefined}
           sections={orderSections(
             document.sections.filter(
               (s) => !["publications", "articles"].includes(s.type),
@@ -1065,6 +1100,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       )}
       {(tab === "publications" || tab === "articles") && (
         <PublicationsEditor
+          onUploadImage={admin || !demo ? uploadArticleImage : undefined}
           type={tab === "articles" ? "articles" : "publications"}
           document={document}
           onChange={change}
@@ -1188,6 +1224,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 </div>
               </div>
               <SectionsEditor
+                onUploadImage={admin || !demo ? uploadArticleImage : undefined}
                 sections={page.sections}
                 onChange={(sections) =>
                   change({

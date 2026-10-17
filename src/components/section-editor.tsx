@@ -1,5 +1,9 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  ArticleImageUploader,
+  type ArticleImageUpload,
+} from "./article-image-upload";
 import { citationStyles } from "@/modules/publishing/citations";
 import { articleContent } from "@/modules/media/article-content";
 import type { Media } from "@/modules/media/service";
@@ -25,7 +29,9 @@ export function SectionsEditor({
   order = "manual",
   placement = false,
   types = sectionTypes,
+  onUploadImage,
 }: {
+  onUploadImage?: ArticleImageUpload;
   sections: Section[];
   onChange: (sections: Section[], order?: "manual" | "academic") => void;
   media: Media[];
@@ -264,6 +270,7 @@ export function SectionsEditor({
                     index={entryIndex}
                     type={section.type}
                     media={media}
+                    onUploadImage={onUploadImage}
                     editable={editable}
                     onChange={(next) =>
                       change(
@@ -411,7 +418,9 @@ function EntryEditor({
   onChange,
   onDelete,
   onMove,
+  onUploadImage,
 }: {
+  onUploadImage?: ArticleImageUpload;
   entry: Entry;
   index: number;
   type: string;
@@ -899,51 +908,69 @@ function EntryEditor({
                 }
               />
             </Field>
-            <Field label="Article cover">
-              {entry.coverId && (
-                <div className="stack">
-                  <img
-                    src={`/api/media/${entry.coverId}`}
-                    alt={entry.coverAlt || "Article cover preview"}
-                    style={{
-                      maxWidth: 240,
-                      maxHeight: 160,
-                      objectFit: "cover",
-                    }}
-                  />
-                  {editable && (
-                    <Button
-                      variant="secondary small"
-                      onClick={() => change("coverId", "")}
-                    >
-                      Remove cover image
-                    </Button>
-                  )}
-                </div>
+            <div className="stack">
+              <Field label="Article cover">
+                {entry.coverId && (
+                  <div className="stack">
+                    <img
+                      src={`/api/media/${entry.coverId}`}
+                      alt={entry.coverAlt || "Article cover preview"}
+                      style={{
+                        maxWidth: 240,
+                        maxHeight: 160,
+                        objectFit: "cover",
+                      }}
+                    />
+                    {editable && (
+                      <Button
+                        variant="secondary small"
+                        onClick={() => change("coverId", "")}
+                      >
+                        Remove cover image
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <select
+                  aria-label="Article cover"
+                  value={entry.coverId || ""}
+                  disabled={!editable}
+                  onChange={(event) => change("coverId", event.target.value)}
+                >
+                  <option value="">No cover image</option>
+                  {media
+                    .filter((file) => file.mime.startsWith("image/"))
+                    .map((file) => (
+                      <option key={file.id} value={file.id}>
+                        {file.filename}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+              {editable && onUploadImage && (
+                <ArticleImageUploader
+                  entryId={entry.id}
+                  target="cover"
+                  onUpload={onUploadImage}
+                />
               )}
-              <select
-                aria-label="Article cover"
-                value={entry.coverId || ""}
-                disabled={!editable}
-                onChange={(event) => change("coverId", event.target.value)}
-              >
-                <option value="">No cover image</option>
-                {media
-                  .filter((file) => file.mime.startsWith("image/"))
-                  .map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.filename}
-                    </option>
-                  ))}
-              </select>
-            </Field>
+            </div>
             <div className="full-span stack">
               <h4>Article images</h4>
               <p className="panel-description">
                 Review extracted figures. Replace images, edit descriptions and
-                captions, or change their order. Upload additional images
-                through the file library.
+                captions, or change their order. Upload an image below or choose
+                one from your library.
               </p>
+              {editable &&
+                onUploadImage &&
+                (entry.images || []).length < 24 && (
+                  <ArticleImageUploader
+                    entryId={entry.id}
+                    target="figure"
+                    onUpload={onUploadImage}
+                  />
+                )}
               {(entry.images || []).map((image, imageIndex) => (
                 <div className="panel" key={imageIndex}>
                   <img
