@@ -5,7 +5,13 @@ const config: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   cacheMaxMemorySize: 0,
-  serverExternalPackages: ["@electric-sql/pglite", "pg", "pdf-parse", "sharp"],
+  serverExternalPackages: [
+    "@electric-sql/pglite",
+    "pg",
+    "pdf-parse",
+    "sharp",
+    "pdfkit",
+  ],
   experimental: {
     // The VPS image build runs in a resource-limited builder on a shared server.
     ...(process.env.BRILLIANCY_SMALL_BUILD === "true" ? { cpus: 1 } : {}),

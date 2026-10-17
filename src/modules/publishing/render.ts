@@ -40,6 +40,8 @@ export function formatDate(value: string, locale = "en") {
 }
 export type RenderOptions = {
   faviconUrl?: string;
+  socialImage?: (id?: string) => string;
+  articlePdf?: (id: string) => string;
   baseUrl: string;
   fontUrl?: (file: string) => string;
   agencyName: string;

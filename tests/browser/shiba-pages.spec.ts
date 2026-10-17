@@ -52,6 +52,25 @@ test("reference About and Contact layouts, pipe titles and working collaboration
     "I study how communities respond to changing environments. My research connects institutions, public policy and empirical evidence.\n\nI collaborate across disciplines to develop transparent methods and practical insights.";
   doc.profile.collaborationNote =
     "Open to collaboration on climate, policy and data analysis.";
+  doc.profile.contactQuote = "Curiosity connects ideas with evidence.";
+  doc.profile.quoteAttribution = "Personal motto";
+  doc.profile.cardsHeading = "Collaboration interests";
+  doc.profile.featureCards = [
+    {
+      title: "Climate collaboration",
+      body: "Exploring shared questions with researchers.",
+      icon: "research",
+      url: "",
+      linkLabel: "",
+    },
+    {
+      title: "Education",
+      body: "Sharing evidence and learning.",
+      icon: "education",
+      url: "",
+      linkLabel: "",
+    },
+  ];
   doc.profile.officeHours = "Tuesday | 10am to noon";
   doc.profile.mailingAddress = "Example University\nExample City";
   doc.profile.links = [
@@ -160,6 +179,19 @@ test("reference About and Contact layouts, pipe titles and working collaboration
     .toBe("published");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/portfolio/${slug}`);
+  await expect(page.locator(".personality-quote")).toContainText(
+    doc.profile.contactQuote,
+  );
+  await expect(page.locator(".personality-card")).toHaveCount(2);
+  const socialUrl = await page
+    .locator('meta[property="og:image"]')
+    .getAttribute("content");
+  expect(socialUrl).toMatch(/\/social\/.+\.jpg\?v=/);
+  const socialResponse = await page.request.get(socialUrl!);
+  expect(socialResponse.headers()["content-type"]).toBe("image/jpeg");
+  expect((await socialResponse.body()).subarray(0, 2).toString("hex")).toBe(
+    "ffd8",
+  );
   await expect(page.locator(".hero h1")).toHaveCSS("font-size", "60px");
   await expect(page.locator(".hero h1 span")).toHaveText(
     "Data-Driven Intelligence",
@@ -206,6 +238,17 @@ test("reference About and Contact layouts, pipe titles and working collaboration
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/portfolio/${slug}/about`);
+  await expect(page.locator(".personality-quote")).toBeVisible();
+  await expect(
+    page.locator(".about-interests .about-card h3").first(),
+  ).toHaveCSS("font-weight", "400");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await page
+      .locator("body")
+      .evaluate((el) => getComputedStyle(el, "::before").animationName),
+  ).toBe("none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await expect(page).toHaveTitle("About Me | Dr. Amina Rahman");
   await expect(
     page.getByRole("heading", { name: doc.profile.aboutHeadline }),

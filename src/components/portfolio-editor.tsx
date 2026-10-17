@@ -35,6 +35,7 @@ import { PublicationsEditor } from "./publications-editor";
 import { DeletePortfolio } from "./delete-portfolio";
 import { CvImporter } from "./cv-importer";
 import { socialPlatforms } from "@/modules/portfolios/social-profiles";
+import { PersonalityEditor } from "./personality-editor";
 import { PortraitEditor } from "./portrait-editor";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
@@ -688,7 +689,6 @@ export function PortfolioEditor({ id }: { id: string }) {
                       ["contactIntro", "Contact introduction", 1000],
                       ["officeHours", "Office hours", 2000],
                       ["mailingAddress", "Mailing address", 2000],
-                      ["contactQuote", "Contact closing quote", 2000],
                     ] as const
                   ).map(([key, label, limit]) => (
                     <div className="full-span" key={key}>
@@ -913,6 +913,11 @@ export function PortfolioEditor({ id }: { id: string }) {
                 ))}
               </datalist>
             </section>
+            <PersonalityEditor
+              profile={document.profile}
+              canEdit={canEdit}
+              change={(value) => change({ ...document, profile: value })}
+            />
           </div>
           <aside className="editor-aside">
             <section className="panel">
@@ -1267,7 +1272,13 @@ export function PortfolioEditor({ id }: { id: string }) {
                     }
                   >
                     <input
-                      value={document.navigation[key] ?? ""}
+                      value={
+                        key === "contactLabel" &&
+                        !document.navigation.contactLabelCustomized &&
+                        /^get in touch$/i.test(document.navigation.contactLabel)
+                          ? "Contact"
+                          : (document.navigation[key] ?? "")
+                      }
                       maxLength={key === "footer" ? 1000 : 200}
                       onChange={(e) =>
                         change({
@@ -1275,6 +1286,9 @@ export function PortfolioEditor({ id }: { id: string }) {
                           navigation: {
                             ...document.navigation,
                             [key]: e.target.value,
+                            ...(key === "contactLabel"
+                              ? { contactLabelCustomized: true }
+                              : {}),
                           },
                         })
                       }

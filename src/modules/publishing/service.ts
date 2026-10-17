@@ -1,3 +1,6 @@
+import { articlePdf } from "./article-pdf";
+import { socialCard } from "./social-card";
+import { portfolioSeo } from "../portfolios/seo";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { selectedFonts, fonts } from "@/modules/portfolios/design";
@@ -65,6 +68,24 @@ export async function buildRelease(
   const routes: ReleaseManifest["routes"] = {};
   const assetPaths = new Map<string, string>();
   let faviconUrl: string | undefined;
+  const socialPaths = new Map<string, string>();
+  const socialIds = new Set(
+    [
+      portfolioSeo(document).socialImageId,
+      ...[
+        ...document.sections,
+        ...document.pages.flatMap((page) => page.sections),
+      ]
+        .filter(
+          (section) =>
+            section.visible &&
+            ["articles", "publications"].includes(section.type) &&
+            (section.type !== "articles" ||
+              document.navigation.articlesEnabled !== false),
+        )
+        .flatMap((section) => section.entries.map((entry) => entry.coverId)),
+    ].filter(Boolean),
+  );
   for (const id of assets) {
     const file = media.find((m) => m.id === id);
     invariant(file, 400, "A referenced file no longer exists.");
@@ -89,12 +110,79 @@ export async function buildRelease(
       routes["favicon.png"] = { key: iconKey, type: "image/png" };
       faviconUrl = `${payload.canonicalUrl}/favicon.png?v=${releaseId}`;
     }
+    if (socialIds.has(id) && file.mime.startsWith("image/")) {
+      const route = `social/${id}.jpg`,
+        key = `releases/${siteId}/${releaseId}/${route}`;
+      const image = await socialCard(
+        document,
+        bytes,
+        id !== document.profile.portraitId || id === document.seo.socialImageId,
+      );
+      await putObject(key, image, "image/jpeg");
+      routes[route] = { key, type: "image/jpeg" };
+      socialPaths.set(id, `${payload.canonicalUrl}/${route}?v=${releaseId}`);
+    }
     assetPaths.set(
       id,
       config().assetUrl
         ? `${config().assetUrl!.replace(/\/$/, "")}/${key}`
         : `${config().appUrl}/portfolio/${payload.slug}/${route}`,
     );
+  }
+  const fallbackKey = `releases/${siteId}/${releaseId}/social.jpg`;
+  await putObject(fallbackKey, await socialCard(document), "image/jpeg");
+  routes["social.jpg"] = { key: fallbackKey, type: "image/jpeg" };
+  const articlePdfs = new Map<string, string>();
+  for (const section of [
+    ...document.sections,
+    ...document.pages.flatMap((page) => page.sections),
+  ]) {
+    if (
+      !section.visible ||
+      !["articles", "publications"].includes(section.type) ||
+      (section.type === "articles" &&
+        document.navigation.articlesEnabled === false)
+    )
+      continue;
+    for (const entry of section.entries) {
+      if (
+        entry.mediaId ||
+        !entry.fullText?.trim() ||
+        entry.display?.fullText === false
+      )
+        continue;
+      const figures: { bytes: Buffer; caption: string }[] = [];
+      for (const figure of entry.display?.images === false
+        ? []
+        : entry.images || []) {
+        const file = media.find((file) => file.id === figure.mediaId);
+        if (file?.mime.startsWith("image/")) {
+          const bytes = await getObject(file.storage_key);
+          if (bytes)
+            figures.push({
+              bytes: await sharp(bytes).webp().toBuffer(),
+              caption: figure.caption,
+            });
+        }
+      }
+      const archive =
+        section.type === "articles"
+          ? "article"
+          : document.navigation.pageSettings?.research?.slug || "research";
+      const route = `papers/${entry.id}.pdf`,
+        key = `releases/${siteId}/${releaseId}/${route}`;
+      await putObject(
+        key,
+        await articlePdf(
+          entry,
+          `${payload.canonicalUrl}/${archive}/${entry.id}`,
+          figures,
+        ),
+        "application/pdf",
+      );
+      routes[route] = { key, type: "application/pdf" };
+      articlePdfs.set(entry.id, `${payload.canonicalUrl}/${route}`);
+    }
   }
   const fontFiles = [
     ...new Set([
@@ -116,6 +204,10 @@ export async function buildRelease(
   }
   const rendered = renderPortfolio(document, {
     faviconUrl,
+    articlePdf: (id) => articlePdfs.get(id) || "",
+    socialImage: (id) =>
+      socialPaths.get(id || "") ||
+      `${payload.canonicalUrl}/social.jpg?v=${releaseId}`,
     baseUrl: payload.canonicalUrl,
     agencyName: payload.agencyName,
     asset: (id) => assetPaths.get(id) || "",

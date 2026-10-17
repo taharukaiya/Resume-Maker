@@ -283,6 +283,29 @@ export const documentSchema = z
         officeHours: z.string().max(2000).optional(),
         mailingAddress: z.string().max(2000).optional(),
         contactQuote: z.string().max(2000).optional(),
+        quoteAttribution: short.optional(),
+        cardsHeading: short.optional(),
+        visualEffects: z.enum(["none", "subtle"]).optional(),
+        animatedBackground: z.boolean().optional(),
+        featureCards: z
+          .array(
+            z
+              .object({
+                title: short,
+                body: z.string().max(2000),
+                icon: z.enum([
+                  "research",
+                  "education",
+                  "collaboration",
+                  "idea",
+                ]),
+                url: profileLinkUrlSchema,
+                linkLabel: short,
+              })
+              .strict(),
+          )
+          .max(12)
+          .optional(),
         logoId: asset.optional(),
         affiliation: short,
         bio: z.string().max(10000),
@@ -383,6 +406,7 @@ export const documentSchema = z
           .optional(),
         siteTitle: short,
         contactLabel: short,
+        contactLabelCustomized: z.boolean().optional(),
         cvLabel: short,
         mobileCvLabel: short.optional(),
         footerLinks: z
@@ -532,6 +556,12 @@ export const editableOptions = [
   ["profile.headline", "Headline"],
   ["profile.affiliation", "Affiliation"],
   ["profile.bio", "Biography"],
+  ["profile.contactQuote", "Personal quote"],
+  ["profile.quoteAttribution", "Quote attribution"],
+  ["profile.featureCards", "Interest and collaboration cards"],
+  ["profile.cardsHeading", "Cards heading"],
+  ["profile.visualEffects", "Motion effects"],
+  ["profile.animatedBackground", "Animated background"],
   ["profile.location", "Location"],
   ["profile.email", "Public email"],
   ["profile.links", "Profile links"],
@@ -596,7 +626,7 @@ export function emptyDocument(name: string): PortfolioDocument {
     },
     navigation: {
       siteTitle: "",
-      contactLabel: "Get in touch",
+      contactLabel: "Contact",
       cvLabel: "Download CV",
       footer: "",
     },
@@ -632,8 +662,11 @@ export function canEditDocument(
   for (const key of allowed) {
     if (key.startsWith("profile.")) {
       const field = key.slice(8) as keyof PortfolioDocument["profile"];
-      (normalized.profile as Record<string, unknown>)[field] =
-        before.profile[field];
+      if (before.profile[field] === undefined)
+        delete (normalized.profile as Record<string, unknown>)[field];
+      else
+        (normalized.profile as Record<string, unknown>)[field] =
+          before.profile[field];
     }
   }
   // Clients can edit existing permitted sections, but cannot add, remove, reorder, or change section identity/type.
