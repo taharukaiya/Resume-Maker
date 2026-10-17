@@ -149,6 +149,9 @@ test("simple editor keeps optional settings away and routes research imports cor
   await expect(body.locator("h2 strong em u")).toHaveText(
     "A carefully formatted finding.",
   );
+  await expect(page.getByText("Unsaved changes", { exact: true })).toHaveCount(
+    0,
+  );
   await body.scrollIntoViewIfNeeded();
   await page.screenshot({ path: ".test-data/editor-simple-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });

@@ -144,6 +144,7 @@ export function ArticleBodyEditor({
         code: false,
         codeBlock: false,
         horizontalRule: false,
+        trailingNode: false,
       }),
       TextStyle,
       Color,
@@ -166,7 +167,7 @@ export function ArticleBodyEditor({
     },
   });
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
   useEffect(() => {
     if (editor && text !== lastText.current) {
