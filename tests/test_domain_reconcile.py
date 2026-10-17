@@ -35,6 +35,24 @@ class DomainSafetyTests(unittest.TestCase):
                 module.reconcile({"hostname": "researchbynew.com", "status": "queued"}, "187.127.210.231")
         self.assertEqual(list(self.proxy.iterdir()), [])
 
+    def test_builtin_fallbacks_allow_new_domains_but_unknown_wildcards_do_not(self):
+        config = {"http": {"routers": {
+            "https-error-page": {"rule": "HostRegexp(`.+`)", "priority": 1, "service": "easypanel"},
+            "http-easypanel-ip": {"rule": "HostRegexp(`^[0-9.]+$`)", "priority": 2, "service": "easypanel"},
+            "existing": {"rule": "Host(`researchbyexisting.com`)", "service": "old-site"}
+        }}}
+        legacy = self.proxy / "main.yaml"
+        original = json.dumps(config)
+        legacy.write_text(original)
+        module.check_conflicts("researchbynew.com", set())
+        self.assertEqual(legacy.read_text(), original)
+        with self.assertRaises(ValueError):
+            module.check_conflicts("researchbyexisting.com", set())
+        config["http"]["routers"]["https-error-page"]["service"] = "legacy-site"
+        legacy.write_text(json.dumps(config))
+        with self.assertRaises(ValueError):
+            module.check_conflicts("researchbynew.com", set())
+
     def test_only_exact_new_host_routes_are_generated(self):
         key, _, _ = module.domain_files("researchbynew.com")
         config = module.proxy_config("researchbynew.com", key)

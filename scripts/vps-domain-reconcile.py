@@ -53,6 +53,19 @@ def check_conflicts(host, owned):
             if path in owned or not path.is_file() or path.suffix not in [".yaml", ".yml", ".json", ".toml", ".caddy"]:
                 continue
             text = path.read_text(errors="replace")
+            # EasyPanel's built-in low-priority error/IP routers do not own
+            # researcher hostnames. Ignore only these exact known fallbacks.
+            try:
+                config = json.loads(text)
+                routers = config.get("http", {}).get("routers", {})
+                for name, route in list(routers.items()):
+                    error = name in ["http-error-page", "https-error-page"] and route.get("rule") == "HostRegexp(`.+`)" and route.get("priority") == 1
+                    ip = name in ["http-easypanel-ip", "https-easypanel-ip"] and route.get("rule") == "HostRegexp(`^[0-9.]+$`)" and route.get("priority") == 2
+                    if route.get("service") == "easypanel" and (error or ip):
+                        del routers[name]
+                text = json.dumps(config)
+            except (ValueError, AttributeError, TypeError):
+                pass  # Unknown formats remain conservatively checked.
             if host in text or "HostRegexp" in text:
                 raise ValueError("An existing hosting route may use this domain. Automatic setup will not replace it.")
 
