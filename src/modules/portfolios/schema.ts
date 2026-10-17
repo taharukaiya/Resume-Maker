@@ -300,6 +300,9 @@ export const documentSchema = z
                 .enum([
                   "auto",
                   "scholar",
+                  "website",
+                  "orcid",
+                  "twitter",
                   "github",
                   "linkedin",
                   "mail",

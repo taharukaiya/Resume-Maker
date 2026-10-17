@@ -800,6 +800,9 @@ export function PortfolioEditor({ id }: { id: string }) {
                       {[
                         "auto",
                         "scholar",
+                        "website",
+                        "orcid",
+                        "twitter",
                         "github",
                         "linkedin",
                         "mail",

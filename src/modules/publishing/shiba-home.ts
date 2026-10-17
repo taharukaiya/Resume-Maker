@@ -7,6 +7,8 @@ import type { RenderOptions } from "./render";
 import { escapeHtml as e } from "./render";
 
 const paths: Record<string, string> = {
+  website:
+    '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6h14M5 18h14"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   download: '<path d="M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5"/>',
   sparkles:
@@ -31,20 +33,31 @@ export const homeIcon = (name: string) =>
 export const socialIcon = (
   link: PortfolioDocument["profile"]["links"][number],
 ) => {
+  let host = "";
+  try {
+    host = new URL(link.url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    /* An unfinished editor URL uses the generic website icon. */
+  }
   const kind =
     link.icon && link.icon !== "auto"
       ? link.icon
-      : /orcid/i.test(link.url + link.label)
-        ? "orcid"
-        : /twitter\.com|x\.com|twitter/i.test(link.url + link.label)
-          ? "twitter"
-          : /github/i.test(link.url)
-            ? "github"
-            : /scholar|researchgate/i.test(link.url + link.label)
-              ? "scholar"
-              : /linkedin/i.test(link.url)
-                ? "linkedin"
-                : "link";
+      : /personal website|portfolio|homepage/i.test(link.label) ||
+          host.endsWith(".github.io")
+        ? "website"
+        : host === "orcid.org"
+          ? "orcid"
+          : host === "twitter.com" || host === "x.com"
+            ? "twitter"
+            : host === "github.com"
+              ? "github"
+              : host === "scholar.google.com" || host === "researchgate.net"
+                ? "scholar"
+                : host === "linkedin.com"
+                  ? "linkedin"
+                  : link.url.startsWith("mailto:")
+                    ? "mail"
+                    : "website";
   return kind === "none" ? "" : homeIcon(kind);
 };
 const prose = (text: string) =>
@@ -157,4 +170,9 @@ export const shibaHomeCss = `
 .home-history-list article{flex-direction:column;gap:10px}.history-date{width:auto;min-height:0;max-width:100%;border-radius:8px;padding:6px 12px;white-space:nowrap;overflow-wrap:normal;font-size:12px;line-height:20px}.home-history-list article>div{min-width:0}
 .category{align-items:flex-start;gap:12px}.category span{flex:0 0 auto;align-self:flex-start;min-width:24px;height:24px;padding:0 7px;line-height:24px;text-align:center;white-space:nowrap;border-radius:999px}
 .nav-links a[aria-current="page"],.mobile-nav a[aria-current="page"]{color:#1447e6}.nav-links a[aria-current="page"]{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:7px}.mobile-nav a[aria-current="page"]{background:#e7ecfc;border-radius:8px}
+.button,.contact-links a,.home-contact-links a,.card,.about-card,.collaboration-path,.category,.citation-tabs button{transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease,color 180ms ease,border-color 180ms ease}
+a:focus-visible,button:focus-visible{outline:2px solid #1447e6;outline-offset:4px}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){.button:hover,.contact-links a:hover,.home-contact-links a:hover{transform:translateY(-3px);box-shadow:0 6px 16px #1447e618}.card:hover,.about-card:hover,.collaboration-path:hover{transform:translateY(-3px);box-shadow:0 8px 22px #0f172b12}.category:hover,.citation-tabs button:hover{background:#e8edfc}.contact-links a .home-icon,.home-contact-links .home-icon{transition:transform 180ms ease}.contact-links a:hover .home-icon,.home-contact-links a:hover .home-icon{transform:scale(1.1)}}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}.mobile-nav:not([hidden]){animation:menu-appear 160ms ease-out}@keyframes menu-appear{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}}
+@media(prefers-reduced-motion:reduce){.button,.contact-links a,.home-contact-links a,.card,.about-card,.collaboration-path,.category,.citation-tabs button{transition:none}}
 `;

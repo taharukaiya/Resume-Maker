@@ -1,3 +1,4 @@
+import { socialIcon, homeIcon } from "../src/modules/publishing/shiba-home";
 import { describe, expect, it } from "vitest";
 import {
   emptyDocument,
@@ -228,4 +229,27 @@ describe("Reference About and Contact layouts", () => {
     doc.profile.portraitPositionX = 101;
     expect(documentSchema.safeParse(doc).success).toBe(false);
   });
+});
+
+it("distinguishes hosted websites from GitHub profiles and honors admin icon choices", () => {
+  expect(
+    socialIcon({
+      label: "Personal Website",
+      url: "https://taharukaiya.github.io/",
+    }),
+  ).toBe(homeIcon("website"));
+  expect(
+    socialIcon({ label: "GitHub", url: "https://github.com/taharukaiya" }),
+  ).toBe(homeIcon("github"));
+  expect(
+    socialIcon({ label: "Website", url: "https://example.com", icon: "orcid" }),
+  ).toBe(homeIcon("orcid"));
+  expect(
+    socialIcon({ label: "Website", url: "https://example.com", icon: "none" }),
+  ).toBe("");
+  const doc = emptyDocument("Amina");
+  doc.profile.links = [
+    { label: "Website", url: "https://example.com", icon: "website" },
+  ];
+  expect(documentSchema.safeParse(doc).success).toBe(true);
 });
