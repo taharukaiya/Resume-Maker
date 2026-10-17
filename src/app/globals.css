@@ -3104,3 +3104,61 @@ select:focus {
     font-size: 19px;
   }
 }
+
+/* Keep the article editor readable without oversized collapsed cards. */
+.entry-editor details.editor-options,
+.entry-editor details.full-span.panel {
+  margin: 4px 0;
+  padding: 16px 20px;
+  border-radius: 12px;
+}
+.entry-editor details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 650;
+}
+.entry-editor details > summary::-webkit-details-marker {
+  display: none;
+}
+.entry-editor details > summary::after {
+  content: "+";
+  color: #65738a;
+  font-size: 20px;
+  font-weight: 400;
+}
+.entry-editor details[open] > summary::after {
+  content: "?";
+}
+.entry-editor details[open] > summary {
+  margin-bottom: 16px;
+}
+.entry-editor .article-body-editor textarea {
+  min-height: 320px;
+  padding: 18px;
+  font-size: 15px;
+  line-height: 1.8;
+  resize: vertical;
+}
+.entry-editor .article-body-editor .row {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.entry-editor .article-body-editor .panel-description {
+  margin: 0 0 16px;
+}
+@media (max-width: 700px) {
+  .entry-editor details.editor-options,
+  .entry-editor details.full-span.panel {
+    padding: 14px;
+  }
+  .entry-editor .article-body-editor textarea {
+    padding: 12px;
+    min-height: 280px;
+  }
+}

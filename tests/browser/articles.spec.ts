@@ -254,6 +254,9 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await expect(page.locator(".article-share [role=status]")).toHaveText(
     "Copied",
   );
+  await expect(page.locator(".article-share [role=status]")).toHaveText("", {
+    timeout: 4000,
+  });
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
     `/article/${first.id}`,
   );
@@ -346,9 +349,9 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   const editor = page.locator(".entry-editor").filter({
     has: page.getByRole("heading", { name: first.title, exact: true }),
   });
-  await editor
-    .getByText("Read and edit the full article", { exact: true })
-    .click();
+  await expect(
+    editor.getByRole("textbox", { name: "Full article text", exact: true }),
+  ).toBeVisible();
   const bodyField = editor.getByRole("textbox", {
     name: "Full article text",
     exact: true,

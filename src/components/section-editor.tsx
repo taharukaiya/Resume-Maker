@@ -719,8 +719,15 @@ function EntryEditor({
                 ))}
               </div>
             </details>{" "}
-            <details className="editor-options full-span">
+            <details
+              className="editor-options full-span article-body-editor"
+              open
+            >
               <summary>Read and edit the full article</summary>
+              <p className="panel-description">
+                Write the article body here. The abstract, authors and
+                publication date have their own fields above.
+              </p>
               <Field
                 label="Full article text"
                 hint="Article body only. Keep the title, authors, date and abstract in their separate fields. Review paragraphs before publishing."

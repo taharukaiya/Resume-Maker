@@ -147,7 +147,19 @@ export function PortfolioEditor({ id }: { id: string }) {
             const source = result.media.find(
               (file) => file.id === entry.mediaId,
             )?.extracted_text;
-            return cleanUntouchedImport(entry, source || "");
+            const imported = cleanUntouchedImport(entry, source || "");
+            // Prepare contaminated legacy text for review in the local draft only.
+            // Never replace an edited body with the original uploaded document.
+            const text = imported.fullText || "";
+            if (/about:blank|^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/im.test(text))
+              return {
+                ...imported,
+                fullText: articleContent(text, {
+                  ...imported,
+                  abstract: imported.body,
+                }).body,
+              };
+            return imported;
           });
         }
         const changed =
@@ -555,7 +567,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       {importCleanupReady && (
         <Notice
           tone="info"
-          message="Cleaned imported article text is ready for review. Only unchanged source text was cleaned; manual edits were preserved. Save the draft after reviewing it, then publish when ready."
+          message="Article cleanup is ready to review. Print footers and duplicated front matter were removed from this editing draft. Your saved version is unchanged until you save. Review the body, save your draft, then publish when ready."
         />
       )}
       {!admin && (
