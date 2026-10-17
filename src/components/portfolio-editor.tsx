@@ -60,6 +60,7 @@ import {
   useFeedback,
 } from "./ui";
 type Job = {
+  media_id?: string;
   id: string;
   kind: string;
   status: string;
@@ -334,8 +335,16 @@ export function PortfolioEditor({ id }: { id: string }) {
     ["history", "History"],
   ];
   const assets = data.media;
+  function extracting(file: Media) {
+    return data?.jobs.some(
+      (job) =>
+        job.kind === "abstract" &&
+        job.media_id === file.id &&
+        ["queued", "running"].includes(job.status),
+    );
+  }
   function addArticle(file: Media) {
-    if (!document) return;
+    if (!document || extracting(file)) return;
     const sections = structuredClone(document.sections);
     let section = sections.find((s) => s.type === "articles");
     if (!section) {
@@ -1546,6 +1555,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                   {admin && file.mime === "application/pdf" && (
                     <Button
                       variant="secondary small"
+                      disabled={extracting(file) || feedback.busy}
                       onClick={() => addArticle(file)}
                     >
                       Add article draft
@@ -1594,6 +1604,15 @@ export function PortfolioEditor({ id }: { id: string }) {
                     </button>
                   )}
                 </div>
+                {extracting(file) && (
+                  <Notice
+                    tone="info"
+                    message="Extracting article details. Wait for completion before adding the draft."
+                  />
+                )}
+                {file.article_metadata?.warnings.map((warning, index) => (
+                  <Notice key={index} tone="info" message={warning} />
+                ))}
                 {file.summary && (
                   <section className="panel" style={{ marginTop: 8 }}>
                     <div className="spread">
@@ -1613,6 +1632,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     {admin && (
                       <Button
                         variant="secondary small"
+                        disabled={extracting(file) || feedback.busy}
                         onClick={() => addArticle(file)}
                       >
                         Add to publication draft

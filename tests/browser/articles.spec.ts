@@ -370,3 +370,110 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     ).status(),
   ).toBe(404);
 });
+
+test("uploaded metadata and figures reach an editable draft only after extraction", async ({
+  page,
+}) => {
+  await signInAdmin(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const headers = { origin: "http://localhost:3100" };
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "Metadata review", slug: `metadata-${Date.now()}` },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  const upload = await page.request.post(`/api/sites/${id}/media`, {
+    headers,
+    multipart: {
+      purpose: "article",
+      file: {
+        name: "metadata.pdf",
+        mimeType: "application/pdf",
+        buffer: await readFile("tests/fixtures/article-metadata.pdf"),
+      },
+    },
+  });
+  expect(upload.status()).toBe(201);
+  const { id: mediaId } = await upload.json();
+  const snapshot = await (await page.request.get(`/api/sites/${id}`)).json();
+  const file = snapshot.media.find(
+    (item: { id: string }) => item.id === mediaId,
+  );
+  expect(file.article_metadata.authors).toBe("Ada Lovelace; Alan Turing");
+  expect(file.article_metadata.date).toBe("2025-02-09");
+  expect(file.article_metadata.abstract).toContain(
+    "We examined coastal observations.",
+  );
+  expect(file.article_metadata.abstract).not.toContain("body text");
+  expect(file.article_assets.imageIds).toHaveLength(1);
+  let pending = true;
+  await page.route(`**/api/sites/${id}`, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const json = await response.json();
+    if (pending)
+      json.jobs.push({
+        id: "pending-test",
+        created_at: new Date().toISOString(),
+        error: null,
+        kind: "abstract",
+        status: "running",
+        media_id: mediaId,
+      });
+    await route.fulfill({ response, json });
+  });
+  await page.goto(`/studio/portfolios/${id}`);
+  await page.getByRole("combobox", { name: "Editing" }).selectOption("media");
+  await expect(
+    page.getByRole("button", { name: "Add article draft", exact: true }),
+  ).toBeDisabled();
+  pending = false;
+  await expect(
+    page.getByRole("button", { name: "Add article draft", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Add article draft", exact: true })
+    .click();
+  const editor = page.locator(".entry-editor");
+  await expect(
+    editor.getByRole("textbox", { name: "Authors", exact: true }),
+  ).toHaveValue("Ada Lovelace; Alan Turing");
+  await expect(
+    editor.getByRole("textbox", { name: "Publication date", exact: true }),
+  ).toHaveValue("2025-02-09");
+  await expect(
+    editor.getByRole("textbox", {
+      name: "Abstract or research summary",
+      exact: true,
+    }),
+  ).toHaveValue(/We examined coastal observations/);
+  await expect(
+    editor.getByRole("combobox", { name: "Article cover", exact: true }),
+  ).toHaveValue(file.article_assets.imageIds[0]);
+  await editor
+    .getByRole("textbox", { name: "Authors", exact: true })
+    .fill("Verified Author; Second Author");
+  await editor
+    .getByRole("textbox", { name: "Publication date", exact: true })
+    .fill("2024-12-15");
+  await editor
+    .getByRole("textbox", { name: "Abstract or research summary", exact: true })
+    .fill("Administrator verified abstract.");
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/sites/${id}`) &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+  const result = await (await page.request.get(`/api/sites/${id}`)).json();
+  const entry = result.site.draft.sections.find(
+    (section: { type: string }) => section.type === "articles",
+  ).entries[0];
+  expect(entry.authors).toBe("Verified Author; Second Author");
+  expect(entry.start).toBe("2024-12-15");
+  expect(entry.body).toBe("Administrator verified abstract.");
+  expect(entry.images[0].mediaId).toBe(file.article_assets.imageIds[0]);
+  expect(result.site.status).not.toBe("published");
+});

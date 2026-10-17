@@ -67,6 +67,9 @@ describe("Article figures and distinct research", () => {
     expect(pages[`article/${article.id}/index.html`]).not.toContain(
       "<script>image",
     );
+    expect(pages[`article/${article.id}/index.html`]).not.toContain(
+      '<section class="abstract article-text">',
+    );
     doc.navigation.articlesEnabled = false;
     pages = renderPortfolio(doc, options);
     expect(pages["article/index.html"]).toBeUndefined();

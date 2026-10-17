@@ -930,7 +930,11 @@ function EntryEditor({
                 ? "Abstract or research summary"
                 : "Description"
             }
-            hint="Separate paragraphs with a blank line."
+            hint={
+              ["publications", "articles"].includes(type) && !entry.body.trim()
+                ? "No abstract yet. Upload and extract the original article, or enter its abstract here before publishing."
+                : "Separate paragraphs with a blank line."
+            }
           >
             <textarea
               rows={5}

@@ -1,3 +1,4 @@
+import { extractLabeledMetadata } from "./article-metadata";
 import { config } from "@/lib/config";
 import { db } from "@/lib/db";
 import { invariant } from "@/lib/errors";
@@ -223,7 +224,7 @@ export async function upload(
       );
       if (extraction) {
         await tx.query(
-          "UPDATE media SET extracted_text=$1,article_assets=$2 WHERE id=$3",
+          "UPDATE media SET extracted_text=$1,article_assets=$2,article_metadata=$4 WHERE id=$3",
           [
             extraction.text,
             JSON.stringify({
@@ -231,6 +232,7 @@ export async function upload(
               warnings: extraction.warnings,
             }),
             id,
+            JSON.stringify(extractLabeledMetadata(extraction.text)),
           ],
         );
         for (const figure of figures)

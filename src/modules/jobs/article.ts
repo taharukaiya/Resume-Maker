@@ -1,3 +1,4 @@
+import { extractLabeledMetadata } from "@/modules/media/article-metadata";
 import { db } from "@/lib/db";
 import { getObject } from "@/lib/storage";
 import { invariant } from "@/lib/errors";
@@ -102,6 +103,21 @@ export async function generateArticle(job: {
           );
           return articleMetadataSchema.parse(JSON.parse(result.output_text));
         })();
+  const labeled = extractLabeledMetadata(text);
+  if (labeled.abstract) {
+    metadata.abstract = labeled.abstract;
+    metadata.abstractSource = "original";
+  }
+  metadata.authors ||= labeled.authors;
+  metadata.date ||= labeled.date;
+  if (!metadata.abstract.trim())
+    metadata.warnings.push(
+      "No abstract could be extracted. Enter it manually before publishing.",
+    );
+  if (!metadata.authors.trim())
+    metadata.warnings.push("Author names require manual review.");
+  if (!metadata.date)
+    metadata.warnings.push("Publication date requires manual review.");
   if (!entrySchema.shape.start.safeParse(metadata.date).success) {
     metadata.warnings.push(
       "The publication date could not be interpreted. Enter it manually.",

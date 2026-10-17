@@ -191,7 +191,7 @@ export async function portfolioRoutes(
           [id],
         ),
         database.query(
-          "SELECT id,kind,status,error,created_at,finished_at FROM jobs WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
+          "SELECT id,kind,status,error,created_at,finished_at,payload->>'mediaId' AS media_id FROM jobs WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
           [id],
         ),
         database.query(
