@@ -501,6 +501,9 @@ test("uploaded metadata and figures reach an editable draft only after extractio
   await editor
     .getByRole("textbox", { name: "Abstract or research summary", exact: true })
     .fill("Administrator verified abstract.");
+  await editor
+    .getByRole("spinbutton", { name: "Reading time (minutes)", exact: true })
+    .fill("8");
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/api/sites/${id}`) &&
@@ -515,6 +518,7 @@ test("uploaded metadata and figures reach an editable draft only after extractio
   expect(entry.authors).toBe("Verified Author; Second Author");
   expect(entry.start).toBe("2024-12-15");
   expect(entry.body).toBe("Administrator verified abstract.");
+  expect(entry.readingMinutes).toBe(8);
   expect(entry.images[0].mediaId).toBe(file.article_assets.imageIds[0]);
   expect(result.site.status).not.toBe("published");
 });

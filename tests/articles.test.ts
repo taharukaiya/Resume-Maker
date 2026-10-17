@@ -52,6 +52,28 @@ function fixture() {
   return { doc, article };
 }
 describe("Fixed Shiba design and articles", () => {
+  it("keeps an administrator's reading-time override in the archive and article without a public AI note", () => {
+    const { doc, article } = fixture();
+    doc.sections[0].entries[0] = {
+      ...article,
+      readingMinutes: 8,
+      abstractSource: "generated",
+    };
+    const saved = documentSchema.parse(doc);
+    expect(saved.sections[0].entries[0].readingMinutes).toBe(8);
+    const pages = renderPortfolio(saved, options);
+    expect(pages[`article/${article.id}/index.html`]).toContain(
+      "&bull; 8 min read",
+    );
+    expect(pages["article/index.html"]).toContain("8 min read");
+    expect(pages[`article/${article.id}/index.html`]).not.toContain(
+      doc.labels.summaryNote,
+    );
+    delete saved.sections[0].entries[0].readingMinutes;
+    expect(
+      renderPortfolio(saved, options)[`article/${article.id}/index.html`],
+    ).toContain("&bull; 1 min read");
+  });
   it("reflows abstract line wrapping without changing paragraphs or allowing markup", () => {
     const { doc, article } = fixture();
     article.body =

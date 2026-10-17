@@ -87,6 +87,7 @@ export const entrySchema = z
     ]),
     abstractSource: z.enum(["", "original", "generated"]),
     fullText: z.string().max(240000).optional(),
+    readingMinutes: z.number().int().min(1).max(999).optional(),
     category: short.optional(),
     journal: short.optional(),
     volume: z.string().max(80).optional(),

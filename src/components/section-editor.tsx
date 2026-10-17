@@ -528,6 +528,30 @@ function EntryEditor({
             onChange={(e) => change("start", e.target.value)}
           />
         </Field>
+        {["publications", "articles"].includes(type) && (
+          <Field
+            label="Reading time (minutes)"
+            hint="Leave blank to calculate automatically from the article text."
+          >
+            <input
+              type="number"
+              min={1}
+              max={999}
+              step={1}
+              placeholder="Automatic"
+              value={entry.readingMinutes ?? ""}
+              disabled={!editable}
+              onChange={(event) =>
+                change(
+                  "readingMinutes",
+                  event.target.value === ""
+                    ? undefined
+                    : event.target.valueAsNumber,
+                )
+              }
+            />
+          </Field>
+        )}
         {!["publications", "articles"].includes(type) && (
           <>
             <Field
