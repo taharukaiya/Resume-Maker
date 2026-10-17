@@ -7,6 +7,7 @@ import type { RenderOptions } from "./render";
 import { escapeHtml as e } from "./render";
 
 const paths: Record<string, string> = {
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4"/>',
   website:
     '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6h14M5 18h14"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
@@ -170,9 +171,10 @@ export const shibaHomeCss = `
 .home-history-list article{flex-direction:column;gap:10px}.history-date{width:auto;min-height:0;max-width:100%;border-radius:8px;padding:6px 12px;white-space:nowrap;overflow-wrap:normal;font-size:12px;line-height:20px}.home-history-list article>div{min-width:0}
 .category{align-items:flex-start;gap:12px}.category span{flex:0 0 auto;align-self:flex-start;min-width:24px;height:24px;padding:0 7px;line-height:24px;text-align:center;white-space:nowrap;border-radius:999px}
 .nav-links a[aria-current="page"],.mobile-nav a[aria-current="page"]{color:#1447e6}.nav-links a[aria-current="page"]{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:7px}.mobile-nav a[aria-current="page"]{background:#e7ecfc;border-radius:8px}
-.button,.contact-links a,.home-contact-links a,.card,.about-card,.collaboration-path,.category,.citation-tabs button{transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease,color 180ms ease,border-color 180ms ease}
+.button,.contact-links a,.home-contact-links a,.card,.archive-card,.related-item,.about-card,.collaboration-path,.category,.citation-tabs button{transition:transform 180ms ease,box-shadow 180ms ease,background-color 180ms ease,color 180ms ease,border-color 180ms ease}
 a:focus-visible,button:focus-visible{outline:2px solid #1447e6;outline-offset:4px}
-@media(hover:hover) and (prefers-reduced-motion:no-preference){.button:hover,.contact-links a:hover,.home-contact-links a:hover{transform:translateY(-3px);box-shadow:0 6px 16px #1447e618}.card:hover,.about-card:hover,.collaboration-path:hover{transform:translateY(-3px);box-shadow:0 8px 22px #0f172b12}.category:hover,.citation-tabs button:hover{background:#e8edfc}.contact-links a .home-icon,.home-contact-links .home-icon{transition:transform 180ms ease}.contact-links a:hover .home-icon,.home-contact-links a:hover .home-icon{transform:scale(1.1)}}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){.button:hover,.contact-links a:hover,.home-contact-links a:hover{transform:translateY(-3px);box-shadow:0 6px 16px #1447e618}.card:hover,.archive-card:hover,.related-item:hover,.about-card:hover,.collaboration-path:hover{transform:translateY(-3px);box-shadow:0 8px 22px #0f172b12}.category:hover,.citation-tabs button:hover{background:#e8edfc}.contact-links a .home-icon,.home-contact-links .home-icon{transition:transform 180ms ease}.contact-links a:hover .home-icon,.home-contact-links a:hover .home-icon{transform:scale(1.1)}}
 @media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}.mobile-nav:not([hidden]){animation:menu-appear 160ms ease-out}@keyframes menu-appear{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}}
-@media(prefers-reduced-motion:reduce){.button,.contact-links a,.home-contact-links a,.card,.about-card,.collaboration-path,.category,.citation-tabs button{transition:none}}
+@media(prefers-reduced-motion:reduce){.button,.contact-links a,.home-contact-links a,.card,.archive-card,.related-item,.about-card,.collaboration-path,.category,.citation-tabs button{transition:none}}
+@media(prefers-reduced-motion:no-preference){.button:active,.contact-links a:active,.category:active,.citation-tabs button:active,.mobile-menu-toggle:active{transform:scale(.98)}.mobile-menu-toggle{transition:transform 150ms ease}}
 `;

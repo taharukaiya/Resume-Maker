@@ -239,6 +239,40 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     path: ".test-data/shiba-article-mobile.png",
     fullPage: true,
   });
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of [
+      "",
+      "/about",
+      "/research",
+      "/article",
+      `/article/${first.id}`,
+    ]) {
+      await page.goto(`/portfolio/${slug}${route}`);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await expect(page.locator("body")).toHaveClass("shiba");
+      if (route.includes(first.id)) {
+        await expect(page.locator("[data-copy-url] svg")).toBeVisible();
+        await page.getByRole("tab", { name: "MLA", exact: true }).click();
+        await expect(page.getByRole("tabpanel")).toContainText("Lovelace");
+      }
+    }
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator("[data-copy-url]")).toHaveCSS(
+    "transition-duration",
+    "0s",
+  );
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect(page.locator("[data-copy-url]")).toHaveCSS(
+    "transition-duration",
+    /0\.18s/,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/studio/portfolios/${id}`);
   await expect(
     page

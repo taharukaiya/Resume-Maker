@@ -1,7 +1,7 @@
 import { signInAdmin } from "./admin-session";
 import { expect, test } from "@playwright/test";
 
-test("saving from Design normalizes profile URLs and reveals invalid links", async ({
+test("admin can add, edit, remove links and icons without changing design", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -19,10 +19,10 @@ test("saving from Design normalizes profile URLs and reveals invalid links", asy
   try {
     await page.goto(`/studio/portfolios/${id}`);
     await page.getByRole("button", { name: "Add link", exact: true }).click();
-    await page.getByLabel("Platform", { exact: true }).selectOption("LinkedIn");
+    await page.getByLabel("Button label", { exact: true }).fill("LinkedIn");
+    await page.getByLabel("Icon", { exact: true }).selectOption("linkedin");
     const url = page.locator('[data-profile-link="0"]');
     await url.fill("  linkedin.com/in/researcher  ");
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
     let saved = await (await page.request.get(`/api/sites/${id}`)).json();
@@ -30,10 +30,8 @@ test("saving from Design normalizes profile URLs and reveals invalid links", asy
     expect(saved.site.draft.profile.links[0].url).toBe(
       "https://linkedin.com/in/researcher",
     );
-    await page.getByRole("tab", { name: "Profile", exact: true }).click();
     await expect(url).toHaveValue("https://linkedin.com/in/researcher");
     await url.fill("not a valid address");
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await expect(url).toBeFocused();
     await expect(url).toHaveAttribute("aria-invalid", "true");
@@ -49,6 +47,32 @@ test("saving from Design normalizes profile URLs and reveals invalid links", asy
     await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
     await page.reload();
     await expect(url).toHaveValue("");
+    await page
+      .getByLabel("Button label", { exact: true })
+      .fill("Personal Website");
+    await page.getByLabel("Icon", { exact: true }).selectOption("website");
+    await url.fill("https://example.github.io/");
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Icon", { exact: true })).toHaveValue(
+      "website",
+    );
+    await expect(page.getByLabel("Button label", { exact: true })).toHaveValue(
+      "Personal Website",
+    );
+    await page
+      .getByRole("button", { name: "Remove link", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.locator("[data-profile-link]")).toHaveCount(0);
+    await expect(
+      page
+        .getByRole("combobox", { name: "Editing" })
+        .locator('option[value="design"]'),
+    ).toHaveCount(0);
   } finally {
     await page.request.delete(`/api/sites/${id}`, { headers });
   }
