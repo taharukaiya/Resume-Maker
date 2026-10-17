@@ -127,6 +127,49 @@ afterAll(async () => {
 });
 
 describe.sequential("Administrator website address management", () => {
+  it("queues only verified administrator-owned domains without activating or changing their address", async () => {
+    const site = await createSite();
+    const foreign = await createSite();
+    const domain = await addDomain(site.id);
+    expect(
+      (
+        await request(`sites/${site.id}/connect-domain`, "POST", {
+          domainId: domain.id,
+        })
+      ).status,
+    ).toBe(400);
+    await (
+      await db()
+    ).query("UPDATE domains SET verified_at=now() WHERE id=$1", [domain.id]);
+    expect(
+      (
+        await request(
+          `sites/${site.id}/connect-domain`,
+          "POST",
+          { domainId: domain.id },
+          clientCookie,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(`sites/${foreign.id}/connect-domain`, "POST", {
+          domainId: domain.id,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(`sites/${site.id}/connect-domain`, "POST", {
+          domainId: domain.id,
+        })
+      ).status,
+    ).toBe(200);
+    const listed = await request(`sites/${site.id}/domains`);
+    expect(listed.data.domains[0].connection.status).toBe("queued");
+    expect(listed.data.domains[0].activated_at).toBeNull();
+    expect(listed.data.domains[0].is_primary).toBe(false);
+  });
   it("requires an authenticated administrator and preserves site isolation", async () => {
     const site = await createSite();
     const foreign = await createSite();
@@ -166,8 +209,8 @@ describe.sequential("Administrator website address management", () => {
         undefined,
         `__Host-brilliancy_session=${adminToken}`,
       );
-      expect(result.status).toBe(403);
-      expect(result.data.error).toContain("two-factor");
+      expect(result.status).toBe(200);
+      expect(result.data.domains).toEqual([]);
     } finally {
       vi.stubEnv("NODE_ENV", "test");
     }

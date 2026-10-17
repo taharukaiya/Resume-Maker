@@ -258,6 +258,15 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     has: page.getByRole("heading", { name: first.title, exact: true }),
   });
   await editor
+    .getByRole("button", { name: "Remove cover image", exact: true })
+    .click();
+  await expect(
+    editor.getByRole("combobox", { name: "Article cover", exact: true }),
+  ).toHaveValue("");
+  await editor
+    .getByRole("combobox", { name: "Article cover", exact: true })
+    .selectOption(figureId);
+  await editor
     .getByText("Article display and citation controls", { exact: true })
     .click();
   await editor

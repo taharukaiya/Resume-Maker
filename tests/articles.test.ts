@@ -52,6 +52,54 @@ function fixture() {
   return { doc, article };
 }
 describe("Fixed Shiba design and articles", () => {
+  it("uses profession-led profile wording and an editable homepage sharing title", () => {
+    const { doc } = fixture();
+    doc.profile.headline = "Physician and researcher";
+    doc.profile.affiliation = "Hidden University";
+    doc.profile.showAffiliation = false;
+    doc.seo.title = "My professional website";
+    const pages = renderPortfolio(doc, options);
+    expect(pages["index.html"]).toContain(
+      'property="og:title" content="My professional website"',
+    );
+    expect(pages["index.html"]).not.toContain("Hidden University");
+    expect(pages["contact/index.html"]).not.toContain("Hidden University");
+  });
+  it("supports 250 editable articles with bounded archive cards and individual share metadata", () => {
+    const { doc, article } = fixture();
+    doc.sections[0].entries = Array.from({ length: 250 }, (_, index) => ({
+      ...article,
+      id: crypto.randomUUID(),
+      title: `Article ${index}`,
+      body: "Evidence. ".repeat(1000),
+      tags: "Relapse, MYC",
+    }));
+    doc.navigation.archivePageSize = 12;
+    doc.navigation.trendingTopics = ["MYC", "Relapse"];
+    doc.sections[0].entries[249].coverId = crypto.randomUUID();
+    expect(documentSchema.safeParse(doc).success).toBe(true);
+    const pages = renderPortfolio(doc, options);
+    const archive = pages["article/index.html"];
+    expect(
+      (
+        archive
+          .split("<template data-archive-rest>")[0]
+          .match(/class="card archive-card"/g) || []
+      ).length,
+    ).toBe(12);
+    expect(archive).toContain('data-topic="MYC"');
+    expect(archive).not.toContain("Evidence. ".repeat(100));
+    const last = doc.sections[0].entries[249];
+    expect(pages[`article/${last.id}/index.html`]).toContain(
+      `property="og:image" content="${options.asset(last.coverId!)}"`,
+    );
+    expect(pages[`article/${last.id}/index.html`]).toContain(
+      'name="twitter:card" content="summary_large_image"',
+    );
+    expect(pages[`article/${last.id}/index.html`]).toContain(
+      'property="og:type" content="article"',
+    );
+  });
   it("uses one design for current drafts while supporting old saved settings", () => {
     const { doc } = fixture();
     doc.theme.style = "noir";

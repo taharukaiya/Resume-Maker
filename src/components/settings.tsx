@@ -74,7 +74,8 @@ export function Settings() {
             <h2>Two-factor authentication</h2>
             <p className="panel-description">
               Use an authenticator app to add a second layer of protection.
-              Administrators must enable this before managing a live workspace.
+              Enrollment is optional. Once enabled, a code is required when you
+              sign in.
             </p>
             {user.mfaEnabled ? (
               <Notice

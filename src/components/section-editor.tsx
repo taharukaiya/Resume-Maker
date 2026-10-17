@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState, type ReactNode } from "react";
 import { citationStyles } from "@/modules/publishing/citations";
 import type { Media } from "@/modules/media/service";
 import {
@@ -249,45 +250,54 @@ export function SectionsEditor({
                   delivers messages to your inbox.
                 </p>
               )}
-              {section.entries.map((entry, entryIndex) => (
-                <EntryEditor
-                  key={entry.id}
-                  entry={entry}
-                  index={entryIndex}
-                  type={section.type}
-                  media={media}
-                  editable={editable}
-                  onChange={(next) =>
-                    change(
-                      "entries",
-                      section.entries.map((item, i) =>
-                        i === entryIndex ? next : item,
-                      ),
-                    )
-                  }
-                  onDelete={() =>
-                    change(
-                      "entries",
-                      section.entries.filter((item) => item.id !== entry.id),
-                    )
-                  }
-                  onMove={(direction) => {
-                    const next = [...section.entries],
-                      target = entryIndex + direction;
-                    if (target < 0 || target >= next.length) return;
-                    [next[entryIndex], next[target]] = [
-                      next[target],
-                      next[entryIndex],
-                    ];
-                    change("entries", next);
-                  }}
-                />
-              ))}
+              <EntryCollection
+                entries={section.entries}
+                type={section.type}
+                renderEntry={(entry, entryIndex) => (
+                  <EntryEditor
+                    key={entry.id}
+                    entry={entry}
+                    index={entryIndex}
+                    type={section.type}
+                    media={media}
+                    editable={editable}
+                    onChange={(next) =>
+                      change(
+                        "entries",
+                        section.entries.map((item, i) =>
+                          i === entryIndex ? next : item,
+                        ),
+                      )
+                    }
+                    onDelete={() =>
+                      change(
+                        "entries",
+                        section.entries.filter((item) => item.id !== entry.id),
+                      )
+                    }
+                    onMove={(direction) => {
+                      const next = [...section.entries],
+                        target = entryIndex + direction;
+                      if (target < 0 || target >= next.length) return;
+                      [next[entryIndex], next[target]] = [
+                        next[target],
+                        next[entryIndex],
+                      ];
+                      change("entries", next);
+                    }}
+                  />
+                )}
+              />
               {editable && !["about", "contact"].includes(section.type) && (
                 <Button
                   variant="secondary small"
                   onClick={() =>
-                    change("entries", [...section.entries, emptyEntry()])
+                    change(
+                      "entries",
+                      ["articles", "publications"].includes(section.type)
+                        ? [emptyEntry(), ...section.entries]
+                        : [...section.entries, emptyEntry()],
+                    )
                   }
                 >
                   <Plus size={13} /> Add{" "}
@@ -301,6 +311,91 @@ export function SectionsEditor({
         );
       })}
     </>
+  );
+}
+function EntryCollection({
+  entries,
+  type,
+  renderEntry,
+}: {
+  entries: Entry[];
+  type: string;
+  renderEntry: (entry: Entry, index: number) => ReactNode;
+}) {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [matchedIds, setMatchedIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    setQuery("");
+    setPage(0);
+    setMatchedIds(null);
+  }, [entries.length]);
+  if (!["articles", "publications"].includes(type))
+    return <>{entries.map(renderEntry)}</>;
+  const matches = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => !matchedIds || matchedIds.has(entry.id));
+  const pages = Math.max(1, Math.ceil(matches.length / 10));
+  const current = Math.min(page, pages - 1);
+  return (
+    <div className="stack">
+      <Field label="Find an article">
+        <input
+          type="search"
+          value={query}
+          placeholder="Search title, author, date or topic"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(0);
+            const text = event.target.value.toLocaleLowerCase().trim();
+            // Keep matching editors mounted while their titles are being edited.
+            setMatchedIds(
+              text
+                ? new Set(
+                    entries
+                      .filter((entry) =>
+                        [
+                          entry.title,
+                          entry.authors,
+                          entry.start,
+                          entry.tags,
+                          entry.category,
+                        ]
+                          .join(" ")
+                          .toLocaleLowerCase()
+                          .includes(text),
+                      )
+                      .map((entry) => entry.id),
+                  )
+                : null,
+            );
+          }}
+        />
+      </Field>
+      <div className="row wrap">
+        <span aria-live="polite">
+          {matches.length} articles | Page {current + 1} of {pages}
+        </span>
+        <Button
+          variant="secondary small"
+          disabled={current === 0}
+          onClick={() => setPage(current - 1)}
+        >
+          Previous articles
+        </Button>
+        <Button
+          variant="secondary small"
+          disabled={current + 1 >= pages}
+          onClick={() => setPage(current + 1)}
+        >
+          Next articles
+        </Button>
+      </div>
+      {matches
+        .slice(current * 10, (current + 1) * 10)
+        .map(({ entry, index }) => renderEntry(entry, index))}
+      {!matches.length && <p>No matching articles.</p>}
+    </div>
   );
 }
 function EntryEditor({
@@ -658,7 +753,29 @@ function EntryEditor({
               />
             </Field>
             <Field label="Article cover">
+              {entry.coverId && (
+                <div className="stack">
+                  <img
+                    src={`/api/media/${entry.coverId}`}
+                    alt={entry.coverAlt || "Article cover preview"}
+                    style={{
+                      maxWidth: 240,
+                      maxHeight: 160,
+                      objectFit: "cover",
+                    }}
+                  />
+                  {editable && (
+                    <Button
+                      variant="secondary small"
+                      onClick={() => change("coverId", "")}
+                    >
+                      Remove cover image
+                    </Button>
+                  )}
+                </div>
+              )}
               <select
+                aria-label="Article cover"
                 value={entry.coverId || ""}
                 disabled={!editable}
                 onChange={(event) => change("coverId", event.target.value)}

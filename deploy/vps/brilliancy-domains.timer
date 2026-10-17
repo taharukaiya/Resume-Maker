@@ -1,0 +1,10 @@
+[Unit]
+Description=Check requested portfolio domains
+
+[Timer]
+OnBootSec=90
+OnUnitInactiveSec=60
+Unit=brilliancy-domains.service
+
+[Install]
+WantedBy=timers.target

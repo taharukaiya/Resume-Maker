@@ -667,7 +667,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                     [
                       [
                         "heroBadge",
-                        "Homepage badge (topics above the heading)",
+                        "Homepage badge (profession or research topics)",
                         200,
                       ],
                       ["heroHeadline", "Homepage heading", 200],
@@ -693,6 +693,19 @@ export function PortfolioEditor({ id }: { id: string }) {
                       </Field>
                     </div>
                   ))}
+                {admin && (
+                  <label className="check-row full-span">
+                    <input
+                      type="checkbox"
+                      checked={document.profile.showAffiliation !== false}
+                      onChange={(event) =>
+                        profile("showAffiliation", event.target.checked)
+                      }
+                    />
+                    Show university or organization affiliation on public
+                    profile panels
+                  </label>
+                )}
                 {admin &&
                   (["portraitPositionX", "portraitPositionY"] as const).map(
                     (key) => (

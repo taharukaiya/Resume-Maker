@@ -32,3 +32,19 @@ Each article supports editable title, authors, publication date, journal, volume
 Separate authors with semicolons. Choose Family, Given for names such as `van der Waals, Johannes Diderik`; ordinary legacy comma-separated names remain supported. Citations use saved publication metadata, never the current year. APA, IEEE, Harvard, MLA, Chicago, Vancouver, BibTeX and RIS have individual exact-text overrides for publisher requirements. Clear an override to resume automatic formatting. Citation styles vary by publisher; review generated citations before publishing.
 
 PDF and Word uploads retain the existing conversion and figure-extraction workflow. AI proposes metadata and abstracts for review; it does not publish them automatically. Editing web-page text does not rewrite the attached PDF: upload a revised source document to replace the downloadable PDF.
+
+## Large article collections and sharing
+
+Each section accepts up to 1,000 entries. The admin editor searches titles, authors, dates and tags and mounts ten forms at a time. Public archives attach only the current page of cards; remaining compact cards are held in an inert template, without loading their images. Full article text is served on individual article pages. Draft saves accept up to 20 MiB; document files remain separate uploads. A 250-article collection is covered by save, publish, search, topic and edit browser tests.
+
+Archive display includes an editable list of trending topics. Topics match article tags and filter on click; an empty list derives topics from the articles. Article covers can be selected, replaced or removed independently of extracted figures. Homepage badges default to the profession/headline and can be overridden in Profile.
+
+Public HTML includes Open Graph and Twitter card metadata. Articles use their own cover and abstract, falling back to the portfolio social image/portrait and description. Edit the portfolio sharing image/title/description under SEO. Sharing apps control caching and whether a preview is shown; published HTTPS pages and publicly readable images are required.
+
+Two-factor enrollment is optional for administrators. Enrolled accounts still require their authenticator code at sign-in; this change does not remove existing enrollment or bypass authentication and role permissions.
+
+## Admin-managed VPS domains
+
+The editor suggests `researchby<name>.com`; an administrator can enter a different owned domain. Registration and DNS ownership remain external responsibilities. After setting the ownership TXT and the domain's A record, Verify DNS and Connect hosting & HTTPS request host-side setup. Once connected, select the domain and publish. Merely publishing never purchases a domain or replaces another website.
+
+For the existing EasyPanel deployment, install `brilliancy-domains.service` and `.timer` from `deploy/vps` in `/etc/systemd/system`. Set `BRILLIANCY_VPS_IP` to the server's public IPv4 in `/etc/brilliancy-domains.env`, then enable the timer. The host reconciler reads only explicit requests, rechecks TXT ownership and DNS, refuses existing/conflicting routes, validates Caddy, creates separately named exact-host routes, and verifies HTTPS before activation. It never edits EasyPanel's main configuration or stops legacy services. The application containers receive no Docker socket or privileged filesystem access. DNS/HTTPS failures appear in the admin panel for correction and retry. Existing and conflicting domains require separate review instead of automatic takeover.

@@ -38,11 +38,9 @@ export async function readLimited(request: Request, max: number) {
   }
   return Buffer.concat(chunks);
 }
-export async function body(request: Request) {
+export async function body(request: Request, max = 2 * 1024 * 1024) {
   try {
-    return JSON.parse(
-      Buffer.from(await readLimited(request, 2 * 1024 * 1024)).toString(),
-    );
+    return JSON.parse(Buffer.from(await readLimited(request, max)).toString());
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError(400, "Invalid JSON request.");

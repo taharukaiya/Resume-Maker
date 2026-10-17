@@ -1,0 +1,9 @@
+[Unit]
+Description=Connect explicitly requested Brilliancy portfolio domains
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/brilliancy-domains.env
+ExecStart=/usr/bin/python3 /opt/brilliancy/scripts/vps-domain-reconcile.py
+TimeoutStartSec=600

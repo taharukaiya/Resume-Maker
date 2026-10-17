@@ -99,7 +99,10 @@ export async function portfolioRoutes(
     const id = idSchema.parse(path[1]),
       action = path[2] || "",
       site = await getSite(user, id);
-    if (path.length === 3 && ["domains", "verify-domain"].includes(action)) {
+    if (
+      path.length === 3 &&
+      ["domains", "verify-domain", "connect-domain"].includes(action)
+    ) {
       return domainRoutes(request, action, id, database, user);
     }
     if (!action && path.length === 2 && method === "DELETE") {
@@ -212,7 +215,7 @@ export async function portfolioRoutes(
           revision: z.number().int().positive(),
         })
         .strict()
-        .parse(await body(request));
+        .parse(await body(request, 20 * 1024 * 1024));
       return json(await saveDocument(user, id, input.document, input.revision));
     }
     if (action === "permissions" && method === "PUT") {

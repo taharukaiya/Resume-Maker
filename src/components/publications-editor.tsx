@@ -64,6 +64,27 @@ export function PublicationsEditor({
         <details className="panel">
           <summary>Archive display</summary>
           <div className="form-grid">
+            <label className="full-span">
+              Trending topics (one per line)
+              <textarea
+                rows={4}
+                value={document.navigation.trendingTopics?.join("\n") || ""}
+                onChange={(event) =>
+                  onChange({
+                    ...document,
+                    navigation: {
+                      ...document.navigation,
+                      trendingTopics: event.target.value.split("\n"),
+                    },
+                  })
+                }
+              />
+            </label>
+            <p className="panel-description full-span">
+              Choose up to 50 topics. Match the tags saved on articles; clicking
+              a topic filters the archive. Leave blank to use article tags
+              automatically.
+            </p>
             <label>
               Articles per page
               <input

@@ -148,7 +148,7 @@ export const sectionSchema = z
       .enum(["auto", "home", "about", "research", "contact"])
       .optional(),
     intro: z.string().max(10000),
-    entries: z.array(entrySchema).max(100),
+    entries: z.array(entrySchema).max(1000),
   })
   .strict();
 const baseLabels = {
@@ -272,6 +272,7 @@ export const documentSchema = z
         heroBadge: short.optional(),
         heroHeadline: short.optional(),
         heroIntro: z.string().max(10000).optional(),
+        showAffiliation: z.boolean().optional(),
         portraitPositionX: z.number().min(0).max(100).optional(),
         portraitPositionY: z.number().min(0).max(100).optional(),
         aboutHeadline: short.optional(),
@@ -366,6 +367,17 @@ export const documentSchema = z
         articlesEnabled: z.boolean().optional(),
         archivePageSize: z.number().int().min(1).max(50).optional(),
         archiveSort: z.enum(["newest", "oldest", "cited", "title"]).optional(),
+        trendingTopics: z
+          .array(short)
+          .max(50)
+          .transform((topics) => [
+            ...new Set(
+              topics
+                .map((topic) => topic.replace(/^#/, "").trim())
+                .filter(Boolean),
+            ),
+          ])
+          .optional(),
         siteTitle: short,
         contactLabel: short,
         cvLabel: short,

@@ -117,8 +117,9 @@ export function renderShibaPortfolio(
     address: string,
     schema: unknown = { "@type": "Person", name: p.name },
     description = seo.description,
+    socialImageId = seo.socialImageId,
   ) =>
-    `<!doctype html><html lang="${e(doc.seo.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta name="robots" content="${doc.seo.indexable ? "index,follow" : "noindex,nofollow"}"><link rel="canonical" href="${e(address)}"><link rel="icon" href="${e(options.faviconUrl || `${baseUrl}/favicon.svg`)}"><meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}"><meta property="og:url" content="${e(address)}"><meta property="og:type" content="website">${seo.socialImageId ? `<meta property="og:image" content="${e(asset(seo.socialImageId))}">` : ""}<style>@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("inter.woff2") : `${baseUrl}/fonts/inter.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather.woff2") : `${baseUrl}/fonts/merriweather.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:italic;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather-italic.woff2") : `${baseUrl}/fonts/merriweather-italic.woff2`)}') format('woff2')}@font-face{font-family:'Geist Mono';font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("geist-mono.woff2") : `${baseUrl}/fonts/geist-mono.woff2`)}') format('woff2')}${css}${shibaPagesCss}${shibaHomeCss}${shibaArticleCss}</style><script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...(schema as object) }).replace(/</g, "\\u003c")}</script></head><body class="shiba"><a class="skip" href="#main">Skip to content</a><header class="topbar"><div class="container nav"><a class="brand" href="${e(baseUrl)}">${logoId ? `<img class="${p.logoId ? "brand-logo" : "brand-portrait"}" src="${e(asset(logoId))}" alt="">` : ""}<span class="brand-name">${e(doc.navigation.siteTitle || p.name)}</span></a><nav class="nav-links" aria-label="Main navigation">${links()}</nav><div class="nav-actions">${p.cvId ? `<a class="button header-cv" href="${e(asset(p.cvId))}" download>${homeIcon("download")}<span class="cv-long">${e(doc.navigation.cvLabel || "Download CV")}</span><span class="cv-short">${e(doc.navigation.mobileCvLabel || "CV")}</span></a>` : ""}<button class="mobile-menu-toggle" type="button" aria-label="${e(doc.navigation.menuLabel || "Menu")}" aria-expanded="false" aria-controls="mobile-navigation" data-menu-toggle>${homeIcon("menu")}</button></div><nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>${links()}</nav></div></header><main id="main" class="container">${content}</main><footer class="footer"><div class="container"><span>${e(doc.navigation.copyright || `© ${p.name}${p.headline ? " | " + p.headline : ""}`)}</span><span>${e(doc.navigation.footer)}<span class="footer-links">${(
+    `<!doctype html><html lang="${e(doc.seo.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title><meta name="description" content="${e(description)}"><meta name="robots" content="${doc.seo.indexable ? "index,follow" : "noindex,nofollow"}"><link rel="canonical" href="${e(address)}"><link rel="icon" href="${e(options.faviconUrl || `${baseUrl}/favicon.svg`)}"><meta property="og:title" content="${e(address === baseUrl ? seo.title : title)}"><meta property="og:description" content="${e(description)}"><meta property="og:url" content="${e(address)}"><meta property="og:type" content="${(schema as { "@type"?: string })["@type"] === "ScholarlyArticle" ? "article" : "website"}"><meta property="og:site_name" content="${e(p.name)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${e(address === baseUrl ? seo.title : title)}"><meta name="twitter:description" content="${e(description)}">${socialImageId ? `<meta property="og:image" content="${e(asset(socialImageId))}"><meta property="og:image:alt" content="${e(title)}"><meta name="twitter:image" content="${e(asset(socialImageId))}">` : ""}<style>@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("inter.woff2") : `${baseUrl}/fonts/inter.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather.woff2") : `${baseUrl}/fonts/merriweather.woff2`)}') format('woff2')}@font-face{font-family:Merriweather;font-style:italic;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("merriweather-italic.woff2") : `${baseUrl}/fonts/merriweather-italic.woff2`)}') format('woff2')}@font-face{font-family:'Geist Mono';font-style:normal;font-weight:100 900;font-display:swap;src:url('${e(options.fontUrl ? options.fontUrl("geist-mono.woff2") : `${baseUrl}/fonts/geist-mono.woff2`)}') format('woff2')}${css}${shibaPagesCss}${shibaHomeCss}${shibaArticleCss}</style><script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...(schema as object) }).replace(/</g, "\\u003c")}</script></head><body class="shiba"><a class="skip" href="#main">Skip to content</a><header class="topbar"><div class="container nav"><a class="brand" href="${e(baseUrl)}">${logoId ? `<img class="${p.logoId ? "brand-logo" : "brand-portrait"}" src="${e(asset(logoId))}" alt="">` : ""}<span class="brand-name">${e(doc.navigation.siteTitle || p.name)}</span></a><nav class="nav-links" aria-label="Main navigation">${links()}</nav><div class="nav-actions">${p.cvId ? `<a class="button header-cv" href="${e(asset(p.cvId))}" download>${homeIcon("download")}<span class="cv-long">${e(doc.navigation.cvLabel || "Download CV")}</span><span class="cv-short">${e(doc.navigation.mobileCvLabel || "CV")}</span></a>` : ""}<button class="mobile-menu-toggle" type="button" aria-label="${e(doc.navigation.menuLabel || "Menu")}" aria-expanded="false" aria-controls="mobile-navigation" data-menu-toggle>${homeIcon("menu")}</button></div><nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>${links()}</nav></div></header><main id="main" class="container">${content}</main><footer class="footer"><div class="container"><span>${e(doc.navigation.copyright || `© ${p.name}${p.headline ? " | " + p.headline : ""}`)}</span><span>${e(doc.navigation.footer)}<span class="footer-links">${(
       doc.navigation.footerLinks || []
     )
       .filter((l) => l.url)
@@ -130,7 +131,7 @@ export function renderShibaPortfolio(
         "<span>•</span>",
       )}</span>${doc.theme.showAgencyCredit ? ` · Portfolio by ${e(options.agencyName)}` : ""}</span></div></footer><script>${shibaScript}</script></body></html>`;
   const card = (a: Entry) =>
-    `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(a.body)}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
+    `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(a.body.slice(0, 500))}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
   const entry = (a: Entry) =>
     `<article class="entry"><p class="eyebrow">${e(a.start)}${a.current ? " | Present" : a.end ? " | " + e(a.end) : ""}</p><h3>${e(a.title)}</h3><p class="meta">${e(a.subtitle)}</p>${prose(a.body)}${a.mediaId && options.isImage?.(a.mediaId) ? `<img class="entry-image" src="${e(asset(a.mediaId))}" alt="${e(a.coverAlt || a.title)}" loading="lazy">` : ""}${a.url ? `<a href="${e(a.url)}" rel="noopener noreferrer">View resource ↗</a>` : ""}${a.mediaId ? ` <a href="${e(asset(a.mediaId))}">Download file ↓</a>` : ""}</article>`;
   const section = (s: Section) =>
@@ -218,7 +219,7 @@ export function renderShibaPortfolio(
               .map((t) => t.trim())
               .filter(Boolean),
           ),
-        )}" data-search="${e([a.title, a.authors, a.start, a.tags, a.category, a.body].join(" ").toLocaleLowerCase())}">${cover(a)}<div><p class="meta">${e(date(a))} <span>${Math.max(1, Math.ceil((a.fullText || a.body).split(/\s+/).length / 200))} ${e(doc.labels.minutesRead || "min read")}</span></p><h3><a href="${e(url(a))}">${e(a.title)}</a></h3><p class="abstract-excerpt">${e(a.body)}</p><div class="tags"><span class="tag">${e(a.category || a.subtitle || "Research")}</span>${a.tags
+        )}" data-search="${e([a.title, a.authors, a.start, a.tags, a.category, a.body.slice(0, 500)].join(" ").toLocaleLowerCase())}">${cover(a)}<div><p class="meta">${e(date(a))} <span>${Math.max(1, Math.ceil((a.fullText || a.body).split(/\s+/).length / 200))} ${e(doc.labels.minutesRead || "min read")}</span></p><h3><a href="${e(url(a))}">${e(a.title)}</a></h3><p class="abstract-excerpt">${e(a.body.slice(0, 500))}</p><div class="tags"><span class="tag">${e(a.category || a.subtitle || "Research")}</span>${a.tags
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean)
@@ -241,23 +242,36 @@ export function renderShibaPortfolio(
         )
         .join(
           "",
-        )}</section><section><h3>${e(doc.labels.trendingTopics || "Trending Topics")}</h3><div class="tags">${[
-        ...new Set(
-          items.flatMap((a) =>
-            a.tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean),
-          ),
-        ),
-      ]
-        .slice(0, 20)
+        )}</section><section><h3>${e(doc.labels.trendingTopics || "Trending Topics")}</h3><div class="tags">${(doc.navigation.trendingTopics?.filter(
+        Boolean,
+      ).length
+        ? doc.navigation.trendingTopics.filter(Boolean)
+        : [
+            ...new Set(
+              items.flatMap((a) =>
+                a.tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+              ),
+            ),
+          ]
+      )
+        .slice(0, 50)
         .map(
           (t) =>
             `<button class="tag" data-topic="${e(t)}" aria-pressed="false">#${e(t)}</button>`,
         )
         .join("")}</div></section></aside>`;
-      return `<section class="archive" data-archive data-noun="${e(noun)}" data-page-size="${doc.navigation.archivePageSize || 3}" data-sort="${doc.navigation.archiveSort || "oldest"}"><h1>${e(title)}</h1>${introduction ? `<div class="archive-intro">${introduction}</div>` : ""}<div class="search-row"><input type="search" aria-label="${e(doc.labels.searchArticles || "Search articles")}" placeholder="${e(doc.labels.searchPlaceholder || "Search by title, keyword, or year...")}"><select aria-label="${e(doc.labels.sortArticles || "Sort articles")}"><option value="newest">${e(doc.labels.newestFirst || "Newest First")}</option><option value="oldest">${e(doc.labels.oldestFirst || "Oldest First")}</option><option value="cited">${e(doc.labels.mostCited || "Most Cited")}</option><option value="title">${e(doc.labels.titleSort || "Title A–Z")}</option></select></div><p class="meta" data-result-count aria-live="polite">${items.length} ${e(noun)}</p><div class="columns"><div><div data-article-list>${items.map(archiveCard).join("")}</div><p data-empty hidden>${e(doc.labels.noResults || "No results found matching your criteria.")}</p><nav class="archive-pagination" data-pagination aria-label="Pagination" data-previous="${e(doc.labels.previousPage || "Previous page")}" data-next="${e(doc.labels.nextPage || "Next page")}"></nav></div>${side}</div></section>`;
+      return `<section class="archive" data-archive data-noun="${e(noun)}" data-page-size="${doc.navigation.archivePageSize || 3}" data-sort="${doc.navigation.archiveSort || "oldest"}"><h1>${e(title)}</h1>${introduction ? `<div class="archive-intro">${introduction}</div>` : ""}<div class="search-row"><input type="search" aria-label="${e(doc.labels.searchArticles || "Search articles")}" placeholder="${e(doc.labels.searchPlaceholder || "Search by title, keyword, or year...")}"><select aria-label="${e(doc.labels.sortArticles || "Sort articles")}"><option value="newest">${e(doc.labels.newestFirst || "Newest First")}</option><option value="oldest">${e(doc.labels.oldestFirst || "Oldest First")}</option><option value="cited">${e(doc.labels.mostCited || "Most Cited")}</option><option value="title">${e(doc.labels.titleSort || "Title A–Z")}</option></select></div><p class="meta" data-result-count aria-live="polite">${items.length} ${e(noun)}</p><div class="columns"><div><div data-article-list>${items
+        .slice(0, doc.navigation.archivePageSize || 3)
+        .map(archiveCard)
+        .join("")}</div><template data-archive-rest>${items
+        .slice(doc.navigation.archivePageSize || 3)
+        .map(archiveCard)
+        .join(
+          "",
+        )}</template><p data-empty hidden>${e(doc.labels.noResults || "No results found matching your criteria.")}</p><nav class="archive-pagination" data-pagination aria-label="Pagination" data-previous="${e(doc.labels.previousPage || "Previous page")}" data-next="${e(doc.labels.nextPage || "Next page")}"></nav></div>${side}</div></section>`;
     };
     if (articleSections.length)
       pages["article/index.html"] = shell(
@@ -305,7 +319,9 @@ export function renderShibaPortfolio(
       const archivePath = researchIds.has(a.id) ? researchSlug : "article";
       const detailAuthor = {
         name: a.authorDetails?.name || p.name,
-        affiliation: a.authorDetails?.affiliation || p.affiliation,
+        affiliation:
+          a.authorDetails?.affiliation ||
+          (p.showAffiliation === false ? "" : p.affiliation),
         bio: a.authorDetails?.bio || p.bio,
       };
       const citations = `<section class="citations" data-citations><h3>${e(doc.labels.citationHeading || "CITE THIS ARTICLE")}</h3><div class="citation-tabs" role="tablist" aria-label="Citation style">${citationStyles.map((style, i) => `<button id="tab-${a.id}-${i}" role="tab" data-citation-tab aria-controls="cite-${a.id}-${i}" aria-selected="${i === 0}">${style}</button>`).join("")}</div>${citationStyles.map((style, i) => `<div id="cite-${a.id}-${i}" role="tabpanel" aria-labelledby="tab-${a.id}-${i}"${i ? " hidden" : ""}><pre>${e(articleCitation(a, url(a), style))}</pre></div>`).join("")}<button class="button outline" data-copy="citation" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${e(doc.labels.copyCitation || "Copy Citation")}</button></section>`;
@@ -359,7 +375,8 @@ export function renderShibaPortfolio(
           ...(a.start ? { datePublished: a.start } : {}),
           ...(a.doi ? { identifier: a.doi } : {}),
         },
-        a.body.slice(0, 300),
+        a.body.slice(0, 300) || seo.description,
+        a.coverId || seo.socialImageId,
       );
       pages[`${archivePath}/${a.id}/index.html`] = rendered;
       // Historical links continue working, without mixing the two archives.

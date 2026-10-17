@@ -78,8 +78,8 @@ async function requireIdlePublisher(tx: Sql, siteId: string) {
   );
 }
 
-// The caller performs siteAccess first. Hosting/proxy activation remains an
-// operator task, distinct from ownership verification and address selection.
+// The caller performs siteAccess first. A host-side reconciler handles proxy
+// setup; the web process has no Docker socket or proxy configuration access.
 export async function domainRoutes(
   request: NextRequest,
   action: string,
@@ -87,13 +87,14 @@ export async function domainRoutes(
   database: Database,
   user: User,
 ): Promise<Response | null> {
-  if (!["domains", "verify-domain"].includes(action)) return null;
+  if (!["domains", "verify-domain", "connect-domain"].includes(action))
+    return null;
   requireAdmin(user);
   const method = request.method;
   if (action === "domains" && method === "GET") {
     return json({
       domains: await database.query<Domain>(
-        "SELECT * FROM domains WHERE site_id=$1 ORDER BY created_at DESC,id DESC",
+        "SELECT d.*, (SELECT value FROM settings WHERE key='vps.domain.request.' || d.id::text) AS connection FROM domains d WHERE site_id=$1 ORDER BY created_at DESC,id DESC",
         [siteId],
       ),
       hostingMode: config().vps
@@ -102,6 +103,50 @@ export async function domainRoutes(
           ? "cloud"
           : "local",
     });
+  }
+  if (action === "connect-domain" && method === "POST") {
+    invariant(
+      config().vps,
+      400,
+      "Automatic connection is available on VPS hosting.",
+    );
+    const { domainId } = z
+      .object({ domainId: idSchema })
+      .strict()
+      .parse(await body(request));
+    const [domain] = await database.query<Domain>(
+      "SELECT * FROM domains WHERE id=$1 AND site_id=$2",
+      [domainId, siteId],
+    );
+    invariant(
+      domain?.verified_at,
+      400,
+      "Verify this domain's DNS ownership first.",
+    );
+    invariant(!domain.activated_at, 409, "This domain is already connected.");
+    await database.transaction(async (tx) => {
+      await lockSite(tx, siteId);
+      await tx.query(
+        "INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        [
+          `vps.domain.request.${domainId}`,
+          JSON.stringify({
+            status: "queued",
+            message:
+              "Checking DNS and HTTPS. Refresh status in about a minute.",
+            requestedAt: new Date().toISOString(),
+          }),
+        ],
+      );
+      await audit(
+        user.id,
+        siteId,
+        "domain.connection_requested",
+        { domainId, hostname: domain.hostname },
+        tx,
+      );
+    });
+    return json({ ok: true });
   }
   if (action === "domains" && method === "POST") {
     const input = z

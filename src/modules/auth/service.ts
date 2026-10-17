@@ -148,11 +148,6 @@ export async function initialize(input: {
 export function requireAdmin(user: User) {
   if (user.role !== "admin")
     throw new AppError(403, "Administrator access required.");
-  if (config().production && !user.totp_secret)
-    throw new AppError(
-      403,
-      "Enable two-factor authentication in Account security before managing production portfolios.",
-    );
 }
 export async function siteAccess(user: User, id: string, sql?: Sql) {
   const rows = await (sql || (await db())).query<{

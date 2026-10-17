@@ -11,6 +11,7 @@ type Domain = {
   cdn_hostname: string | null;
   distribution_id: string | null;
   is_primary: boolean;
+  connection?: { status: string; message: string };
 };
 export function DomainManager({
   siteId,
@@ -195,8 +196,8 @@ export function DomainManager({
           <li>
             <strong>Connect hosting & HTTPS</strong>
             <span>
-              Point the domain to your hosting and have its HTTPS connection
-              activated. Then select it as the public website address above and
+              Point the domain to this VPS, then use Connect hosting & HTTPS
+              below. Select it as the public website address above and
               republish.
             </span>
           </li>
@@ -296,8 +297,40 @@ export function DomainManager({
                 <p className="panel-description">
                   {ready(domain)
                     ? "Connecting a different domain does not change the selected address automatically."
-                    : "Your hosting administrator must connect this domain and enable HTTPS before it can be selected. Your current website stays available during setup."}
+                    : "Point the domain's A record to your VPS. Existing websites are never replaced by automatic setup. Your current website stays available."}
                 </p>
+                {hostingMode === "vps" && !ready(domain) && (
+                  <div className="stack">
+                    {domain.connection && (
+                      <p role="status">{domain.connection.message}</p>
+                    )}
+                    <div className="row wrap">
+                      <Button
+                        type="button"
+                        variant="secondary small"
+                        busy={feedback.busy}
+                        onClick={() =>
+                          void feedback.run(async () => {
+                            await api(`sites/${siteId}/connect-domain`, {
+                              method: "POST",
+                              body: JSON.stringify({ domainId: domain.id }),
+                            });
+                            await load();
+                          }, "Connection requested.")
+                        }
+                      >
+                        Connect hosting & HTTPS
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary small"
+                        onClick={() => void feedback.run(load)}
+                      >
+                        Refresh connection status
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             {!domain.activated_at &&

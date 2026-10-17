@@ -59,7 +59,7 @@ export function homeHero(
     highlight && at >= 0
       ? `${e(headline.slice(0, at))}<span>${e(highlight)}</span>${e(headline.slice(at + highlight.length))}`
       : e(headline);
-  const badge = p.heroBadge ?? p.affiliation;
+  const badge = p.heroBadge ?? p.headline;
   return `<section class="hero"><div class="hero-copy">${badge ? `<div class="hero-badge">${homeIcon("sparkles")}<span>${e(badge)}</span></div>` : ""}<h1>${title}</h1>${bioVisible ? `<div class="hero-intro">${prose(p.heroIntro ?? p.bio)}</div>` : ""}<div class="actions hero-actions">${p.links
     .filter((l) => l.url && l.showInHero !== false)
     .map(
