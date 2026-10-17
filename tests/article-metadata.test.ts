@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { extractLabeledMetadata } from "../src/modules/media/article-metadata";
 
 describe("article metadata without AI", () => {
+  it("does not mistake words within abstract prose for section headings", () => {
+    const result = extractLabeledMetadata(
+      "Abstract\nWe report key\nresults/outcomes and their implications.\n1. Introduction\nBody text.",
+    );
+    expect(result.abstract).toBe(
+      "We report key\nresults/outcomes and their implications.",
+    );
+  });
+  it("leaves ambiguous multi-page browser exports for review", () => {
+    const result = extractLabeledMetadata(
+      "Abstract\nThe original summary.\nabout:blank 1/5\n-- 1 of 5 --\nArticle body without a heading.",
+    );
+    expect(result.abstract).toBe("");
+    expect(result.warnings.join(" ")).toContain("abstract");
+  });
   it("extracts explicit evidence and keeps the original abstract paragraphs", () => {
     const result = extractLabeledMetadata(`Title: Coastal resilience
 Authors: Ada Lovelace; Alan Turing

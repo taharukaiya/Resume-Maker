@@ -220,6 +220,29 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     )
     .toBe("published");
   await page.goto(`/portfolio/${slug}/article/${first.id}`);
+  await expect(page.locator(".article-pdf-button")).toHaveCSS(
+    "border-radius",
+    "12px",
+  );
+  await expect(page.locator(".article-share")).toHaveCSS(
+    "border-radius",
+    "50%",
+  );
+  await expect(page.locator(".abstract")).toHaveCSS(
+    "border-top-left-radius",
+    "16px",
+  );
+  await expect(page.locator(".abstract")).toHaveCSS("border-left-width", "4px");
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page
+    .getByRole("button", { name: "Copy article URL", exact: true })
+    .click();
+  await expect(page.locator(".article-share [role=status]")).toHaveText(
+    "Copied",
+  );
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    `/article/${first.id}`,
+  );
   await expect(page.locator(".abstract p").first()).toHaveCSS(
     "font-family",
     /Merriweather/,
@@ -245,6 +268,8 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await expect(page.locator(".article-share")).toBeVisible();
+  await expect(page.locator(".article-pdf-button")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

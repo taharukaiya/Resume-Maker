@@ -1691,6 +1691,48 @@ export function PortfolioEditor({ id }: { id: string }) {
                     style={{ marginTop: 8 }}
                   >
                     <summary>Review extracted abstract</summary>
+                    <p className="muted">
+                      These are extraction suggestions. Your saved articles and
+                      manual edits have not been changed. Review the source file
+                      before copying changes into an existing article.
+                    </p>
+                    {file.article_metadata && (
+                      <dl>
+                        <dt>Title</dt>
+                        <dd>{file.article_metadata.title || "Needs review"}</dd>
+                        <dt>Authors</dt>
+                        <dd>
+                          {file.article_metadata.authors || "Needs review"}
+                        </dd>
+                        <dt>Publication date</dt>
+                        <dd>
+                          {file.article_metadata.date || "Not found in source"}
+                        </dd>
+                      </dl>
+                    )}
+                    {!!file.article_assets?.imageIds.length && (
+                      <div className="spread wrap">
+                        {file.article_assets.imageIds.map((imageId, index) => (
+                          <a
+                            key={imageId}
+                            href={`/api/media/${imageId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/media/${imageId}`}
+                              alt={`Extracted image ${index + 1} for review`}
+                              style={{
+                                width: 120,
+                                height: 90,
+                                objectFit: "contain",
+                              }}
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     <div className="spread">
                       <h3>
                         {file.article_metadata?.abstractSource === "original"

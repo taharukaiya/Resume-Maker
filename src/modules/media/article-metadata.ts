@@ -9,9 +9,17 @@ export function extractLabeledMetadata(text: string): ArticleMetadata {
       .match(new RegExp(`^\\s*(?:${label})\\s*[:：]\\s*([^\\n]+)`, "im"))?.[1]
       ?.trim() || "";
   const abstractMatch = source.match(
-    /^\s*(?:abstract|summary)\s*(?:[:：–—-]\s*|\n)([\s\S]*?)(?=\n\s*(?:(?:\d+\.?\s+)?(?:introduction|background|methods|methodology|results|conclusions?|references)\b|key\s*words\b)|(?![\s\S]))/im,
+    /^[ \t]*(?:abstract|summary)[ \t]*(?:[:\uFF1A\u2013\u2014-][ \t]*|\n)([\s\S]*?)(?=\n[ \t]*(?:(?:\d+\.?[ \t]+)?(?:introduction|background|methods|methodology|results|conclusions?|references)[ \t]*[:\uFF1A]?[ \t]*(?:\n|$)|key[ \t]*words[ \t]*[:\uFF1A])|(?![\s\S]))/im,
   );
-  const abstract = (abstractMatch?.[1]?.trim() || "").slice(0, 12000);
+  const candidate = abstractMatch?.[1]?.trim() || "";
+  // Page footers and long, unbounded blocks are ambiguous. Leave these to AI
+  // review instead of replacing its proposal with accidentally captured body text.
+  const uncertain =
+    candidate.split(/\s+/).length > 500 ||
+    /(?:about:blank|https?:\/\/\S+)[ \t]+\d+\s*\/\s*\d+|--\s*\d+\s+of\s+\d+\s*--/i.test(
+      candidate,
+    );
+  const abstract = uncertain ? "" : candidate.slice(0, 12000);
   const rawDate = field("publication date|published|date");
   const date = entrySchema.shape.start.safeParse(rawDate).success
     ? rawDate
