@@ -3133,7 +3133,7 @@ select:focus {
   font-weight: 400;
 }
 .entry-editor details[open] > summary::after {
-  content: "?";
+  content: "\2212";
 }
 .entry-editor details[open] > summary {
   margin-bottom: 16px;
