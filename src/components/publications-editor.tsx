@@ -60,6 +60,25 @@ export function PublicationsEditor({
   );
   return (
     <div className="stack">
+      <section className="panel spread wrap">
+        <div>
+          <p className="eyebrow">
+            {type === "articles"
+              ? "Article library"
+              : "Research, made discoverable"}
+          </p>
+          <h2>{type === "articles" ? "Articles" : "Research publications"}</h2>
+          <p className="panel-description">
+            Upload a document to fill in its details, or add an entry manually
+            below. Review the title, authors, date, abstract and images, then
+            save your draft. Nothing goes live until you publish.
+          </p>
+        </div>
+        <Button variant="secondary" onClick={onFiles}>
+          Upload a document / extract details
+        </Button>
+      </section>
+
       {admin && (
         <details className="panel">
           <summary>Archive display</summary>
@@ -158,31 +177,13 @@ export function PublicationsEditor({
           </p>
         </section>
       )}
-      <section className="panel spread wrap">
-        <div>
-          <p className="eyebrow">
-            {type === "articles"
-              ? "Article library"
-              : "Research, made discoverable"}
-          </p>
-          <h2>{type === "articles" ? "Articles" : "Research publications"}</h2>
-          <p className="panel-description">
-            Add titles, authors, dates and abstracts. Each paper receives its
-            own public page. Papers are optional; only include work the
-            researcher has actually authored.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={onFiles}>
-          Upload a document / extract details
-        </Button>
-      </section>
       {admin &&
         [
           ...document.sections,
           ...document.pages.flatMap((page) => page.sections),
         ].some((section) => section.type === type) && (
-          <section className="panel">
-            <h3>Move a section</h3>
+          <details className="panel editor-options">
+            <summary>Move content between Research and Articles</summary>
             <p className="panel-description">
               Research and articles are separate. Moving a section preserves its
               entries, files and editable details.
@@ -225,7 +226,7 @@ export function PublicationsEditor({
                   </option>
                 ))}
             </select>
-          </section>
+          </details>
         )}
       {editor(document.sections, (sections) =>
         onChange({ ...document, sections }),

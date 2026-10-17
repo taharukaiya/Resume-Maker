@@ -52,6 +52,15 @@ function fixture() {
   return { doc, article };
 }
 describe("Fixed Shiba design and articles", () => {
+  it("reflows abstract line wrapping without changing paragraphs or allowing markup", () => {
+    const { doc, article } = fixture();
+    article.body =
+      "Evidence across\ncoastal communities.\n\nA second paragraph <script>bad</script>.";
+    const pages = renderPortfolio(doc, options);
+    expect(pages[`article/${article.id}/index.html`]).toContain(
+      "<p>Evidence across coastal communities.</p><p>A second paragraph &lt;script&gt;bad&lt;/script&gt;.</p>",
+    );
+  });
   it("uses profession-led profile wording and an editable homepage sharing title", () => {
     const { doc } = fixture();
     doc.profile.headline = "Physician and researcher";

@@ -109,6 +109,11 @@ export function PortfolioEditor({ id }: { id: string }) {
     [previewKey, setPreviewKey] = useState(0),
     [history, setHistory] = useState<Revision[]>([]),
     [aiEnabled, setAiEnabled] = useState(false);
+  const [fileQuery, setFileQuery] = useState("");
+  const [fileLimit, setFileLimit] = useState(20);
+  const [uploadCollection, setUploadCollection] = useState<
+    "articles" | "publications"
+  >("articles");
   const load = useCallback(
     async (replace = false) => {
       const result = await api<EditorData>(`sites/${id}`);
@@ -336,6 +341,11 @@ export function PortfolioEditor({ id }: { id: string }) {
     ["history", "History"],
   ];
   const assets = data.media;
+  const matchingFiles = assets
+    .filter((file) =>
+      file.filename.toLowerCase().includes(fileQuery.toLowerCase()),
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
   function extracting(file: Media) {
     return data?.jobs.some(
       (job) =>
@@ -347,12 +357,12 @@ export function PortfolioEditor({ id }: { id: string }) {
   function addArticle(file: Media) {
     if (!document || extracting(file)) return;
     const sections = structuredClone(document.sections);
-    let section = sections.find((s) => s.type === "articles");
+    let section = sections.find((s) => s.type === uploadCollection);
     if (!section) {
       section = {
         id: crypto.randomUUID(),
-        type: "articles",
-        title: "Articles",
+        type: uploadCollection,
+        title: uploadCollection === "articles" ? "Articles" : "Research",
         visible: true,
         intro: "",
         entries: [],
@@ -360,7 +370,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       sections.push(section);
     }
     const meta = file.article_metadata;
-    section.entries.push({
+    section.entries.unshift({
       ...emptyEntry(),
       title: meta?.title || file.filename.replace(/\.pdf$/i, ""),
       authors: meta?.authors || "",
@@ -386,7 +396,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       })),
     });
     change({ ...document, sections });
-    setTab("articles");
+    setTab(uploadCollection);
     feedback.setMessage(
       "Added to the draft. Review and edit all article details before publishing.",
     );
@@ -569,7 +579,7 @@ export function PortfolioEditor({ id }: { id: string }) {
               />
             )}
             <section className="panel">
-              <h2>The person behind the research.</h2>
+              <h2>About this person</h2>
               <p className="panel-description">
                 A clear introduction to their work, interests, and academic
                 direction.
@@ -596,8 +606,8 @@ export function PortfolioEditor({ id }: { id: string }) {
                       label={
                         {
                           name: "Full name *",
-                          headline: "Academic headline",
-                          affiliation: "Current affiliation",
+                          headline: "Profession or headline",
+                          affiliation: "University or organization (optional)",
                           location: "Location",
                           email: "Public contact email",
                         }[key]
@@ -672,72 +682,87 @@ export function PortfolioEditor({ id }: { id: string }) {
                 />
                 {assetSelect("Curriculum vitae", "cvId", "application/pdf")}
                 {admin && assetSelect("Website logo", "logoId", "image/")}
-                {admin &&
-                  (
-                    [
-                      [
-                        "heroBadge",
-                        "Homepage badge (profession or research topics)",
-                        200,
-                      ],
-                      ["heroHeadline", "Homepage heading", 200],
-                      ["heroIntro", "Homepage introduction", 10000],
-                      ["aboutHeadline", "About Me heading", 200],
-                      ["aboutBio", "About Me biography", 10000],
-                      ["collaborationNote", "Collaboration note", 1000],
-                      ["contactHeading", "Contact heading", 200],
-                      ["contactIntro", "Contact introduction", 1000],
-                      ["officeHours", "Office hours", 2000],
-                      ["mailingAddress", "Mailing address", 2000],
-                    ] as const
-                  ).map(([key, label, limit]) => (
-                    <div className="full-span" key={key}>
-                      <Field label={label}>
-                        <textarea
-                          rows={key === "aboutBio" ? 7 : 2}
-                          maxLength={limit}
-                          value={document.profile[key] || ""}
-                          onChange={(event) => profile(key, event.target.value)}
-                        />
-                      </Field>
-                    </div>
-                  ))}
                 {admin && (
-                  <label className="check-row full-span">
-                    <input
-                      type="checkbox"
-                      checked={document.profile.showAffiliation === true}
-                      onChange={(event) =>
-                        profile("showAffiliation", event.target.checked)
-                      }
-                    />
-                    Show university or organization affiliation on public
-                    profile panels
-                  </label>
+                  <details className="editor-options full-span">
+                    <summary>
+                      Customize page introductions and photo position
+                    </summary>
+                    <p className="panel-description">
+                      Optional. Your headline and biography are used
+                      automatically unless you customize them here.
+                    </p>
+                    <div className="form-grid">
+                      {admin &&
+                        (
+                          [
+                            [
+                              "heroBadge",
+                              "Homepage badge (profession or research topics)",
+                              200,
+                            ],
+                            ["heroHeadline", "Homepage heading", 200],
+                            ["heroIntro", "Homepage introduction", 10000],
+                            ["aboutHeadline", "About Me heading", 200],
+                            ["aboutBio", "About Me biography", 10000],
+                            ["collaborationNote", "Collaboration note", 1000],
+                            ["contactHeading", "Contact heading", 200],
+                            ["contactIntro", "Contact introduction", 1000],
+                            ["officeHours", "Office hours", 2000],
+                            ["mailingAddress", "Mailing address", 2000],
+                          ] as const
+                        ).map(([key, label, limit]) => (
+                          <div className="full-span" key={key}>
+                            <Field label={label}>
+                              <textarea
+                                rows={key === "aboutBio" ? 7 : 2}
+                                maxLength={limit}
+                                value={document.profile[key] || ""}
+                                onChange={(event) =>
+                                  profile(key, event.target.value)
+                                }
+                              />
+                            </Field>
+                          </div>
+                        ))}
+                      {admin && (
+                        <label className="check-row full-span">
+                          <input
+                            type="checkbox"
+                            checked={document.profile.showAffiliation === true}
+                            onChange={(event) =>
+                              profile("showAffiliation", event.target.checked)
+                            }
+                          />
+                          Show university or organization affiliation on public
+                          profile panels
+                        </label>
+                      )}
+                      {admin &&
+                        (
+                          ["portraitPositionX", "portraitPositionY"] as const
+                        ).map((key) => (
+                          <Field
+                            key={key}
+                            label={
+                              key === "portraitPositionX"
+                                ? "Portrait crop: horizontal position"
+                                : "Portrait crop: vertical position"
+                            }
+                          >
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={document.profile[key] ?? 50}
+                              onChange={(event) =>
+                                profile(key, Number(event.target.value))
+                              }
+                            />
+                          </Field>
+                        ))}
+                    </div>
+                  </details>
                 )}
-                {admin &&
-                  (["portraitPositionX", "portraitPositionY"] as const).map(
-                    (key) => (
-                      <Field
-                        key={key}
-                        label={
-                          key === "portraitPositionX"
-                            ? "Portrait crop: horizontal position"
-                            : "Portrait crop: vertical position"
-                        }
-                      >
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={document.profile[key] ?? 50}
-                          onChange={(event) =>
-                            profile(key, Number(event.target.value))
-                          }
-                        />
-                      </Field>
-                    ),
-                  )}
               </div>
             </section>
             <section className="panel">
@@ -1001,7 +1026,13 @@ export function PortfolioEditor({ id }: { id: string }) {
           media={assets}
           admin={admin}
           allowed={data.site.editable_fields}
-          onFiles={() => selectTab("media")}
+          onFiles={() => {
+            setUploadCollection(
+              tab === "publications" ? "publications" : "articles",
+            );
+            setUploadPurpose("article");
+            selectTab("media");
+          }}
         />
       )}
       {tab === "pages" && admin && (
@@ -1404,7 +1435,7 @@ export function PortfolioEditor({ id }: { id: string }) {
         <>
           <div className="section-title">
             <div>
-              <h2>The work, in one place.</h2>
+              <h2>Upload and review your documents</h2>
               <p className="panel-description">
                 {(
                   assets.reduce((sum, m) => sum + m.bytes, 0) /
@@ -1416,6 +1447,22 @@ export function PortfolioEditor({ id }: { id: string }) {
               </p>
             </div>
           </div>
+          <ol className="upload-guide" aria-label="Article upload steps">
+            <li>
+              <strong>1. Upload</strong>
+              <span>Choose your PDF or Word document.</span>
+            </li>
+            <li>
+              <strong>2. Check the details</strong>
+              <span>Wait for extraction, then add an article draft.</span>
+            </li>
+            <li>
+              <strong>3. Review and publish</strong>
+              <span>
+                Edit the abstract, authors, date and images before publishing.
+              </span>
+            </li>
+          </ol>
           {(admin ||
             data.site.editable_fields.some(
               (f) => f.includes("Id") || f.startsWith("sections."),
@@ -1436,7 +1483,7 @@ export function PortfolioEditor({ id }: { id: string }) {
               >
                 <Field
                   label="Document purpose"
-                  hint="Server AI summarizes article uploads automatically. Browser AI requires the checkbox below. Images never trigger AI."
+                  hint="Choose Article to extract its details. Photos are uploaded without text extraction."
                 >
                   <select
                     value={uploadPurpose}
@@ -1444,7 +1491,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                       setUploadPurpose(e.target.value as "article" | "cv")
                     }
                   >
-                    <option value="article">Research article</option>
+                    <option value="article">Article or research paper</option>
                     <option value="cv">Curriculum vitae</option>
                   </select>
                 </Field>
@@ -1521,20 +1568,29 @@ export function PortfolioEditor({ id }: { id: string }) {
             </div>
           )}
           <AiProgress {...ai} />
-          {admin && aiProvider === "gemini" && (
-            <Notice
-              tone="info"
-              message="AI sends documents to Google Gemini. Use sample or redacted documents on the free tier; its terms allow content to be used to improve Google's products. Free quotas and model availability depend on your Google project."
-            />
-          )}
           {admin && !aiEnabled && (
             <Notice
               tone="info"
               message="Enable free browser AI or configure a server AI provider to generate research summaries. You can add original abstracts manually now."
             />
           )}
+          <Field label="Find a file">
+            <input
+              type="search"
+              placeholder="Search by file name"
+              value={fileQuery}
+              onChange={(event) => {
+                setFileQuery(event.target.value);
+                setFileLimit(20);
+              }}
+            />
+          </Field>
+          <p className="panel-description">
+            {matchingFiles.length} files | Showing{" "}
+            {Math.min(fileLimit, matchingFiles.length)}
+          </p>
           <div className="file-list">
-            {assets.map((file) => (
+            {matchingFiles.slice(0, fileLimit).map((file) => (
               <div key={file.id}>
                 {admin && file.article_assets && (
                   <p className="panel-description">
@@ -1572,7 +1628,9 @@ export function PortfolioEditor({ id }: { id: string }) {
                       disabled={extracting(file) || feedback.busy}
                       onClick={() => addArticle(file)}
                     >
-                      Add article draft
+                      {uploadCollection === "articles"
+                        ? "Add article draft"
+                        : "Add research draft"}
                     </Button>
                   )}
                   {admin && file.mime === "application/pdf" && (
@@ -1628,9 +1686,17 @@ export function PortfolioEditor({ id }: { id: string }) {
                   <Notice key={index} tone="info" message={warning} />
                 ))}
                 {file.summary && (
-                  <section className="panel" style={{ marginTop: 8 }}>
+                  <details
+                    className="panel editor-options"
+                    style={{ marginTop: 8 }}
+                  >
+                    <summary>Review extracted abstract</summary>
                     <div className="spread">
-                      <h3>Generated research summary</h3>
+                      <h3>
+                        {file.article_metadata?.abstractSource === "original"
+                          ? "Original abstract"
+                          : "Suggested abstract"}
+                      </h3>
                       <Badge value="review required" />
                     </div>
                     <p style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
@@ -1649,14 +1715,22 @@ export function PortfolioEditor({ id }: { id: string }) {
                         disabled={extracting(file) || feedback.busy}
                         onClick={() => addArticle(file)}
                       >
-                        Add to publication draft
+                        Add to draft
                       </Button>
                     )}
-                  </section>
+                  </details>
                 )}
               </div>
             ))}
           </div>
+          {matchingFiles.length > fileLimit && (
+            <Button
+              variant="secondary"
+              onClick={() => setFileLimit((limit) => limit + 20)}
+            >
+              Show more files
+            </Button>
+          )}
           {!assets.length && (
             <Empty
               icon={<FileText />}

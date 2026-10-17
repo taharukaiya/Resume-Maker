@@ -220,6 +220,22 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     )
     .toBe("published");
   await page.goto(`/portfolio/${slug}/article/${first.id}`);
+  await expect(page.locator(".abstract p").first()).toHaveCSS(
+    "font-family",
+    /Merriweather/,
+  );
+  await expect(page.locator(".abstract p").first()).toHaveCSS(
+    "font-size",
+    "16px",
+  );
+  await expect(page.locator(".abstract p").first()).toHaveCSS(
+    "line-height",
+    "26px",
+  );
+  await expect(page.locator(".abstract p").first()).toHaveCSS(
+    "font-style",
+    "italic",
+  );
   await page.getByRole("tab", { name: "IEEE", exact: true }).click();
   await expect(page.getByRole("tabpanel")).toContainText("2025");
   await page.evaluate(() => window.scrollTo(0, 0));

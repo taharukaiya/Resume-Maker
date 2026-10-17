@@ -108,6 +108,7 @@ test("250 articles save, publish, filter and edit with bounded mobile and deskto
     .getByRole("searchbox", { name: "Find an article" })
     .fill("Article 249");
   await expect(page.locator(".entry-editor")).toHaveCount(1);
+  await page.locator(".entry-editor > summary").click();
   await page
     .getByRole("textbox", { name: "Publication title *", exact: true })
     .fill("Edited last article");

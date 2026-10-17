@@ -57,9 +57,12 @@ export function SectionsEditor({
                 : "Build the story."}
           </h2>
           <p className="panel-description" style={{ marginBottom: 0 }}>
-            {order === "academic"
-              ? "Education is required before publishing. Academic order keeps it ahead of interests; use the arrows to change the sequence."
-              : "Use the arrows to arrange sections in your preferred sequence."}
+            {types.length === 1 &&
+            ["articles", "publications"].includes(types[0])
+              ? "Search your collection below. Open optional publication settings only when needed."
+              : order === "academic"
+                ? "Education is required before publishing. Academic order keeps it ahead of interests; use the arrows to change the sequence."
+                : "Use the arrows to arrange sections in your preferred sequence."}
           </p>
         </div>
         {admin && (
@@ -97,7 +100,7 @@ export function SectionsEditor({
           </select>
         )}
       </div>
-      {admin && (
+      {admin && types.length !== 1 && (
         <div className="section-order-toolbar">
           <span>
             {sections.length} sections ·{" "}
@@ -422,11 +425,18 @@ function EntryEditor({
     onChange({ ...entry, [key]: value });
   }
   return (
-    <div className="entry-editor">
-      <div className="spread" style={{ marginBottom: 15 }}>
+    <details
+      className="entry-editor"
+      open={
+        !["articles", "publications"].includes(type) ||
+        index === 0 ||
+        !entry.title
+      }
+    >
+      <summary className="spread" style={{ marginBottom: 15 }}>
         <h4>{entry.title || `Entry ${index + 1}`}</h4>
         {editable && (
-          <div className="row">
+          <div className="row" onClick={(event) => event.preventDefault()}>
             <button
               className="icon-button"
               aria-label="Move entry up"
@@ -460,7 +470,7 @@ function EntryEditor({
             </button>
           </div>
         )}
-      </div>
+      </summary>
       <div className="form-grid">
         <div className="full-span">
           <Field
@@ -518,22 +528,26 @@ function EntryEditor({
             onChange={(e) => change("start", e.target.value)}
           />
         </Field>
-        <Field
-          label={type === "education" ? "End date *" : "End date"}
-          hint={
-            type === "education"
-              ? "Required unless this qualification is ongoing."
-              : "Leave blank for a single date."
-          }
-        >
-          <input
-            required={type === "education" && !entry.current}
-            value={entry.end}
-            maxLength={10}
-            disabled={!editable || entry.current}
-            onChange={(e) => change("end", e.target.value)}
-          />
-        </Field>
+        {!["publications", "articles"].includes(type) && (
+          <>
+            <Field
+              label={type === "education" ? "End date *" : "End date"}
+              hint={
+                type === "education"
+                  ? "Required unless this qualification is ongoing."
+                  : "Leave blank for a single date."
+              }
+            >
+              <input
+                required={type === "education" && !entry.current}
+                value={entry.end}
+                maxLength={10}
+                disabled={!editable || entry.current}
+                onChange={(e) => change("end", e.target.value)}
+              />
+            </Field>
+          </>
+        )}
         {!["publications", "articles"].includes(type) && (
           <label className="check-row full-span">
             <input
@@ -545,6 +559,28 @@ function EntryEditor({
             Currently ongoing
           </label>
         )}
+        <div className="full-span">
+          <Field
+            label={
+              ["publications", "articles"].includes(type)
+                ? "Abstract or research summary"
+                : "Description"
+            }
+            hint={
+              ["publications", "articles"].includes(type) && !entry.body.trim()
+                ? "No abstract yet. Upload and extract the original article, or enter its abstract here before publishing."
+                : "Separate paragraphs with a blank line."
+            }
+          >
+            <textarea
+              rows={5}
+              value={entry.body}
+              maxLength={16000}
+              disabled={!editable}
+              onChange={(e) => change("body", e.target.value)}
+            />
+          </Field>
+        </div>
         {["publications", "articles"].includes(type) && (
           <>
             <div className="full-span">
@@ -560,85 +596,100 @@ function EntryEditor({
                 />
               </Field>
             </div>
-            <Field
-              label="Author name format"
-              hint="Use semicolons between people. Select Family, Given when a name contains a comma."
-            >
-              <select
-                disabled={!editable}
-                value={entry.authorFormat || "names"}
-                onChange={(event) =>
-                  change(
-                    "authorFormat",
-                    event.target.value as "names" | "family-given",
-                  )
-                }
-              >
-                <option value="names">Given Family</option>
-                <option value="family-given">Family, Given</option>
-              </select>
-            </Field>
-            <Field label="Publication status">
-              <select
-                value={entry.status}
-                disabled={!editable}
-                onChange={(e) =>
-                  change("status", e.target.value as Entry["status"])
-                }
-              >
-                <option value="">No status label</option>
-                <option value="published">Published</option>
-                <option value="accepted">Accepted</option>
-                <option value="preprint">Preprint</option>
-                <option value="submitted">Submitted</option>
-                <option value="in-progress">In progress</option>
-              </select>
-            </Field>
-            <Field label="Abstract source">
-              <select
-                value={entry.abstractSource}
-                disabled={!editable}
-                onChange={(e) =>
-                  change(
-                    "abstractSource",
-                    e.target.value as Entry["abstractSource"],
-                  )
-                }
-              >
-                <option value="">Not specified</option>
-                <option value="original">Author-written abstract</option>
-                <option value="generated">AI-assisted research summary</option>
-              </select>
-            </Field>
-            <div className="full-span">
-              <Field label="DOI">
-                <input
-                  value={entry.doi}
-                  maxLength={250}
-                  disabled={!editable}
-                  onChange={(e) => change("doi", e.target.value)}
-                />
-              </Field>
-            </div>
-            {(
-              [
-                ["category", "Category"],
-                ["journal", "Journal / publication venue"],
-                ["volume", "Volume"],
-                ["issue", "Issue"],
-                ["pages", "Page range"],
-              ] as const
-            ).map(([key, label]) => (
-              <Field key={key} label={label}>
-                <input
-                  value={entry[key] || ""}
-                  maxLength={key === "category" || key === "journal" ? 200 : 80}
-                  disabled={!editable}
-                  onChange={(event) => change(key, event.target.value)}
-                />
-              </Field>
-            ))}
-            <div className="full-span">
+            <details className="editor-options full-span">
+              <summary>Publication details and citation information</summary>
+              <p className="panel-description">
+                Optional details such as journal, DOI and category. These
+                improve citation accuracy.
+              </p>
+              <div className="form-grid">
+                {" "}
+                <Field
+                  label="Author name format"
+                  hint="Use semicolons between people. Select Family, Given when a name contains a comma."
+                >
+                  <select
+                    disabled={!editable}
+                    value={entry.authorFormat || "names"}
+                    onChange={(event) =>
+                      change(
+                        "authorFormat",
+                        event.target.value as "names" | "family-given",
+                      )
+                    }
+                  >
+                    <option value="names">Given Family</option>
+                    <option value="family-given">Family, Given</option>
+                  </select>
+                </Field>
+                <Field label="Publication status">
+                  <select
+                    value={entry.status}
+                    disabled={!editable}
+                    onChange={(e) =>
+                      change("status", e.target.value as Entry["status"])
+                    }
+                  >
+                    <option value="">No status label</option>
+                    <option value="published">Published</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="preprint">Preprint</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="in-progress">In progress</option>
+                  </select>
+                </Field>
+                <Field label="Abstract source">
+                  <select
+                    value={entry.abstractSource}
+                    disabled={!editable}
+                    onChange={(e) =>
+                      change(
+                        "abstractSource",
+                        e.target.value as Entry["abstractSource"],
+                      )
+                    }
+                  >
+                    <option value="">Not specified</option>
+                    <option value="original">Author-written abstract</option>
+                    <option value="generated">
+                      AI-assisted research summary
+                    </option>
+                  </select>
+                </Field>
+                <div className="full-span">
+                  <Field label="DOI">
+                    <input
+                      value={entry.doi}
+                      maxLength={250}
+                      disabled={!editable}
+                      onChange={(e) => change("doi", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                {(
+                  [
+                    ["category", "Category"],
+                    ["journal", "Journal / publication venue"],
+                    ["volume", "Volume"],
+                    ["issue", "Issue"],
+                    ["pages", "Page range"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Field key={key} label={label}>
+                    <input
+                      value={entry[key] || ""}
+                      maxLength={
+                        key === "category" || key === "journal" ? 200 : 80
+                      }
+                      disabled={!editable}
+                      onChange={(event) => change(key, event.target.value)}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </details>{" "}
+            <details className="editor-options full-span">
+              <summary>Read and edit the full article</summary>
               <Field
                 label="Full article text"
                 hint="Extracted document text. Review headings and paragraph breaks before publishing."
@@ -651,7 +702,7 @@ function EntryEditor({
                   onChange={(event) => change("fullText", event.target.value)}
                 />
               </Field>
-            </div>
+            </details>
             <details className="full-span panel">
               <summary>Article display and citation controls</summary>
               <p className="panel-description">
@@ -923,28 +974,6 @@ function EntryEditor({
             </div>
           </>
         )}
-        <div className="full-span">
-          <Field
-            label={
-              ["publications", "articles"].includes(type)
-                ? "Abstract or research summary"
-                : "Description"
-            }
-            hint={
-              ["publications", "articles"].includes(type) && !entry.body.trim()
-                ? "No abstract yet. Upload and extract the original article, or enter its abstract here before publishing."
-                : "Separate paragraphs with a blank line."
-            }
-          >
-            <textarea
-              rows={5}
-              value={entry.body}
-              maxLength={16000}
-              disabled={!editable}
-              onChange={(e) => change("body", e.target.value)}
-            />
-          </Field>
-        </div>
         <Field label="External link">
           <input
             type="url"
@@ -979,6 +1008,6 @@ function EntryEditor({
           </Field>
         </div>
       </div>
-    </div>
+    </details>
   );
 }
