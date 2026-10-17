@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { signInAdmin } from "./admin-session";
 
@@ -36,6 +37,27 @@ test("simple editor keeps optional settings away and routes research imports cor
   await page
     .getByRole("textbox", { name: "Homepage heading", exact: true })
     .fill("A clear introduction");
+  const logoUpload = page.waitForResponse(
+    (r) =>
+      r.url().endsWith(`/api/sites/${id}/media`) &&
+      r.request().method() === "POST",
+  );
+  await page.getByLabel("Upload website logo", { exact: true }).setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: await sharp({
+      create: { width: 50, height: 50, channels: 3, background: "#1447e6" },
+    })
+      .png()
+      .toBuffer(),
+  });
+  const logo = await (await logoUpload).json();
+  await expect(
+    page.getByRole("combobox", { name: "Website logo", exact: true }),
+  ).toHaveValue(logo.id);
+  await expect(
+    page.getByRole("textbox", { name: "Homepage heading", exact: true }),
+  ).toHaveValue("A clear introduction");
   await page.getByRole("tab", { name: "Research", exact: true }).click();
   await page
     .getByRole("button", {

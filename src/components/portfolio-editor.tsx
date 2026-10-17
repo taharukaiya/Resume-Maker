@@ -517,6 +517,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   ) => (
     <Field label={label}>
       <select
+        aria-label={label}
         value={document.profile[key] || ""}
         disabled={!canEdit(`profile.${key}`)}
         onChange={(e) => profile(key, e.target.value)}
@@ -1696,6 +1697,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 </div>
                 <Field label="Social sharing image">
                   <select
+                    aria-label="Social sharing image"
                     value={document.seo.socialImageId}
                     onChange={(e) =>
                       change({
