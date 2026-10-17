@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
+import { cleanPdfPageText } from "./article-content";
 
 export type ArticleAssets = { imageIds: string[]; warnings: string[] };
 
@@ -24,8 +25,9 @@ export async function extractArticleAssets(bytes: Buffer) {
         "Automatic extraction covers the first 40 pages. The downloadable PDF retains every page.",
       );
     try {
-      const extracted = (await parser.getText({ first: pages, pageJoiner: "" }))
-        .text;
+      const extracted = cleanPdfPageText(
+        (await parser.getText({ first: pages, pageJoiner: "" })).pages,
+      );
       text = extracted.slice(0, 240000);
       if (extracted.length > 240000)
         warnings.push(

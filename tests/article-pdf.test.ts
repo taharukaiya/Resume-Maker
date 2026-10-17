@@ -4,6 +4,33 @@ import { mkdir, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { articlePdf } from "../src/modules/publishing/article-pdf";
 import { emptyEntry } from "../src/modules/portfolios/schema";
+import { printedArticle } from "./fixtures/printed-article";
+it("typesets a clean uploaded article without duplicate abstract, browser footer or citation widget", async () => {
+  const bytes = await articlePdf(
+    {
+      ...emptyEntry(),
+      title: "Power and Markets",
+      authors: "Ada Lovelace",
+      start: "2025-02-23",
+      body: "This original abstract summarizes the actual argument.",
+      fullText: printedArticle,
+    },
+    "https://example.test/article",
+  );
+  const parser = new PDFParse({ data: bytes });
+  try {
+    const text = (await parser.getText()).text;
+    expect(text.match(/original abstract/g)).toHaveLength(1);
+    expect(text).not.toMatch(
+      /about:blank|10\/17\/26|CITE THIS ARTICLE|typeof window|example.test/,
+    );
+    expect(text).toContain("Introduction");
+    expect(text).toContain("Lovelace (2024)");
+    await writeFile(".test-data/clean-uploaded-article.pdf", bytes);
+  } finally {
+    await parser.destroy();
+  }
+});
 it("creates a paginated research PDF containing saved authors, date, abstract, full text and figures", async () => {
   const entry = {
     ...emptyEntry(),

@@ -3,14 +3,21 @@ import path from "node:path";
 import sharp from "sharp";
 import type { Entry } from "../portfolios/schema";
 import { formatDate } from "./render";
+import { articleContent, articleBlocks } from "../media/article-content";
 
-/** Typeset saved article text directly; uploaded PDFs remain unchanged. */
+/** Typeset the reviewed article; source uploads remain unchanged in the library. */
 export async function articlePdf(
   entry: Entry,
   canonical: string,
   figures: { bytes: Buffer; caption: string }[] = [],
 ) {
-  const abstract = entry.display?.abstract === false ? "" : entry.body;
+  const content = articleContent(entry.fullText || "", {
+    title: entry.title,
+    authors: entry.authors,
+    category: entry.category,
+    abstract: entry.body,
+  });
+  const abstract = entry.display?.abstract === false ? "" : content.abstract;
   const pdf = new PDFDocument({
     size: "A4",
     margin: 58,
@@ -72,12 +79,19 @@ export async function articlePdf(
       .text(abstract, { lineGap: 4, paragraphGap: 8 })
       .moveDown(1.4);
   }
-  pdf
-    .font("body")
-    .fontSize(11)
-    .fillColor("#172033")
-    .text(entry.fullText || "", { lineGap: 3, paragraphGap: 0 })
-    .moveDown(1);
+  for (const block of articleBlocks(content.body)) {
+    if (block.heading && pdf.y > pdf.page.height - 130) pdf.addPage();
+    pdf
+      .font(block.heading ? "heading" : "body")
+      .fontSize(block.heading ? 13 : 11)
+      .fillColor("#172033")
+      .text(block.text, {
+        width,
+        lineGap: block.heading ? 2 : 4,
+        paragraphGap: 0,
+      })
+      .moveDown(block.heading ? 0.6 : 0.9);
+  }
   for (const figure of figures) {
     const image = await sharp(figure.bytes)
       .rotate()
@@ -104,11 +118,6 @@ export async function articlePdf(
         .text(figure.caption, { width })
         .moveDown();
   }
-  pdf
-    .font("heading")
-    .fontSize(8)
-    .fillColor("#526078")
-    .text(canonical, { link: canonical });
   const pages = pdf.bufferedPageRange();
   for (let i = pages.start; i < pages.start + pages.count; i++) {
     pdf.switchToPage(i);

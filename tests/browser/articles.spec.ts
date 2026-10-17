@@ -50,7 +50,8 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     category: "Climate",
     tags: "Evidence, Oceans",
     body: "An editable abstract.",
-    fullText: "Methods\n\nObserved evidence and limitations.",
+    fullText:
+      "Methods\n\nObserved evidence and limitations.\n10/17/26, 2:06 PM Browser title\nabout:blank 1/1\n-- 1 of 1 --\nCITE THIS ARTICLE\nCitation widget text.",
     mediaId,
     coverId: figureId,
     images: [
@@ -220,6 +221,19 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     )
     .toBe("published");
   await page.goto(`/portfolio/${slug}/article/${first.id}`);
+  await expect(page.locator(".article-text:not(.abstract)")).not.toContainText(
+    "about:blank",
+  );
+  await expect(page.locator(".article-text:not(.abstract)")).not.toContainText(
+    "Citation widget text",
+  );
+  const downloadUrl = await page
+    .locator(".article-pdf-button")
+    .getAttribute("href");
+  expect(downloadUrl).toContain(`/papers/${first.id}.pdf`);
+  const cleanPdf = await page.request.get(downloadUrl!);
+  expect(cleanPdf.status()).toBe(200);
+  expect(cleanPdf.headers()["content-type"]).toContain("application/pdf");
   await expect(page.locator(".article-pdf-button")).toHaveCSS(
     "border-radius",
     "12px",

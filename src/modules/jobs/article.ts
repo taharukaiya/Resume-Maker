@@ -1,4 +1,9 @@
 import { extractLabeledMetadata } from "@/modules/media/article-metadata";
+import {
+  articleContent,
+  cleanPrintArtifacts,
+  cleanPdfPageText,
+} from "@/modules/media/article-content";
 import { db } from "@/lib/db";
 import { getObject } from "@/lib/storage";
 import { invariant } from "@/lib/errors";
@@ -39,14 +44,16 @@ export async function generateArticle(job: {
   const parser = new PDFParse({ data: bytes });
   let text = "";
   try {
-    text = (await parser.getText()).text;
+    text = cleanPdfPageText((await parser.getText({ pageJoiner: "" })).pages);
   } catch {
     /* Native PDF input can handle scanned articles. */
   } finally {
     await parser.destroy();
   }
   const usableText =
-    text.trim().length >= 200 && text.length <= 240000 ? text : undefined;
+    text.trim().length >= 200 && text.length <= 240000
+      ? cleanPrintArtifacts(text)
+      : undefined;
   const metadata =
     aiConfig().provider === "gemini"
       ? await generateWithGemini({
@@ -104,8 +111,9 @@ export async function generateArticle(job: {
           return articleMetadataSchema.parse(JSON.parse(result.output_text));
         })();
   const labeled = extractLabeledMetadata(text);
-  if (labeled.abstract) {
-    metadata.abstract = labeled.abstract;
+  const originalAbstract = articleContent(text).abstract || labeled.abstract;
+  if (originalAbstract) {
+    metadata.abstract = originalAbstract;
     metadata.abstractSource = "original";
   }
   metadata.authors ||= labeled.authors;

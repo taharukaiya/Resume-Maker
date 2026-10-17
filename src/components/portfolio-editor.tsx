@@ -1,4 +1,8 @@
 "use client";
+import {
+  articleContent,
+  cleanUntouchedImport,
+} from "@/modules/media/article-content";
 import type { Media } from "@/modules/media/service";
 import {
   type PortfolioDocument,
@@ -93,6 +97,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   const [autoSummary, setAutoSummary] = useState(false);
   const [invalidLink, setInvalidLink] = useState<number | null>(null);
   const [addressDirty, setAddressDirty] = useState(false);
+  const [importCleanupReady, setImportCleanupReady] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
     feedback = useFeedback();
@@ -131,11 +136,28 @@ export function PortfolioEditor({ id }: { id: string }) {
             },
       );
       if (replace) {
-        setDocument(result.site.draft);
-        setDirty(false);
+        const review = structuredClone(result.site.draft);
+        for (const section of [
+          ...review.sections,
+          ...review.pages.flatMap((page) => page.sections),
+        ]) {
+          if (!admin || !["articles", "publications"].includes(section.type))
+            continue;
+          section.entries = section.entries.map((entry) => {
+            const source = result.media.find(
+              (file) => file.id === entry.mediaId,
+            )?.extracted_text;
+            return cleanUntouchedImport(entry, source || "");
+          });
+        }
+        const changed =
+          JSON.stringify(review) !== JSON.stringify(result.site.draft);
+        setDocument(review);
+        setDirty(changed);
+        setImportCleanupReady(changed);
       }
     },
-    [id],
+    [id, admin],
   );
   useEffect(() => {
     void feedback.run(async () => {
@@ -386,7 +408,12 @@ export function PortfolioEditor({ id }: { id: string }) {
       volume: meta?.volume || "",
       issue: meta?.issue || "",
       pages: meta?.pages || "",
-      fullText: file.extracted_text || "",
+      fullText: articleContent(file.extracted_text || "", {
+        title: meta?.title,
+        authors: meta?.authors,
+        category: meta?.category,
+        abstract: meta?.abstract || file.summary?.abstract,
+      }).body,
       mediaId: file.id,
       coverId: file.article_assets?.imageIds[0] || "",
       images: (file.article_assets?.imageIds || []).map((mediaId) => ({
@@ -525,6 +552,12 @@ export function PortfolioEditor({ id }: { id: string }) {
         />
       )}
       <Feedback {...feedback} />
+      {importCleanupReady && (
+        <Notice
+          tone="info"
+          message="Cleaned imported article text is ready for review. Only unchanged source text was cleaned; manual edits were preserved. Save the draft after reviewing it, then publish when ready."
+        />
+      )}
       {!admin && (
         <Notice
           tone="info"

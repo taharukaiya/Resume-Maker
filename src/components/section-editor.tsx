@@ -730,8 +730,8 @@ function EntryEditor({
             <details className="full-span panel">
               <summary>Article display and citation controls</summary>
               <p className="panel-description">
-                These controls affect the web page. The downloadable PDF remains
-                the uploaded document; upload a revised document to change its
+                The downloadable PDF is generated from the saved article text
+                and images. Review your edits before publishing the updated
                 contents.
               </p>
               <div className="form-grid">

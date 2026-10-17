@@ -145,16 +145,19 @@ export async function buildRelease(
     )
       continue;
     for (const entry of section.entries) {
-      if (
-        entry.mediaId ||
-        !entry.fullText?.trim() ||
-        entry.display?.fullText === false
-      )
-        continue;
+      if (!entry.fullText?.trim() && !entry.body.trim()) continue;
       const figures: { bytes: Buffer; caption: string }[] = [];
-      for (const figure of entry.display?.images === false
-        ? []
-        : entry.images || []) {
+      const images = [...(entry.images || [])];
+      if (
+        entry.coverId &&
+        !images.some((image) => image.mediaId === entry.coverId)
+      )
+        images.unshift({
+          mediaId: entry.coverId,
+          caption: "",
+          alt: entry.coverAlt || entry.title,
+        });
+      for (const figure of entry.display?.images === false ? [] : images) {
         const file = media.find((file) => file.id === figure.mediaId);
         if (file?.mime.startsWith("image/")) {
           const bytes = await getObject(file.storage_key);

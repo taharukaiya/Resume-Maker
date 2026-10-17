@@ -1,7 +1,8 @@
 import { config } from "@/lib/config";
 import { db } from "@/lib/db";
 import { invariant } from "@/lib/errors";
-import { deleteObject, putObject } from "@/lib/storage";
+import { deleteObject, putObject, getObject } from "@/lib/storage";
+import { articlePdf } from "@/modules/publishing/article-pdf";
 import {
   audit,
   rateLimit,
@@ -412,6 +413,47 @@ export async function portfolioRoutes(
       );
     }
     if (action === "preview" && method === "GET") {
+      const route = path.slice(3).join("/");
+      if (/^papers\/[a-f0-9-]+\.pdf$/.test(route)) {
+        const entryId = route.slice(7, -4);
+        const entry = [
+          ...site.draft.sections,
+          ...site.draft.pages.flatMap((page) => page.sections),
+        ]
+          .filter((section) =>
+            ["articles", "publications"].includes(section.type),
+          )
+          .flatMap((section) => section.entries)
+          .find((entry) => entry.id === entryId);
+        invariant(entry, 404, "Article not found.");
+        const figures: { bytes: Buffer; caption: string }[] = [];
+        for (const image of entry.display?.images === false
+          ? []
+          : entry.images || []) {
+          const [file] = await database.query<{
+            storage_key: string;
+            mime: string;
+          }>("SELECT storage_key,mime FROM media WHERE id=$1 AND site_id=$2", [
+            image.mediaId,
+            id,
+          ]);
+          if (file?.mime.startsWith("image/")) {
+            const bytes = await getObject(file.storage_key);
+            if (bytes) figures.push({ bytes, caption: image.caption });
+          }
+        }
+        return new Response(
+          new Uint8Array(await articlePdf(entry, "", figures)),
+          {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="article-${entry.id}.pdf"`,
+              "Cache-Control": "no-store",
+              "X-Robots-Tag": "noindex, nofollow",
+            },
+          },
+        );
+      }
       const media = await database.query<{ id: string; mime: string }>(
         "SELECT id,mime FROM media WHERE site_id=$1",
         [id],
@@ -426,10 +468,11 @@ export async function portfolioRoutes(
         asset: (assetId) => `${config().appUrl}/api/media/${assetId}`,
         isImage: (assetId) =>
           !!media.find((m) => m.id === assetId)?.mime.startsWith("image/"),
+        articlePdf: (entryId) =>
+          `${config().appUrl}/api/sites/${id}/preview/papers/${entryId}.pdf`,
         siteId: id,
         appUrl: config().appUrl,
       });
-      const route = path.slice(3).join("/");
       const html =
         rendered[
           route === "favicon.svg"

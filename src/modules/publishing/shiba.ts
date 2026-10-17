@@ -1,4 +1,9 @@
 import {
+  articleContent,
+  articleBlocks,
+  cleanArticleAbstract,
+} from "../media/article-content";
+import {
   personalityCards,
   personalityQuote,
   personalityCss,
@@ -53,6 +58,12 @@ export function shibaDocument(doc: PortfolioDocument): PortfolioDocument {
     },
   };
 }
+const articleProse = (text: string) =>
+  articleBlocks(text)
+    .map((block) =>
+      block.heading ? `<h2>${e(block.text)}</h2>` : `<p>${e(block.text)}</p>`,
+    )
+    .join("");
 const prose = (text: string, joinLines = false) =>
   text
     .split(/\n\s*\n/)
@@ -103,8 +114,12 @@ export function renderShibaPortfolio(
     Math.max(
       1,
       Math.ceil(
-        (a.fullText?.trim() || a.body.trim()).split(/\s+/).filter(Boolean)
-          .length / 200,
+        (
+          articleContent(a.fullText || "", { abstract: a.body }).body ||
+          cleanArticleAbstract(a.body)
+        )
+          .split(/\s+/)
+          .filter(Boolean).length / 200,
       ),
     );
   const date = (a: Entry) =>
@@ -159,7 +174,7 @@ export function renderShibaPortfolio(
         "<span>•</span>",
       )}</span></span></div></footer><script>${shibaScript}</script></body></html>`;
   const card = (a: Entry) =>
-    `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(a.body.slice(0, 500))}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
+    `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(cleanArticleAbstract(a.body).slice(0, 500))}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
   const entry = (a: Entry) =>
     `<article class="entry"><p class="eyebrow">${e(a.start)}${a.current ? " | Present" : a.end ? " | " + e(a.end) : ""}</p><h3>${e(a.title)}</h3><p class="meta">${e(a.subtitle)}</p>${prose(a.body)}${a.mediaId && options.isImage?.(a.mediaId) ? `<img class="entry-image" src="${e(asset(a.mediaId))}" alt="${e(a.coverAlt || a.title)}" loading="lazy">` : ""}${a.url ? `<a href="${e(a.url)}" rel="noopener noreferrer">View resource ↗</a>` : ""}${a.mediaId ? ` <a href="${e(asset(a.mediaId))}">Download file ↓</a>` : ""}</article>`;
   const section = (s: Section) =>
@@ -379,11 +394,16 @@ export function renderShibaPortfolio(
               .join("")}</div></section>`
           : ""
       }</aside>`;
+      const text = articleContent(a.fullText || "", {
+        title: a.title,
+        authors: a.authors,
+        category: a.category,
+        abstract: a.body,
+      });
       const pdfUrl =
-        a.mediaId && !options.isImage?.(a.mediaId)
-          ? asset(a.mediaId)
-          : options.articlePdf?.(a.id);
-      const content = `<article class="article"><a class="back" href="${e(baseUrl)}/${archivePath}">← ${e(researchIds.has(a.id) ? doc.labels.backResearch || "Back to Research Archive" : doc.labels.backArticles || "Back to Articles")}</a><div class="columns"><div><span class="pill">${e(a.category || a.subtitle || "Research")}</span><span class="article-reading">&bull; ${readingTime(a)} ${e(doc.labels.minutesRead || "min read")}</span><h1>${e(a.title)}</h1><div class="article-byline"><p class="authors">${e(a.authors)}</p><p class="muted">${e(doc.labels.published || "Published")} ${e(date(a))}</p></div><div class="article-toolbar">${pdfUrl ? `<a class="button article-pdf-button" href="${e(pdfUrl)}" download>${homeIcon("download")}${e(doc.labels.downloadPdf || "Download as PDF")}</a>` : ""}${a.url ? `<a class="article-publication-link" href="${e(a.url)}" rel="noopener noreferrer">${e(doc.labels.readPublication)}</a>` : ""}<button class="article-share" aria-label="${e(doc.labels.copyUrl || "Copy article URL")}" title="${e(doc.labels.copyUrl || "Copy article URL")}" data-copy-url="${e(url(a))}" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${homeIcon("share")}<span class="copy-status" data-button-label role="status"></span></button></div>${a.display?.abstract !== false && a.body.trim() ? `<section class="abstract article-text"><h2>${homeIcon("info")}${e(doc.labels.abstract)}</h2>${prose(a.body, true)}</section>` : ""}${a.display?.images !== false && a.coverId && !(a.images || []).some((image) => image.mediaId === a.coverId) ? `<img class="entry-image article-cover" src="${e(asset(a.coverId))}" alt="${e(a.coverAlt || a.title)}">` : ""}${a.display?.fullText !== false && a.fullText ? `<section class="article-text">${prose(a.fullText)}</section>` : ""}${(a.display?.images === false ? [] : a.images || []).map((image) => `<figure class="article-figure"><img class="entry-image" src="${e(asset(image.mediaId))}" alt="${e(image.alt)}" loading="lazy">${image.caption ? `<figcaption>${e(image.caption)}</figcaption>` : ""}</figure>`).join("")}${a.display?.citations !== false ? citations : ""}</div>${author}</div></article>${
+        options.articlePdf?.(a.id) ||
+        (a.mediaId && !options.isImage?.(a.mediaId) ? asset(a.mediaId) : "");
+      const content = `<article class="article"><a class="back" href="${e(baseUrl)}/${archivePath}">← ${e(researchIds.has(a.id) ? doc.labels.backResearch || "Back to Research Archive" : doc.labels.backArticles || "Back to Articles")}</a><div class="columns"><div><span class="pill">${e(a.category || a.subtitle || "Research")}</span><span class="article-reading">&bull; ${readingTime(a)} ${e(doc.labels.minutesRead || "min read")}</span><h1>${e(a.title)}</h1><div class="article-byline"><p class="authors">${e(a.authors)}</p><p class="muted">${e(doc.labels.published || "Published")} ${e(date(a))}</p></div><div class="article-toolbar">${pdfUrl ? `<a class="button article-pdf-button" href="${e(pdfUrl)}" download>${homeIcon("download")}${e(doc.labels.downloadPdf || "Download as PDF")}</a>` : ""}${a.url ? `<a class="article-publication-link" href="${e(a.url)}" rel="noopener noreferrer">${e(doc.labels.readPublication)}</a>` : ""}<button class="article-share" aria-label="${e(doc.labels.copyUrl || "Copy article URL")}" title="${e(doc.labels.copyUrl || "Copy article URL")}" data-copy-url="${e(url(a))}" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${homeIcon("share")}<span class="copy-status" data-button-label role="status"></span></button></div>${a.display?.abstract !== false && a.body.trim() ? `<section class="abstract article-text"><h2>${homeIcon("info")}${e(doc.labels.abstract)}</h2>${prose(text.abstract, true)}</section>` : ""}${a.display?.images !== false && a.coverId && !(a.images || []).some((image) => image.mediaId === a.coverId) ? `<img class="entry-image article-cover" src="${e(asset(a.coverId))}" alt="${e(a.coverAlt || a.title)}">` : ""}${a.display?.fullText !== false && a.fullText ? `<section class="article-text">${articleProse(text.body)}</section>` : ""}${(a.display?.images === false ? [] : a.images || []).map((image) => `<figure class="article-figure"><img class="entry-image" src="${e(asset(image.mediaId))}" alt="${e(image.alt)}" loading="lazy">${image.caption ? `<figcaption>${e(image.caption)}</figcaption>` : ""}</figure>`).join("")}${a.display?.citations !== false ? citations : ""}</div>${author}</div></article>${
         a.display?.related !== false && relatedItems.length
           ? `<section class="section continue-reading"><h2>${e(doc.labels.continueReading || "Continue reading")}</h2><a href="${e(baseUrl)}/${archivePath}">${e(researchIds.has(a.id) ? doc.labels.viewAllResearch || "View All Research" : doc.labels.viewAllArticles || "View All Articles")}</a><div class="section-grid">${collection
               .filter((other) => other.id !== a.id)
