@@ -347,6 +347,34 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
     has: page.getByRole("heading", { name: first.title, exact: true }),
   });
   await editor
+    .getByText("Read and edit the full article", { exact: true })
+    .click();
+  const bodyField = editor.getByRole("textbox", {
+    name: "Full article text",
+    exact: true,
+  });
+  const legacyBody =
+    "Climate\nCoastal resilience\nAda Lovelace; Alan Turing\nPublished 9 Feb 2025\nAbstract\nAn editable abstract.\nIntroduction\n\nMy manually corrected body paragraph.\nabout:blank 1/1\nCITE THIS ARTICLE\nOld citation widget.";
+  await bodyField.fill(legacyBody);
+  await editor
+    .getByRole("button", { name: "Keep body only", exact: true })
+    .click();
+  await expect(bodyField).toHaveValue(legacyBody);
+  await expect(
+    editor.getByRole("textbox", { name: "Review body cleanup", exact: true }),
+  ).toHaveValue("Introduction\n\nMy manually corrected body paragraph.");
+  await editor
+    .getByRole("button", { name: "Use this body", exact: true })
+    .click();
+  await expect(bodyField).toHaveValue(
+    "Introduction\n\nMy manually corrected body paragraph.",
+  );
+  await editor
+    .getByRole("button", { name: "Undo body cleanup", exact: true })
+    .click();
+  await expect(bodyField).toHaveValue(legacyBody);
+  await bodyField.fill(first.fullText);
+  await editor
     .getByRole("button", { name: "Remove cover image", exact: true })
     .click();
   await expect(

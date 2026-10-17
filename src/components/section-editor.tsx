@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import { citationStyles } from "@/modules/publishing/citations";
+import { articleContent } from "@/modules/media/article-content";
 import type { Media } from "@/modules/media/service";
 import {
   type Entry,
@@ -421,6 +422,12 @@ function EntryEditor({
   onMove: (direction: number) => void;
 }) {
   const confirm = useConfirmation();
+  const [bodyBeforeCleanup, setBodyBeforeCleanup] = useState<string | null>(
+    null,
+  );
+  const [bodyCleanupPreview, setBodyCleanupPreview] = useState<string | null>(
+    null,
+  );
   function change<K extends keyof Entry>(key: K, value: Entry[K]) {
     onChange({ ...entry, [key]: value });
   }
@@ -716,7 +723,7 @@ function EntryEditor({
               <summary>Read and edit the full article</summary>
               <Field
                 label="Full article text"
-                hint="Extracted document text. Review headings and paragraph breaks before publishing."
+                hint="Article body only. Keep the title, authors, date and abstract in their separate fields. Review paragraphs before publishing."
               >
                 <textarea
                   rows={12}
@@ -726,6 +733,64 @@ function EntryEditor({
                   onChange={(event) => change("fullText", event.target.value)}
                 />
               </Field>
+              {editable && (
+                <div className="row">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setBodyCleanupPreview(
+                        articleContent(entry.fullText || "", {
+                          title: entry.title,
+                          authors: entry.authors,
+                          category: entry.category,
+                          abstract: entry.body,
+                        }).body,
+                      )
+                    }
+                  >
+                    Keep body only
+                  </Button>
+                  {bodyBeforeCleanup !== null && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        change("fullText", bodyBeforeCleanup);
+                        setBodyBeforeCleanup(null);
+                      }}
+                    >
+                      Undo body cleanup
+                    </Button>
+                  )}
+                </div>
+              )}
+              {bodyCleanupPreview !== null && (
+                <div className="panel">
+                  <Field
+                    label="Review body cleanup"
+                    hint="Check the proposed body below. Your other fields stay as you entered them."
+                  >
+                    <textarea rows={12} value={bodyCleanupPreview} readOnly />
+                  </Field>
+                  <div className="row">
+                    <Button
+                      disabled={!editable}
+                      onClick={() => {
+                        setBodyBeforeCleanup(entry.fullText || "");
+                        change("fullText", bodyCleanupPreview);
+                        setBodyCleanupPreview(null);
+                      }}
+                    >
+                      Use this body
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setBodyCleanupPreview(null)}
+                    >
+                      Cancel cleanup
+                    </Button>
+                  </div>
+                </div>
+              )}
             </details>
             <details className="full-span panel">
               <summary>Article display and citation controls</summary>
