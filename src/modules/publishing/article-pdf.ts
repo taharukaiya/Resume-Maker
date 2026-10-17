@@ -17,7 +17,12 @@ export async function articlePdf(
     category: entry.category,
     abstract: entry.body,
   });
-  const abstract = entry.display?.abstract === false ? "" : content.abstract;
+  const abstract =
+    entry.display?.abstract === false
+      ? ""
+      : articleBlocks(content.abstract)
+          .map((block) => block.text)
+          .join("\n\n");
   const pdf = new PDFDocument({
     size: "A4",
     margin: 58,
@@ -53,7 +58,7 @@ export async function articlePdf(
     .font("heading")
     .fontSize(23)
     .fillColor("#0f172b")
-    .text(entry.title, { lineGap: 4 })
+    .text(entry.title, 58, 58, { width, lineGap: 4 })
     .moveDown(0.6);
   if (entry.authors) pdf.fontSize(11).text(entry.authors).moveDown(0.5);
   const metadata = [
