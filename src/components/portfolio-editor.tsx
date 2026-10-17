@@ -115,6 +115,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     [previewKey, setPreviewKey] = useState(0),
     [history, setHistory] = useState<Revision[]>([]),
     [aiEnabled, setAiEnabled] = useState(false);
+  const [uploadsOpen, setUploadsOpen] = useState(false);
   const [fileQuery, setFileQuery] = useState("");
   const [fileLimit, setFileLimit] = useState(20);
   const [uploadCollection, setUploadCollection] = useState<
@@ -257,7 +258,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   ) => {
     const form = new FormData();
     form.append("file", file);
-    form.append("purpose", "image");
+    form.append("purpose", target === "document" ? "article" : "image");
     const uploaded = await api<{ id: string }>(`sites/${id}/media`, {
       method: "POST",
       body: form,
@@ -272,7 +273,8 @@ export function PortfolioEditor({ id }: { id: string }) {
       ]) {
         const entry = section.entries.find((entry) => entry.id === entryId);
         if (!entry) continue;
-        if (target === "cover") entry.coverId = uploaded.id;
+        if (target === "document") entry.mediaId = uploaded.id;
+        else if (target === "cover") entry.coverId = uploaded.id;
         else if ((entry.images || []).length < 24)
           entry.images = [
             ...(entry.images || []),
@@ -369,7 +371,6 @@ export function PortfolioEditor({ id }: { id: string }) {
         articles: "Articles",
         pages: "Pages",
         seo: "Search & sharing",
-        media: "File library",
         permissions: "Permissions",
         publish: "Review & publish",
         address: "Website address",
@@ -404,12 +405,15 @@ export function PortfolioEditor({ id }: { id: string }) {
           ["seo", "Search & sharing"],
         ]
       : []),
-    ["media", "File library"],
     ...(admin ? [["permissions", "Permissions"]] : []),
     ["history", "History"],
   ];
   const assets = data.media;
   const matchingFiles = assets
+    .filter(
+      (file) =>
+        !file.mime.startsWith("image/") && file.id !== document.profile.cvId,
+    )
     .filter((file) =>
       file.filename.toLowerCase().includes(fileQuery.toLowerCase()),
     )
@@ -470,6 +474,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     });
     change({ ...document, sections });
     setTab(uploadCollection);
+    setUploadsOpen(false);
     feedback.setMessage(
       "Added to the draft. Review and edit all article details before publishing.",
     );
@@ -495,6 +500,7 @@ export function PortfolioEditor({ id }: { id: string }) {
     openTab(key);
   }
   function openTab(key: string) {
+    setUploadsOpen(false);
     setTab(key);
     if (key === "history")
       void feedback.run(async () => {
@@ -524,6 +530,41 @@ export function PortfolioEditor({ id }: { id: string }) {
             </option>
           ))}
       </select>
+      {(admin || !demo) && canEdit(`profile.${key}`) && (
+        <input
+          type="file"
+          aria-label={`Upload ${label.toLowerCase()}`}
+          accept={key === "cvId" ? ".pdf" : ".jpg,.jpeg,.png,.webp"}
+          disabled={feedback.busy}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            event.target.value = "";
+            void feedback.run(async () => {
+              const form = new FormData();
+              form.append("file", file);
+              form.append("purpose", key === "cvId" ? "cv" : "image");
+              const result = await api<{ id: string }>(`sites/${id}/media`, {
+                method: "POST",
+                body: form,
+              });
+              await load();
+              setDocument((current) =>
+                current
+                  ? {
+                      ...current,
+                      profile: { ...current.profile, [key]: result.id },
+                    }
+                  : current,
+              );
+              setDirty(true);
+              feedback.setMessage(
+                `${label} uploaded and selected. Save your draft when ready.`,
+              );
+            });
+          }}
+        />
+      )}
     </Field>
   );
   return (
@@ -1107,12 +1148,365 @@ export function PortfolioEditor({ id }: { id: string }) {
           media={assets}
           admin={admin}
           allowed={data.site.editable_fields}
+          uploads={
+            uploadsOpen && (
+              <>
+                <div className="section-title">
+                  <div>
+                    <h2>Upload and review your documents</h2>
+                    <Button
+                      variant="secondary small"
+                      onClick={() => setUploadsOpen(false)}
+                    >
+                      Close document upload
+                    </Button>
+                    <p className="panel-description">
+                      {(
+                        assets.reduce((sum, m) => sum + m.bytes, 0) /
+                        1024 /
+                        1024
+                      ).toFixed(1)}{" "}
+                      MB of 100 MB used. Files remain private until included in
+                      a published release.
+                    </p>
+                  </div>
+                </div>
+                <ol className="upload-guide" aria-label="Article upload steps">
+                  <li>
+                    <strong>1. Upload</strong>
+                    <span>Choose your PDF or Word document.</span>
+                  </li>
+                  <li>
+                    <strong>2. Check the details</strong>
+                    <span>Wait for extraction, then add an article draft.</span>
+                  </li>
+                  <li>
+                    <strong>3. Review and publish</strong>
+                    <span>
+                      Edit the abstract, authors, date and images before
+                      publishing.
+                    </span>
+                  </li>
+                </ol>
+                {(admin ||
+                  data.site.editable_fields.some(
+                    (f) => f.includes("Id") || f.startsWith("sections."),
+                  )) && (
+                  <div className="upload-zone">
+                    <Upload size={24} />
+                    <strong>Upload an article or research paper</strong>
+                    <small>
+                      DOC, DOCX, or PDF · up to {demo ? 5 : 20} MB per file.
+                      Word articles become downloadable PDFs.
+                    </small>
+                    <input
+                      aria-label="Upload article document"
+                      type="file"
+                      accept={admin ? ".doc,.docx,.pdf" : ".pdf"}
+                      disabled={feedback.busy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        void feedback.run(async () => {
+                          const form = new FormData();
+                          form.append("file", file);
+                          form.append("purpose", uploadPurpose);
+                          const result = await api<{
+                            id: string;
+                            summaryQueued: boolean;
+                          }>(`sites/${id}/media`, {
+                            method: "POST",
+                            body: form,
+                          });
+                          await load();
+                          if (
+                            admin &&
+                            browserAi &&
+                            autoSummary &&
+                            uploadPurpose === "article" &&
+                            file.type === "application/pdf"
+                          ) {
+                            const { message } = await ai.run(
+                              result.id,
+                              "abstract",
+                              true,
+                            );
+                            await load();
+                            feedback.setMessage(message);
+                            return;
+                          }
+                          feedback.setMessage(
+                            result.summaryQueued
+                              ? "Article uploaded. AI is extracting editable details and an abstract."
+                              : "File uploaded. Select it in the relevant content field to include it in the portfolio.",
+                          );
+                        });
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                )}
+                {admin && browserAi && (
+                  <div className="panel">
+                    <h3>Free AI on your computer</h3>
+                    <p className="panel-description">
+                      The first use downloads roughly 1 GB from Hugging Face.
+                      Use desktop Chrome or Edge with WebGPU, allow about 3 GB
+                      of GPU memory, and keep this tab open. Uploaded documents
+                      stay on this app's server; inference runs in your browser.
+                      Text-based PDFs only; review every claim.
+                    </p>
+                    <label className="check-row">
+                      <input
+                        type="checkbox"
+                        checked={autoSummary}
+                        onChange={(event) =>
+                          setAutoSummary(event.target.checked)
+                        }
+                      />{" "}
+                      Generate a free summary after each article upload
+                    </label>
+                  </div>
+                )}
+                <AiProgress {...ai} />
+                {admin && !aiEnabled && (
+                  <Notice
+                    tone="info"
+                    message="Enable free browser AI or configure a server AI provider to generate research summaries. You can add original abstracts manually now."
+                  />
+                )}
+                <Field label="Find an uploaded document">
+                  <input
+                    type="search"
+                    placeholder="Search by file name"
+                    value={fileQuery}
+                    onChange={(event) => {
+                      setFileQuery(event.target.value);
+                      setFileLimit(20);
+                    }}
+                  />
+                </Field>
+                <p className="panel-description">
+                  {matchingFiles.length} files | Showing{" "}
+                  {Math.min(fileLimit, matchingFiles.length)}
+                </p>
+                <div className="file-list">
+                  {matchingFiles.slice(0, fileLimit).map((file) => (
+                    <div key={file.id}>
+                      {admin && file.article_assets && (
+                        <p className="panel-description">
+                          {file.article_assets.imageIds.length} extracted
+                          images. {file.article_assets.warnings.join(" ")}
+                        </p>
+                      )}
+                      <div className="file-row">
+                        <div className="file-icon">
+                          {file.mime.startsWith("image/") ? (
+                            <ImageIcon size={20} />
+                          ) : (
+                            <FileText size={20} />
+                          )}
+                        </div>
+                        <div className="file-info">
+                          <strong>{file.filename}</strong>
+                          <small>
+                            {(file.bytes / 1024).toFixed(0)} KB ·{" "}
+                            {dateTime(file.created_at)}
+                          </small>
+                        </div>
+                        <a
+                          href={`/api/media/${file.id}`}
+                          className="icon-button"
+                          aria-label={`Download ${file.filename}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Download size={16} />
+                        </a>
+                        {admin && file.mime === "application/pdf" && (
+                          <Button
+                            variant="secondary small"
+                            disabled={extracting(file) || feedback.busy}
+                            onClick={() => addArticle(file)}
+                          >
+                            {uploadCollection === "articles"
+                              ? "Add article draft"
+                              : "Add research draft"}
+                          </Button>
+                        )}
+                        {admin && file.mime === "application/pdf" && (
+                          <Button
+                            variant="secondary small"
+                            disabled={!aiEnabled || feedback.busy}
+                            onClick={() =>
+                              void feedback.run(async () => {
+                                const { message } = await ai.run(
+                                  file.id,
+                                  "abstract",
+                                  browserAi,
+                                );
+                                await load();
+                                feedback.setMessage(message);
+                              })
+                            }
+                          >
+                            <Sparkles size={13} /> Extract details & abstract
+                          </Button>
+                        )}
+                        {admin && (
+                          <button
+                            className="icon-button"
+                            aria-label={`Delete ${file.filename}`}
+                            disabled={feedback.busy}
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: "Delete this file?",
+                                  description: `“${file.filename}” will be permanently removed from the media library. Copies in published releases remain available.`,
+                                  confirmLabel: "Delete file",
+                                  destructive: true,
+                                })
+                              )
+                                void feedback.run(async () => {
+                                  await api(`media/${file.id}`, {
+                                    method: "DELETE",
+                                  });
+                                  await load();
+                                }, "File deleted.");
+                            }}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                      {extracting(file) && (
+                        <Notice
+                          tone="info"
+                          message="Extracting article details. Wait for completion before adding the draft."
+                        />
+                      )}
+                      {file.article_metadata?.warnings.map((warning, index) => (
+                        <Notice key={index} tone="info" message={warning} />
+                      ))}
+                      {file.summary && (
+                        <details
+                          className="panel editor-options"
+                          style={{ marginTop: 8 }}
+                        >
+                          <summary>Review extracted abstract</summary>
+                          <p className="muted">
+                            These are extraction suggestions. Your saved
+                            articles and manual edits have not been changed.
+                            Review the source file before copying changes into
+                            an existing article.
+                          </p>
+                          {file.article_metadata && (
+                            <dl>
+                              <dt>Title</dt>
+                              <dd>
+                                {file.article_metadata.title || "Needs review"}
+                              </dd>
+                              <dt>Authors</dt>
+                              <dd>
+                                {file.article_metadata.authors ||
+                                  "Needs review"}
+                              </dd>
+                              <dt>Publication date</dt>
+                              <dd>
+                                {file.article_metadata.date ||
+                                  "Not found in source"}
+                              </dd>
+                            </dl>
+                          )}
+                          {!!file.article_assets?.imageIds.length && (
+                            <div className="spread wrap">
+                              {file.article_assets.imageIds.map(
+                                (imageId, index) => (
+                                  <a
+                                    key={imageId}
+                                    href={`/api/media/${imageId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={`/api/media/${imageId}`}
+                                      alt={`Extracted image ${index + 1} for review`}
+                                      style={{
+                                        width: 120,
+                                        height: 90,
+                                        objectFit: "contain",
+                                      }}
+                                    />
+                                  </a>
+                                ),
+                              )}
+                            </div>
+                          )}
+                          <div className="spread">
+                            <h3>
+                              {file.article_metadata?.abstractSource ===
+                              "original"
+                                ? "Original abstract"
+                                : "Suggested abstract"}
+                            </h3>
+                            <Badge value="review required" />
+                          </div>
+                          <p style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                            {file.summary.abstract}
+                          </p>
+                          {file.summary.limitations && (
+                            <Notice
+                              tone="info"
+                              message={file.summary.limitations}
+                            />
+                          )}
+                          <p className="muted" style={{ fontSize: 10 }}>
+                            {file.summary.keywords.join(" · ")} ·{" "}
+                            {file.summary.model} ·{" "}
+                            {dateTime(file.summary.generatedAt)}
+                          </p>
+                          {admin && (
+                            <Button
+                              variant="secondary small"
+                              disabled={extracting(file) || feedback.busy}
+                              onClick={() => addArticle(file)}
+                            >
+                              Add to draft
+                            </Button>
+                          )}
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {matchingFiles.length > fileLimit && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setFileLimit((limit) => limit + 20)}
+                  >
+                    Show more files
+                  </Button>
+                )}
+                {!assets.length && (
+                  <Empty
+                    icon={<FileText />}
+                    title="A place for the original work."
+                    description="Upload a PDF or Word article to extract its details."
+                  />
+                )}
+                <JobList
+                  jobs={data.jobs.filter((j) => j.kind === "abstract")}
+                />
+              </>
+            )
+          }
           onFiles={() => {
             setUploadCollection(
               tab === "publications" ? "publications" : "articles",
             );
             setUploadPurpose("article");
-            selectTab("media");
+            setUploadsOpen((open) => !open);
           }}
         />
       )}
@@ -1319,6 +1713,42 @@ export function PortfolioEditor({ id }: { id: string }) {
                         </option>
                       ))}
                   </select>
+                  <input
+                    type="file"
+                    aria-label="Upload social sharing image"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    disabled={feedback.busy}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      event.target.value = "";
+                      void feedback.run(async () => {
+                        const form = new FormData();
+                        form.append("file", file);
+                        form.append("purpose", "image");
+                        const result = await api<{ id: string }>(
+                          `sites/${id}/media`,
+                          { method: "POST", body: form },
+                        );
+                        await load();
+                        setDocument((current) =>
+                          current
+                            ? {
+                                ...current,
+                                seo: {
+                                  ...current.seo,
+                                  socialImageId: result.id,
+                                },
+                              }
+                            : current,
+                        );
+                        setDirty(true);
+                        feedback.setMessage(
+                          "Sharing image uploaded and selected. Save your draft when ready.",
+                        );
+                      });
+                    }}
+                  />
                 </Field>
                 <Field label="Content language">
                   <select
@@ -1512,358 +1942,6 @@ export function PortfolioEditor({ id }: { id: string }) {
             </div>
           </details>
         </section>
-      )}
-      {tab === "media" && (
-        <>
-          <div className="section-title">
-            <div>
-              <h2>Upload and review your documents</h2>
-              <p className="panel-description">
-                {(
-                  assets.reduce((sum, m) => sum + m.bytes, 0) /
-                  1024 /
-                  1024
-                ).toFixed(1)}{" "}
-                MB of 100 MB used. Files remain private until included in a
-                published release.
-              </p>
-            </div>
-          </div>
-          <ol className="upload-guide" aria-label="Article upload steps">
-            <li>
-              <strong>1. Upload</strong>
-              <span>Choose your PDF or Word document.</span>
-            </li>
-            <li>
-              <strong>2. Check the details</strong>
-              <span>Wait for extraction, then add an article draft.</span>
-            </li>
-            <li>
-              <strong>3. Review and publish</strong>
-              <span>
-                Edit the abstract, authors, date and images before publishing.
-              </span>
-            </li>
-          </ol>
-          {(admin ||
-            data.site.editable_fields.some(
-              (f) => f.includes("Id") || f.startsWith("sections."),
-            )) && (
-            <div className="upload-zone">
-              <Upload size={24} />
-              <strong>Upload a portrait, CV, or research paper</strong>
-              <small>
-                DOC, DOCX, PDF, JPG, PNG, or WebP · up to {demo ? 5 : 20} MB per
-                file. Word articles become downloadable PDFs.
-              </small>
-              <div
-                style={{
-                  maxWidth: 340,
-                  margin: "15px auto",
-                  textAlign: "left",
-                }}
-              >
-                <Field
-                  label="Document purpose"
-                  hint="Choose Article to extract its details. Photos are uploaded without text extraction."
-                >
-                  <select
-                    value={uploadPurpose}
-                    onChange={(e) =>
-                      setUploadPurpose(e.target.value as "article" | "cv")
-                    }
-                  >
-                    <option value="article">Article or research paper</option>
-                    <option value="cv">Curriculum vitae</option>
-                  </select>
-                </Field>
-              </div>
-              <input
-                aria-label="Upload a file"
-                type="file"
-                accept={
-                  admin
-                    ? ".doc,.docx,.pdf,.jpg,.jpeg,.png,.webp"
-                    : ".pdf,.jpg,.jpeg,.png,.webp"
-                }
-                disabled={feedback.busy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  void feedback.run(async () => {
-                    const form = new FormData();
-                    form.append("file", file);
-                    form.append("purpose", uploadPurpose);
-                    const result = await api<{
-                      id: string;
-                      summaryQueued: boolean;
-                    }>(`sites/${id}/media`, {
-                      method: "POST",
-                      body: form,
-                    });
-                    await load();
-                    if (
-                      admin &&
-                      browserAi &&
-                      autoSummary &&
-                      uploadPurpose === "article" &&
-                      file.type === "application/pdf"
-                    ) {
-                      const { message } = await ai.run(
-                        result.id,
-                        "abstract",
-                        true,
-                      );
-                      await load();
-                      feedback.setMessage(message);
-                      return;
-                    }
-                    feedback.setMessage(
-                      result.summaryQueued
-                        ? "Article uploaded. AI is extracting editable details and an abstract."
-                        : "File uploaded. Select it in the relevant content field to include it in the portfolio.",
-                    );
-                  });
-                  e.target.value = "";
-                }}
-              />
-            </div>
-          )}
-          {admin && browserAi && (
-            <div className="panel">
-              <h3>Free AI on your computer</h3>
-              <p className="panel-description">
-                The first use downloads roughly 1 GB from Hugging Face. Use
-                desktop Chrome or Edge with WebGPU, allow about 3 GB of GPU
-                memory, and keep this tab open. Uploaded documents stay on this
-                app's server; inference runs in your browser. Text-based PDFs
-                only; review every claim.
-              </p>
-              <label className="check-row">
-                <input
-                  type="checkbox"
-                  checked={autoSummary}
-                  onChange={(event) => setAutoSummary(event.target.checked)}
-                />{" "}
-                Generate a free summary after each article upload
-              </label>
-            </div>
-          )}
-          <AiProgress {...ai} />
-          {admin && !aiEnabled && (
-            <Notice
-              tone="info"
-              message="Enable free browser AI or configure a server AI provider to generate research summaries. You can add original abstracts manually now."
-            />
-          )}
-          <Field label="Find a file">
-            <input
-              type="search"
-              placeholder="Search by file name"
-              value={fileQuery}
-              onChange={(event) => {
-                setFileQuery(event.target.value);
-                setFileLimit(20);
-              }}
-            />
-          </Field>
-          <p className="panel-description">
-            {matchingFiles.length} files | Showing{" "}
-            {Math.min(fileLimit, matchingFiles.length)}
-          </p>
-          <div className="file-list">
-            {matchingFiles.slice(0, fileLimit).map((file) => (
-              <div key={file.id}>
-                {admin && file.article_assets && (
-                  <p className="panel-description">
-                    {file.article_assets.imageIds.length} extracted images.{" "}
-                    {file.article_assets.warnings.join(" ")}
-                  </p>
-                )}
-                <div className="file-row">
-                  <div className="file-icon">
-                    {file.mime.startsWith("image/") ? (
-                      <ImageIcon size={20} />
-                    ) : (
-                      <FileText size={20} />
-                    )}
-                  </div>
-                  <div className="file-info">
-                    <strong>{file.filename}</strong>
-                    <small>
-                      {(file.bytes / 1024).toFixed(0)} KB ·{" "}
-                      {dateTime(file.created_at)}
-                    </small>
-                  </div>
-                  <a
-                    href={`/api/media/${file.id}`}
-                    className="icon-button"
-                    aria-label={`Download ${file.filename}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Download size={16} />
-                  </a>
-                  {admin && file.mime === "application/pdf" && (
-                    <Button
-                      variant="secondary small"
-                      disabled={extracting(file) || feedback.busy}
-                      onClick={() => addArticle(file)}
-                    >
-                      {uploadCollection === "articles"
-                        ? "Add article draft"
-                        : "Add research draft"}
-                    </Button>
-                  )}
-                  {admin && file.mime === "application/pdf" && (
-                    <Button
-                      variant="secondary small"
-                      disabled={!aiEnabled || feedback.busy}
-                      onClick={() =>
-                        void feedback.run(async () => {
-                          const { message } = await ai.run(
-                            file.id,
-                            "abstract",
-                            browserAi,
-                          );
-                          await load();
-                          feedback.setMessage(message);
-                        })
-                      }
-                    >
-                      <Sparkles size={13} /> Extract details & abstract
-                    </Button>
-                  )}
-                  {admin && (
-                    <button
-                      className="icon-button"
-                      aria-label={`Delete ${file.filename}`}
-                      disabled={feedback.busy}
-                      onClick={async () => {
-                        if (
-                          await confirm({
-                            title: "Delete this file?",
-                            description: `“${file.filename}” will be permanently removed from the media library. Copies in published releases remain available.`,
-                            confirmLabel: "Delete file",
-                            destructive: true,
-                          })
-                        )
-                          void feedback.run(async () => {
-                            await api(`media/${file.id}`, { method: "DELETE" });
-                            await load();
-                          }, "File deleted.");
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
-                </div>
-                {extracting(file) && (
-                  <Notice
-                    tone="info"
-                    message="Extracting article details. Wait for completion before adding the draft."
-                  />
-                )}
-                {file.article_metadata?.warnings.map((warning, index) => (
-                  <Notice key={index} tone="info" message={warning} />
-                ))}
-                {file.summary && (
-                  <details
-                    className="panel editor-options"
-                    style={{ marginTop: 8 }}
-                  >
-                    <summary>Review extracted abstract</summary>
-                    <p className="muted">
-                      These are extraction suggestions. Your saved articles and
-                      manual edits have not been changed. Review the source file
-                      before copying changes into an existing article.
-                    </p>
-                    {file.article_metadata && (
-                      <dl>
-                        <dt>Title</dt>
-                        <dd>{file.article_metadata.title || "Needs review"}</dd>
-                        <dt>Authors</dt>
-                        <dd>
-                          {file.article_metadata.authors || "Needs review"}
-                        </dd>
-                        <dt>Publication date</dt>
-                        <dd>
-                          {file.article_metadata.date || "Not found in source"}
-                        </dd>
-                      </dl>
-                    )}
-                    {!!file.article_assets?.imageIds.length && (
-                      <div className="spread wrap">
-                        {file.article_assets.imageIds.map((imageId, index) => (
-                          <a
-                            key={imageId}
-                            href={`/api/media/${imageId}`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/media/${imageId}`}
-                              alt={`Extracted image ${index + 1} for review`}
-                              style={{
-                                width: 120,
-                                height: 90,
-                                objectFit: "contain",
-                              }}
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    <div className="spread">
-                      <h3>
-                        {file.article_metadata?.abstractSource === "original"
-                          ? "Original abstract"
-                          : "Suggested abstract"}
-                      </h3>
-                      <Badge value="review required" />
-                    </div>
-                    <p style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
-                      {file.summary.abstract}
-                    </p>
-                    {file.summary.limitations && (
-                      <Notice tone="info" message={file.summary.limitations} />
-                    )}
-                    <p className="muted" style={{ fontSize: 10 }}>
-                      {file.summary.keywords.join(" · ")} · {file.summary.model}{" "}
-                      · {dateTime(file.summary.generatedAt)}
-                    </p>
-                    {admin && (
-                      <Button
-                        variant="secondary small"
-                        disabled={extracting(file) || feedback.busy}
-                        onClick={() => addArticle(file)}
-                      >
-                        Add to draft
-                      </Button>
-                    )}
-                  </details>
-                )}
-              </div>
-            ))}
-          </div>
-          {matchingFiles.length > fileLimit && (
-            <Button
-              variant="secondary"
-              onClick={() => setFileLimit((limit) => limit + 20)}
-            >
-              Show more files
-            </Button>
-          )}
-          {!assets.length && (
-            <Empty
-              icon={<FileText />}
-              title="A place for the original work."
-              description="Upload a profile photo, a CV, and research papers to use in this portfolio."
-            />
-          )}
-          <JobList jobs={data.jobs.filter((j) => j.kind === "abstract")} />
-        </>
       )}
       {tab === "permissions" && admin && (
         <Permissions site={data.site} onSaved={() => load()} />

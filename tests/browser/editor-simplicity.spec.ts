@@ -50,7 +50,7 @@ test("simple editor keeps optional settings away and routes research imports cor
     page.getByText(/AI sends documents to Google Gemini/),
   ).toHaveCount(0);
   await page
-    .getByRole("searchbox", { name: "Find a file" })
+    .getByRole("searchbox", { name: "Find an uploaded document" })
     .fill("review-paper");
   await page
     .getByRole("button", { name: "Add research draft", exact: true })
@@ -76,6 +76,23 @@ test("simple editor keeps optional settings away and routes research imports cor
   await page
     .getByText("Publication details and citation information", { exact: true })
     .click();
+  await expect(page.getByRole("tab", { name: "File library" })).toHaveCount(0);
+  const body = page.getByRole("textbox", {
+    name: "Full article text",
+    exact: true,
+  });
+  await body.fill("A carefully formatted finding.");
+  await body.press("ControlOrMeta+a");
+  await page.getByRole("button", { name: "Bold", exact: true }).click();
+  await page.getByRole("button", { name: "Italic", exact: true }).click();
+  await page.getByRole("button", { name: "Underline", exact: true }).click();
+  await page.getByLabel("Text color", { exact: true }).fill("#1447e6");
+  await page
+    .getByRole("combobox", { name: "Text style", exact: true })
+    .selectOption("2");
+  await expect(body.locator("h2 strong em u")).toHaveText(
+    "A carefully formatted finding.",
+  );
   const saved = page.waitForResponse(
     (r) =>
       r.url().endsWith(`/api/sites/${id}`) && r.request().method() === "PUT",
@@ -89,6 +106,28 @@ test("simple editor keeps optional settings away and routes research imports cor
       (s: { type: string }) => s.type === "publications",
     ).entries[0].doi,
   ).toBe("10.1234/review");
+  const article = result.site.draft.sections.find(
+    (s: { type: string }) => s.type === "publications",
+  ).entries[0];
+  expect(article.formattedBody[0].kind).toBe("heading2");
+  expect(article.formattedBody[0].runs[0]).toMatchObject({
+    bold: true,
+    italic: true,
+    underline: true,
+    color: "#1447e6",
+  });
+  const preview = await page.request.get(
+    `/api/sites/${id}/preview/article/${article.id}`,
+  );
+  expect(await preview.text()).toContain(
+    '<span style="color:#1447e6"><u><em><strong>A carefully formatted finding.</strong></em></u></span>',
+  );
+  await page.reload();
+  await page.getByRole("tab", { name: "Research", exact: true }).click();
+  await expect(body.locator("h2 strong em u")).toHaveText(
+    "A carefully formatted finding.",
+  );
+  await body.scrollIntoViewIfNeeded();
   await page.screenshot({ path: ".test-data/editor-simple-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
@@ -96,5 +135,19 @@ test("simple editor keeps optional settings away and routes research imports cor
       page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     )
     .toBe(true);
+  await expect
+    .poll(() =>
+      page
+        .locator(".sidebar")
+        .evaluate((el) => el.getBoundingClientRect().right),
+    )
+    .toBeLessThanOrEqual(0);
+  await body.scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole("button", { name: "Bold", exact: true }),
+  ).toBeVisible();
+  await body.press("ControlOrMeta+a");
+  await page.getByRole("button", { name: "Italic", exact: true }).click();
+  await expect(body.locator("em")).toHaveCount(0);
   await page.screenshot({ path: ".test-data/editor-simple-mobile.png" });
 });

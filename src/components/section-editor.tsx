@@ -1,4 +1,5 @@
 "use client";
+import { ArticleBodyEditor } from "./article-body-editor";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   ArticleImageUploader,
@@ -737,18 +738,14 @@ function EntryEditor({
                 Write the article body here. The abstract, authors and
                 publication date have their own fields above.
               </p>
-              <Field
-                label="Full article text"
-                hint="Article body only. Keep the title, authors, date and abstract in their separate fields. Review paragraphs before publishing."
-              >
-                <textarea
-                  rows={12}
-                  value={entry.fullText || ""}
-                  maxLength={240000}
-                  disabled={!editable}
-                  onChange={(event) => change("fullText", event.target.value)}
-                />
-              </Field>
+              <ArticleBodyEditor
+                text={entry.fullText || ""}
+                format={entry.formattedBody}
+                disabled={!editable}
+                onChange={(fullText, formattedBody) =>
+                  onChange({ ...entry, fullText, formattedBody })
+                }
+              />
               {editable && (
                 <div className="row">
                   <Button
@@ -1120,6 +1117,13 @@ function EntryEditor({
             ))}
           </select>
         </Field>
+        {editable && onUploadImage && (
+          <ArticleImageUploader
+            entryId={entry.id}
+            target="document"
+            onUpload={onUploadImage}
+          />
+        )}
         <div className="full-span">
           <Field label="Keywords" hint="Separate keywords with commas.">
             <input

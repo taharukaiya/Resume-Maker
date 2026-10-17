@@ -1,3 +1,4 @@
+import { matchingFormat, plainFormat } from "../media/article-format";
 import PDFDocument from "pdfkit";
 import path from "node:path";
 import sharp from "sharp";
@@ -53,6 +54,18 @@ export async function articlePdf(
       "node_modules/@fontsource/noto-serif/files/noto-serif-latin-400-normal.woff",
     ),
   );
+  for (const [name, weight] of [
+    ["italic", 400],
+    ["boldItalic", 700],
+  ] as const) {
+    pdf.registerFont(
+      name,
+      path.join(
+        process.cwd(),
+        `node_modules/@fontsource/noto-serif/files/noto-serif-latin-${weight}-italic.woff`,
+      ),
+    );
+  }
   const width = pdf.page.width - 116;
   pdf
     .font("heading")
@@ -84,18 +97,46 @@ export async function articlePdf(
       .text(abstract, { lineGap: 4, paragraphGap: 8 })
       .moveDown(1.4);
   }
-  for (const block of articleBlocks(content.body)) {
-    if (block.heading && pdf.y > pdf.page.height - 130) pdf.addPage();
-    pdf
-      .font(block.heading ? "heading" : "body")
-      .fontSize(block.heading ? 13 : 11)
-      .fillColor("#172033")
-      .text(block.text, {
-        width,
-        lineGap: block.heading ? 2 : 4,
-        paragraphGap: 0,
-      })
-      .moveDown(block.heading ? 0.6 : 0.9);
+  let number = 0;
+  for (const block of matchingFormat(content.body, entry.formattedBody) ||
+    plainFormat(content.body)) {
+    const heading = block.kind.startsWith("heading");
+    if (heading && pdf.y > pdf.page.height - 130) pdf.addPage();
+    number = block.kind === "number" ? number + 1 : 0;
+    const prefix =
+      block.kind === "bullet"
+        ? "\u2022 "
+        : block.kind === "number"
+          ? `${number}. `
+          : "";
+    const runs = block.runs.filter((r) => r.text);
+    if (!runs.length) {
+      pdf.moveDown(0.6);
+      continue;
+    }
+    runs.forEach((run, index) => {
+      const bold = run.bold || heading;
+      pdf
+        .font(
+          run.italic
+            ? bold
+              ? "boldItalic"
+              : "italic"
+            : bold
+              ? "heading"
+              : "body",
+        )
+        .fontSize(heading ? (block.kind === "heading2" ? 14 : 12) : 11)
+        .fillColor(run.color || "#172033")
+        .text((index === 0 ? prefix : "") + run.text, {
+          width,
+          lineGap: heading ? 2 : 4,
+          paragraphGap: 0,
+          continued: index < runs.length - 1,
+          underline: run.underline || false,
+        });
+    });
+    pdf.moveDown(heading ? 0.6 : 0.9);
   }
   for (const figure of figures) {
     const image = await sharp(figure.bytes)

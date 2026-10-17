@@ -211,7 +211,13 @@ test("signature portfolios, custom confirmations, and contextual tab titles", as
   expect(upload.status()).toBe(201);
   const file = await upload.json();
   await page.reload();
-  await page.getByRole("tab", { name: "File library" }).click();
+  await page.getByRole("tab", { name: "Articles", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Upload a document / extract details",
+      exact: true,
+    })
+    .click();
   const deleteButton = page.getByRole("button", {
     name: "Delete dialog-example.pdf",
   });

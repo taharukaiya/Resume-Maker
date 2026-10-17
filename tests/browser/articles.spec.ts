@@ -356,13 +356,11 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
       response.url().endsWith(`/api/sites/${id}/media`) &&
       response.request().method() === "POST",
   );
-  await editor
-    .getByLabel("Upload cover image", { exact: true })
-    .setInputFiles({
-      name: "article-cover.png",
-      mimeType: "image/png",
-      buffer: imageBytes,
-    });
+  await editor.getByLabel("Upload cover image", { exact: true }).setInputFiles({
+    name: "article-cover.png",
+    mimeType: "image/png",
+    buffer: imageBytes,
+  });
   const newCover = await (await coverUpload).json();
   await expect(
     editor.getByRole("combobox", { name: "Article cover", exact: true }),
@@ -399,20 +397,21 @@ test("fixed portfolio design, archive filters, citations, PDFs and administrator
   await editor
     .getByRole("button", { name: "Keep body only", exact: true })
     .click();
-  await expect(bodyField).toHaveValue(legacyBody);
+  await expect(bodyField).toHaveText(legacyBody, { useInnerText: true });
   await expect(
     editor.getByRole("textbox", { name: "Review body cleanup", exact: true }),
   ).toHaveValue("Introduction\n\nMy manually corrected body paragraph.");
   await editor
     .getByRole("button", { name: "Use this body", exact: true })
     .click();
-  await expect(bodyField).toHaveValue(
+  await expect(bodyField).toHaveText(
     "Introduction\n\nMy manually corrected body paragraph.",
+    { useInnerText: true },
   );
   await editor
     .getByRole("button", { name: "Undo body cleanup", exact: true })
     .click();
-  await expect(bodyField).toHaveValue(legacyBody);
+  await expect(bodyField).toHaveText(legacyBody, { useInnerText: true });
   await bodyField.fill(first.fullText);
   await editor
     .getByRole("button", { name: "Remove cover image", exact: true })
@@ -547,7 +546,15 @@ test("uploaded metadata and figures reach an editable draft only after extractio
     await route.fulfill({ response, json });
   });
   await page.goto(`/studio/portfolios/${id}`);
-  await page.getByRole("combobox", { name: "Editing" }).selectOption("media");
+  await page
+    .getByRole("combobox", { name: "Editing" })
+    .selectOption("articles");
+  await page
+    .getByRole("button", {
+      name: "Upload a document / extract details",
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole("button", { name: "Add article draft", exact: true }),
   ).toBeDisabled();

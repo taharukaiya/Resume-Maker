@@ -27,6 +27,7 @@ export function PublicationsEditor({
   admin,
   allowed,
   onFiles,
+  uploads,
   onUploadImage,
   type = "publications",
 }: {
@@ -38,6 +39,7 @@ export function PublicationsEditor({
   admin: boolean;
   allowed: string[];
   onFiles: () => void;
+  uploads?: React.ReactNode;
 }) {
   const editor = (
     sections: Section[],
@@ -83,6 +85,7 @@ export function PublicationsEditor({
         </Button>
       </section>
 
+      {uploads}
       {admin && (
         <details className="panel">
           <summary>Archive display</summary>

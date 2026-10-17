@@ -307,20 +307,19 @@ test("client invitation, permitted submission, files, private pages, and public 
   await expect(page.getByLabel("Biography", { exact: true })).toHaveValue(
     "A biography submitted by the invited researcher.",
   );
-  await page.getByRole("tab", { name: "File library" }).click();
   const image = await sharp({
     create: { width: 32, height: 32, channels: 3, background: "#234d3e" },
   })
     .png()
     .toBuffer();
-  await page.getByLabel("Upload a file").setInputFiles({
+  await page.getByLabel("Upload website logo").setInputFiles({
     name: "research-image.png",
     mimeType: "image/png",
     buffer: image,
   });
   await expect(
-    page.getByRole("link", { name: /Download research-image/ }),
-  ).toBeVisible();
+    page.getByLabel("Website logo", { exact: true }),
+  ).not.toHaveValue("");
   const data = await (await page.request.get(`/api/sites/${id}`)).json();
   const section = {
     id: crypto.randomUUID(),

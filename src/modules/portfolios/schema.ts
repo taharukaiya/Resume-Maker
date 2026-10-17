@@ -1,3 +1,4 @@
+import { articleFormatSchema } from "../media/article-format";
 import { contrastRatio } from "@/lib/colors";
 import { z } from "zod";
 import { fontIds } from "./design";
@@ -87,6 +88,7 @@ export const entrySchema = z
     ]),
     abstractSource: z.enum(["", "original", "generated"]),
     fullText: z.string().max(240000).optional(),
+    formattedBody: articleFormatSchema.optional(),
     readingMinutes: z.number().int().min(1).max(999).optional(),
     category: short.optional(),
     journal: short.optional(),
