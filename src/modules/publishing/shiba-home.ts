@@ -17,6 +17,10 @@ const paths: Record<string, string> = {
     '<path d="M9 19c-4 1-4-2-6-2m12 5v-4c0-1-.3-2-1-2 4 0 7-2 7-6 0-2-.5-3-2-4 0-1 0-3-1-4-2 0-3 1-4 2a13 13 0 0 0-4 0C9 3 7 2 5 2 4 3 4 5 4 6c-1 1-2 2-2 4 0 4 3 6 7 6-.7.5-1 1-1 2v4"/>',
   linkedin:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 10v7M7 7v.01M11 17v-7m0 3c0-4 6-4 6 0v4"/>',
+  orcid:
+    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M6 19v-2a6 6 0 0 1 12 0v2"/>',
+  twitter:
+    '<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/>',
   link: '<path d="m10 13 4-4M8 16l-2 2a4 4 0 0 1-6-6l6-6a4 4 0 0 1 6 0M16 8l2-2a4 4 0 0 1 6 6l-6 6a4 4 0 0 1-6 0"/>',
   calendar:
@@ -30,13 +34,17 @@ export const socialIcon = (
   const kind =
     link.icon && link.icon !== "auto"
       ? link.icon
-      : /github/i.test(link.url)
-        ? "github"
-        : /scholar|researchgate/i.test(link.url + link.label)
-          ? "scholar"
-          : /linkedin/i.test(link.url)
-            ? "linkedin"
-            : "link";
+      : /orcid/i.test(link.url + link.label)
+        ? "orcid"
+        : /twitter\.com|x\.com|twitter/i.test(link.url + link.label)
+          ? "twitter"
+          : /github/i.test(link.url)
+            ? "github"
+            : /scholar|researchgate/i.test(link.url + link.label)
+              ? "scholar"
+              : /linkedin/i.test(link.url)
+                ? "linkedin"
+                : "link";
   return kind === "none" ? "" : homeIcon(kind);
 };
 const prose = (text: string) =>

@@ -33,7 +33,7 @@ export function portfolioSeo(doc: PortfolioDocument) {
         [
           doc.profile.name,
           doc.profile.headline,
-          doc.profile.showAffiliation === false ? "" : doc.profile.affiliation,
+          doc.profile.showAffiliation === true ? doc.profile.affiliation : "",
           biographyPublic ? doc.profile.bio : "",
         ]
           .filter(Boolean)

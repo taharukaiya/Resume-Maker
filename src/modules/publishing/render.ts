@@ -122,7 +122,7 @@ export function renderPortfolio(
             )
             .join("")}</div>`
         : ""
-    }<div class="footer-bottom"><span>${e(doc.navigation.copyright || `© ${new Date().getFullYear()} ${doc.profile.name}`)}</span>${doc.theme.showAgencyCredit ? `<span>${e(doc.labels.creditPrefix)} ${e(agencyName)}</span>` : ""}<a class="back-to-top" href="#top">${e(labels.backToTop)} ↑</a></div></div></footer></body></html>`;
+    }<div class="footer-bottom"><span>${e(doc.navigation.copyright || `© ${new Date().getFullYear()} ${doc.profile.name}`)}</span><a class="back-to-top" href="#top">${e(labels.backToTop)} ↑</a></div></div></footer></body></html>`;
   const dateRange = (entry: Entry) =>
     [
       formatDate(entry.start, doc.seo.language),

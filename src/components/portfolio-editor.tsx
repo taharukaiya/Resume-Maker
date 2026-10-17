@@ -697,7 +697,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                   <label className="check-row full-span">
                     <input
                       type="checkbox"
-                      checked={document.profile.showAffiliation !== false}
+                      checked={document.profile.showAffiliation === true}
                       onChange={(event) =>
                         profile("showAffiliation", event.target.checked)
                       }

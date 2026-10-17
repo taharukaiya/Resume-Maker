@@ -135,7 +135,7 @@ export function renderShibaPortfolio(
       )
       .join(
         "<span>•</span>",
-      )}</span>${doc.theme.showAgencyCredit ? ` · Portfolio by ${e(options.agencyName)}` : ""}</span></div></footer><script>${shibaScript}</script></body></html>`;
+      )}</span></span></div></footer><script>${shibaScript}</script></body></html>`;
   const card = (a: Entry) =>
     `<article class="card" data-home-article data-category="${e(a.category || a.subtitle)}"><a href="${e(url(a))}">${cover(a)}<h3>${e(a.title)}</h3></a><p class="abstract-excerpt">${e(a.body.slice(0, 500))}</p><p class="meta">${homeIcon("calendar")}${e(date(a))}</p>${a.category || a.subtitle ? `<div class="home-category"><strong>${e(doc.labels.category || "Category")}</strong><span>${e(a.category || a.subtitle)}</span></div>` : ""}</article>`;
   const entry = (a: Entry) =>
@@ -327,7 +327,7 @@ export function renderShibaPortfolio(
         name: a.authorDetails?.name || p.name,
         affiliation:
           a.authorDetails?.affiliation ||
-          (p.showAffiliation === false ? "" : p.affiliation),
+          (p.showAffiliation === true ? p.affiliation : ""),
         bio: a.authorDetails?.bio || p.bio,
       };
       const citations = `<section class="citations" data-citations><h3>${e(doc.labels.citationHeading || "CITE THIS ARTICLE")}</h3><div class="citation-tabs" role="tablist" aria-label="Citation style">${citationStyles.map((style, i) => `<button id="tab-${a.id}-${i}" role="tab" data-citation-tab aria-controls="cite-${a.id}-${i}" aria-selected="${i === 0}">${style}</button>`).join("")}</div>${citationStyles.map((style, i) => `<div id="cite-${a.id}-${i}" role="tabpanel" aria-labelledby="tab-${a.id}-${i}"${i ? " hidden" : ""}><pre>${e(articleCitation(a, url(a), style))}</pre></div>`).join("")}<button class="button outline" data-copy="citation" data-copied="${e(doc.labels.copied || "Copied")}" data-fallback="${e(doc.labels.copyFallback || "Select and copy")}">${e(doc.labels.copyCitation || "Copy Citation")}</button></section>`;

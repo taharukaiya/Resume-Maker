@@ -585,7 +585,7 @@ export function emptyDocument(name: string): PortfolioDocument {
       portrait: "cutout",
       width: "standard",
       roundness: "soft",
-      showAgencyCredit: true,
+      showAgencyCredit: false,
       motion: "subtle",
       stickyNavigation: true,
       expandableEntries: true,
