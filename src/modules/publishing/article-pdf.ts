@@ -40,40 +40,36 @@ export async function articlePdf(
     pdf.on("end", () => resolve(Buffer.concat(chunks)));
     pdf.on("error", reject);
   });
-  pdf.registerFont(
-    "heading",
-    path.join(
-      process.cwd(),
-      "node_modules/@fontsource/noto-serif/files/noto-serif-latin-700-normal.woff",
-    ),
-  );
-  pdf.registerFont(
-    "body",
-    path.join(
-      process.cwd(),
-      "node_modules/@fontsource/noto-serif/files/noto-serif-latin-400-normal.woff",
-    ),
-  );
-  for (const [name, weight] of [
-    ["italic", 400],
-    ["boldItalic", 700],
+  for (const [name, family, weight, style] of [
+    ["heading", "inter", 700, "normal"],
+    ["label", "inter", 400, "normal"],
+    ["body", "merriweather", 400, "normal"],
+    ["bodyBold", "merriweather", 700, "normal"],
+    ["italic", "merriweather", 400, "italic"],
+    ["boldItalic", "merriweather", 700, "italic"],
   ] as const) {
     pdf.registerFont(
       name,
       path.join(
         process.cwd(),
-        `node_modules/@fontsource/noto-serif/files/noto-serif-latin-${weight}-italic.woff`,
+        `node_modules/@fontsource/${family}/files/${family}-latin-${weight}-${style}.woff`,
       ),
     );
   }
   const width = pdf.page.width - 116;
   pdf
     .font("heading")
-    .fontSize(23)
+    .fontSize(28)
     .fillColor("#0f172b")
     .text(entry.title, 58, 58, { width, lineGap: 4 })
     .moveDown(0.6);
-  if (entry.authors) pdf.fontSize(11).text(entry.authors).moveDown(0.5);
+  if (entry.authors)
+    pdf
+      .font("bodyBold")
+      .fontSize(10)
+      .fillColor("#1447e6")
+      .text(entry.authors)
+      .moveDown(0.5);
   const metadata = [
     entry.start ? formatDate(entry.start) : "",
     entry.journal,
@@ -82,21 +78,24 @@ export async function articlePdf(
     .filter(Boolean)
     .join(" | ");
   if (metadata)
-    pdf.fontSize(9).fillColor("#526078").text(metadata).moveDown(1.2);
-  if (abstract) {
-    pdf
-      .font("heading")
-      .fontSize(13)
-      .fillColor("#1447e6")
-      .text("Abstract")
-      .moveDown(0.5);
     pdf
       .font("body")
-      .fontSize(10)
-      .fillColor("#172033")
-      .text(abstract, { lineGap: 4, paragraphGap: 8 })
-      .moveDown(1.4);
-  }
+      .fontSize(9)
+      .fillColor("#62748e")
+      .text(metadata)
+      .moveDown(1.2);
+  pdf.moveDown(0.5);
+  const dividerY = pdf.y;
+  pdf
+    .save()
+    .moveTo(58, dividerY)
+    .lineTo(58 + width, dividerY)
+    .lineWidth(0.6)
+    .strokeColor("#dce4f2")
+    .stroke()
+    .restore();
+  pdf.y = dividerY + 24;
+  if (abstract) drawAbstract(pdf, abstract, width);
   let number = 0;
   for (const block of matchingFormat(content.body, entry.formattedBody) ||
     plainFormat(content.body)) {
@@ -123,14 +122,16 @@ export async function articlePdf(
               ? "boldItalic"
               : "italic"
             : bold
-              ? "heading"
+              ? heading
+                ? "heading"
+                : "bodyBold"
               : "body",
         )
-        .fontSize(heading ? (block.kind === "heading2" ? 14 : 12) : 11)
-        .fillColor(run.color || "#172033")
+        .fontSize(heading ? (block.kind === "heading2" ? 16 : 14) : 11)
+        .fillColor(run.color || (heading ? "#0f172b" : "#26354b"))
         .text((index === 0 ? prefix : "") + run.text, {
           width,
-          lineGap: heading ? 2 : 4,
+          lineGap: Math.max(0, (heading ? 22 : 19.5) - pdf.currentLineHeight()),
           paragraphGap: 0,
           continued: index < runs.length - 1,
           underline: run.underline || false,
@@ -182,4 +183,81 @@ export async function articlePdf(
   }
   pdf.end();
   return output;
+}
+
+/** Split a long abstract into styled page-sized cards without losing its text. */
+function drawAbstract(pdf: PDFKit.PDFDocument, text: string, width: number) {
+  const x = 58,
+    padding = 22,
+    header = 32,
+    innerWidth = width - padding * 2;
+  const bodyStyle = () => pdf.font("italic").fontSize(10).fillColor("#0f172b");
+  bodyStyle();
+  const options = {
+    width: innerWidth,
+    lineGap: Math.max(0, 16.25 - pdf.currentLineHeight()),
+    paragraphGap: 8,
+  };
+  let rest = text.trim();
+  let continued = false;
+  while (rest) {
+    if (pdf.page.height - 58 - pdf.y < 155) pdf.addPage();
+    const y = pdf.y;
+    const available = pdf.page.height - 58 - y - padding * 2 - header;
+    bodyStyle();
+    let end = rest.length;
+    if (pdf.heightOfString(rest, options) > available) {
+      let low = 1,
+        high = rest.length;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        if (pdf.heightOfString(rest.slice(0, middle), options) <= available)
+          low = middle;
+        else high = middle - 1;
+      }
+      end = low;
+      const boundary = rest.slice(0, end).search(/\s+\S*$/);
+      if (boundary > 0) end = boundary;
+    }
+    const part = rest.slice(0, end).trimEnd();
+    const textHeight = pdf.heightOfString(part, options);
+    const height = padding * 2 + header + textHeight;
+    pdf.save().roundedRect(x, y, width, height, 10).clip();
+    pdf.rect(x, y, width, height).fill("#f8fafc");
+    pdf.rect(x, y, 3, height).fill("#1447e6");
+    pdf.restore();
+    const iconX = x + padding + 6,
+      iconY = y + padding + 8;
+    pdf
+      .save()
+      .circle(iconX, iconY, 6)
+      .lineWidth(1)
+      .strokeColor("#1447e6")
+      .stroke();
+    pdf.circle(iconX, iconY - 2.5, 0.7).fill("#1447e6");
+    pdf
+      .moveTo(iconX, iconY)
+      .lineTo(iconX, iconY + 3)
+      .lineWidth(1)
+      .stroke()
+      .restore();
+    pdf
+      .font("heading")
+      .fontSize(14)
+      .fillColor("#0f172b")
+      .text(
+        continued ? "Abstract (continued)" : "Abstract",
+        x + padding + 18,
+        y + padding - 1,
+        { width: innerWidth - 18, lineBreak: false },
+      );
+    bodyStyle().text(part, x + padding, y + padding + header, options);
+    pdf.x = x;
+    pdf.y = y + height + 26;
+    rest = rest.slice(end).trimStart();
+    if (rest) {
+      pdf.addPage();
+      continued = true;
+    }
+  }
 }

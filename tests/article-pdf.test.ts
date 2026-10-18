@@ -61,13 +61,52 @@ it("creates a paginated research PDF containing saved authors, date, abstract, f
     expect(text.total).toBeGreaterThan(1);
     expect(text.total).toBeLessThan(10);
     expect(text.pages.at(-1)!.text.length).toBeGreaterThan(50);
-    expect(text.text).toContain(entry.title);
+    expect(text.text.replace(/\s+/g, " ")).toContain(entry.title);
     expect(text.text).toContain(entry.authors);
     expect(text.text).toContain("2025");
     expect(text.text).toContain("Figure 1.");
     expect(text.text).toContain(entry.body);
     await mkdir(".test-data", { recursive: true });
     await writeFile(".test-data/generated-article.pdf", bytes);
+  } finally {
+    await parser.destroy();
+  }
+});
+
+it("preserves a multi-page abstract with embedded website fonts", async () => {
+  const paragraphs = Array.from(
+    { length: 24 },
+    (_, i) =>
+      `Finding ${i + 1}: ` +
+      "The evidence connects education policy with access to learning and carefully considers the limits of the analysis. ".repeat(
+        5,
+      ),
+  );
+  const bytes = await articlePdf(
+    {
+      ...emptyEntry(),
+      title: "Education, opportunity and public policy",
+      authors: "Raisa Ruzha Maliha",
+      start: "2025-02-09",
+      body: paragraphs.join("\n\n"),
+      fullText: "Introduction\n\nThe reviewed body starts here.",
+    },
+    "https://example.test/article",
+  );
+  const parser = new PDFParse({ data: bytes });
+  try {
+    const result = await parser.getText();
+    expect(result.total).toBeGreaterThan(2);
+    for (let i = 1; i <= 24; i++)
+      expect(result.text.match(new RegExp(`Finding ${i}:`, "g"))).toHaveLength(
+        1,
+      );
+    expect(result.text).toContain("The reviewed body starts here.");
+    expect(result.text).not.toMatch(/about:blank|CITE THIS ARTICLE/);
+    const raw = bytes.toString("latin1");
+    expect(raw).toContain("Inter-Bold");
+    expect(raw).toContain("Merriweather-Italic");
+    await writeFile(".test-data/long-abstract-article.pdf", bytes);
   } finally {
     await parser.destroy();
   }
