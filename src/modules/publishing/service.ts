@@ -154,7 +154,7 @@ export async function buildRelease(
       )
         images.unshift({
           mediaId: entry.coverId,
-          caption: "",
+          caption: entry.coverCaption || "",
           alt: entry.coverAlt || entry.title,
         });
       for (const figure of entry.display?.images === false ? [] : images) {

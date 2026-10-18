@@ -906,7 +906,17 @@ function EntryEditor({
               />
             </Field>
             <div className="stack">
-              <Field label="Article cover">
+              <Field
+                label="Article cover"
+                hint={
+                  entry.coverId &&
+                  (entry.images || []).some(
+                    (image) => image.mediaId === entry.coverId,
+                  )
+                    ? "This cover also appears in Article images below. Edit its caption there."
+                    : undefined
+                }
+              >
                 {entry.coverId && (
                   <div className="stack">
                     <img
@@ -944,6 +954,26 @@ function EntryEditor({
                     ))}
                 </select>
               </Field>
+              {entry.coverId &&
+                !(entry.images || []).some(
+                  (image) => image.mediaId === entry.coverId,
+                ) && (
+                  <Field
+                    label="Cover image caption (optional)"
+                    hint="Shown below the cover image on the article page and in the downloaded PDF."
+                  >
+                    <textarea
+                      rows={2}
+                      maxLength={2000}
+                      disabled={!editable}
+                      value={entry.coverCaption || ""}
+                      placeholder="Describe this image or add a photo credit…"
+                      onChange={(event) =>
+                        change("coverCaption", event.target.value)
+                      }
+                    />
+                  </Field>
+                )}
               {editable && onUploadImage && (
                 <ArticleImageUploader
                   entryId={entry.id}
@@ -1003,7 +1033,10 @@ function EntryEditor({
                         ))}
                     </select>
                   </Field>
-                  <Field label="Image description">
+                  <Field
+                    label="Image description"
+                    hint="Describe the image for screen readers."
+                  >
                     <input
                       maxLength={500}
                       disabled={!editable}
@@ -1020,8 +1053,13 @@ function EntryEditor({
                       }
                     />
                   </Field>
-                  <Field label="Caption">
+                  <Field
+                    label="Image caption (optional)"
+                    hint="Shown below this image on the article page and in the downloaded PDF."
+                  >
                     <textarea
+                      rows={2}
+                      placeholder="Describe this image or add a photo credit…"
                       maxLength={2000}
                       disabled={!editable}
                       value={image.caption}

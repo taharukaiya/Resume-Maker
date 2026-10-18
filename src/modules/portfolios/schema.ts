@@ -110,6 +110,7 @@ export const entrySchema = z
       .optional(),
     authorFormat: z.enum(["names", "family-given"]).optional(),
     coverAlt: z.string().max(500).optional(),
+    coverCaption: z.string().max(2000).optional(),
     authorDetails: z
       .object({ name: short, affiliation: short, bio: z.string().max(16000) })
       .strict()
