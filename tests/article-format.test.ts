@@ -98,3 +98,16 @@ it("adds presentation paragraphs to long unformatted imports without changing wo
   ];
   expect(bodyFormat("My own paragraph.", short)).toEqual(short);
 });
+
+it("retains sentences when imported punctuation has no following space", () => {
+  const text =
+    "Technology networks.Its connections matter. " +
+    "A careful sentence retains all of the original evidence and important details. ".repeat(
+      35,
+    );
+  const result = bodyFormat(text.trim());
+  expect(result.length).toBeGreaterThan(2);
+  expect(result.map((b) => b.runs.map((r) => r.text).join("")).join(" ")).toBe(
+    text.trim(),
+  );
+});

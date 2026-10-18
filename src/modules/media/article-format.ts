@@ -106,9 +106,10 @@ export function bodyFormat(
         return [block];
       // Imported text sometimes has no paragraph boundaries. Break only at complete
       // sentence boundaries, retaining every word and never inventing section titles.
-      const sentences = value.match(
-        /[^.!?]+[.!?]+(?:["”’)]*)(?:\s+|$)|[^.!?]+$/g,
-      ) || [value];
+      const sentences = Array.from(
+        new Intl.Segmenter("en", { granularity: "sentence" }).segment(value),
+        (item) => item.segment,
+      );
       const paragraphs: string[] = [];
       let current = "";
       for (const sentence of sentences) {
