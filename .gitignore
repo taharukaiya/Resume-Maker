@@ -16,3 +16,7 @@ playwright-report/
 .DS_Store
 *.log
 hostinger.txt
+
+# Generated Python bytecode
+__pycache__/
+*.py[cod]

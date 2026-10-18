@@ -18,3 +18,7 @@ cdk.out
 coverage
 *.log
 hostinger.txt
+
+# Generated Python bytecode
+**/__pycache__/
+**/*.py[cod]
