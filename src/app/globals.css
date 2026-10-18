@@ -2318,13 +2318,21 @@ select:focus {
   line-height: 1.7;
 }
 .domain-form {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 16px;
 }
 .domain-form > .field {
-  flex: 1;
+  display: contents;
   margin: 0;
+}
+.domain-form > .field > * {
+  grid-column: 1;
+}
+.domain-form > .button {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: stretch;
 }
 .domain-record {
   margin-top: 25px;
@@ -2373,6 +2381,14 @@ select:focus {
   .domain-form {
     align-items: stretch;
     flex-direction: column;
+  }
+  .domain-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .domain-form > .button {
+    grid-column: 1;
+    grid-row: 4;
+    margin-top: 9px;
   }
   .workflow-continue .button {
     justify-content: center;
