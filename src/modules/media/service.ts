@@ -229,6 +229,12 @@ export async function upload(
             extraction.text,
             JSON.stringify({
               imageIds: figures.map((figure) => figure.id),
+              captions: Object.fromEntries(
+                figures.map((figure, index) => [
+                  figure.id,
+                  extraction.captions[index] || "",
+                ]),
+              ),
               warnings: extraction.warnings,
             }),
             id,

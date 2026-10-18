@@ -469,7 +469,7 @@ export function PortfolioEditor({ id }: { id: string }) {
       images: (file.article_assets?.imageIds || []).map((mediaId) => ({
         mediaId,
         alt: "",
-        caption: "",
+        caption: file.article_assets?.captions?.[mediaId] || "",
       })),
     });
     change({ ...document, sections });
@@ -2046,16 +2046,6 @@ export function PortfolioEditor({ id }: { id: string }) {
               Manage website address
             </Button>
           </section>
-          <section className="panel">
-            <h2>Changes since the published version</h2>
-            <p className="panel-description">
-              Review the changes below before approving this version.
-            </p>
-            <DocumentDiff
-              before={data.publishedDocument || null}
-              after={document}
-            />
-          </section>
           <JobList jobs={data.jobs.filter((j) => j.kind === "publish")} />
           <section className="panel">
             <h2>Published releases</h2>
@@ -2385,63 +2375,5 @@ function Permissions({
         </Button>
       </div>
     </section>
-  );
-}
-function DocumentDiff({
-  before,
-  after,
-}: {
-  before: PortfolioDocument | null;
-  after: PortfolioDocument;
-}) {
-  if (!before)
-    return (
-      <Notice
-        tone="info"
-        message="This is the first publication. Review all content in Preview before publishing."
-      />
-    );
-  const changes: { path: string; before: unknown; after: unknown }[] = [];
-  function compare(a: unknown, b: unknown, path: string) {
-    if (JSON.stringify(a) === JSON.stringify(b)) return;
-    if (a && b && typeof a === "object" && typeof b === "object") {
-      for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
-        compare(
-          (a as Record<string, unknown>)[key],
-          (b as Record<string, unknown>)[key],
-          path ? `${path}.${key}` : key,
-        );
-    } else changes.push({ path, before: a, after: b });
-  }
-  compare(before, after, "");
-  return changes.length ? (
-    <div className="stack">
-      {changes.map((change) => (
-        <div key={change.path}>
-          <strong style={{ fontSize: 11 }}>{change.path}</strong>
-          <div className="form-grid">
-            <div className="code-box" style={{ whiteSpace: "pre-wrap" }}>
-              <span className="muted">Previously</span>
-              <br />
-              {typeof change.before === "string"
-                ? change.before
-                : (JSON.stringify(change.before) ?? "Not set")}
-            </div>
-            <div className="code-box" style={{ whiteSpace: "pre-wrap" }}>
-              <span className="muted">Proposed</span>
-              <br />
-              {typeof change.after === "string"
-                ? change.after
-                : (JSON.stringify(change.after) ?? "Not set")}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <Notice
-      tone="success"
-      message="The content matches the currently published version."
-    />
   );
 }

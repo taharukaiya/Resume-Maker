@@ -1,9 +1,14 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
+import { extractFigureCaptions, captionForResource } from "./figure-captions";
 import { cleanPdfPageText } from "./article-content";
 import { extractPositionedText } from "./pdf-text";
 
-export type ArticleAssets = { imageIds: string[]; warnings: string[] };
+export type ArticleAssets = {
+  imageIds: string[];
+  captions?: Record<string, string>;
+  warnings: string[];
+};
 
 /** Embedded figures, rather than screenshots of pages. Runs without an AI key. */
 export async function extractArticleAssets(bytes: Buffer) {
@@ -13,6 +18,7 @@ export async function extractArticleAssets(bytes: Buffer) {
     maxImageSize: 4000000,
     isEvalSupported: false,
   });
+  const captions: string[] = [];
   const images: Buffer[] = [],
     warnings: string[] = [],
     seen = new Set<string>();
@@ -43,6 +49,12 @@ export async function extractArticleAssets(bytes: Buffer) {
         "Text could not be read automatically. Enter article text manually or use AI extraction for a scanned PDF.",
       );
     }
+    const pageCaptions = await extractFigureCaptions(bytes, pages).catch(() => {
+      warnings.push(
+        "Captions could not be matched automatically. Review each image and add captions manually.",
+      );
+      return [];
+    });
     for (let page = 1; page <= pages; page++) {
       try {
         const result = await parser.getImage({
@@ -64,7 +76,14 @@ export async function extractArticleAssets(bytes: Buffer) {
             })
             .webp({ quality: 84 })
             .toBuffer();
-          const hash = createHash("sha256").update(optimized).digest("hex");
+          const caption = captionForResource(
+            pageCaptions[page - 1],
+            image.name,
+          );
+          const hash = createHash("sha256")
+            .update(optimized)
+            .update(caption)
+            .digest("hex");
           if (seen.has(hash)) continue;
           seen.add(hash);
           if (
@@ -74,9 +93,10 @@ export async function extractArticleAssets(bytes: Buffer) {
             warnings.push(
               "Automatic extraction reached its 24-image / 16 MB limit. Upload any remaining figures separately.",
             );
-            return { images, text, warnings };
+            return { images, captions, text, warnings };
           }
           images.push(optimized);
+          captions.push(caption);
           totalBytes += optimized.length;
         }
       } catch {
@@ -86,7 +106,7 @@ export async function extractArticleAssets(bytes: Buffer) {
       }
     }
     warnings.push(
-      "Review extracted figures before publishing. Small decorations, vector drawings and images over 4 megapixels may need a separate image upload.",
+      "Review extracted figures and captions before publishing. Captions without a clear nearby figure are left blank. Small decorations, vector drawings and images over 4 megapixels may need a separate image upload.",
     );
   } catch {
     warnings.push(
@@ -95,5 +115,5 @@ export async function extractArticleAssets(bytes: Buffer) {
   } finally {
     await parser.destroy().catch(() => undefined);
   }
-  return { images, text, warnings };
+  return { images, captions, text, warnings };
 }
