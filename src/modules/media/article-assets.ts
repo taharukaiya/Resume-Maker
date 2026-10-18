@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { cleanPdfPageText } from "./article-content";
+import { extractPositionedText } from "./pdf-text";
 
 export type ArticleAssets = { imageIds: string[]; warnings: string[] };
 
@@ -26,7 +27,7 @@ export async function extractArticleAssets(bytes: Buffer) {
       );
     try {
       const extracted = cleanPdfPageText(
-        (await parser.getText({ first: pages, pageJoiner: "" })).pages,
+        await extractPositionedText(bytes, pages),
       );
       text = extracted.slice(0, 240000);
       if (extracted.length > 240000)

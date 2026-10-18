@@ -9,6 +9,7 @@ const config: NextConfig = {
     "@electric-sql/pglite",
     "pg",
     "pdf-parse",
+    "pdfjs-dist",
     "sharp",
     "pdfkit",
   ],
