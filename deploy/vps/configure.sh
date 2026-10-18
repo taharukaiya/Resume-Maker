@@ -48,6 +48,7 @@ APP_DB_PASSWORD=$(openssl rand -hex 32)
 SESSION_SECRET=$(openssl rand -hex 32)
 SETUP_TOKEN=$(openssl rand -hex 32)
 RELEASE_RETENTION=3
+VPS_PUBLIC_IP=
 AWS_REGION=ap-southeast-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=

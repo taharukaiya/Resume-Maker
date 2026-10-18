@@ -563,3 +563,92 @@ describe.sequential("Administrator website address management", () => {
     }
   });
 });
+
+describe("paired www domains", () => {
+  it("reserves both names atomically, verifies together and redirects only after activation", async () => {
+    const site = await createSite();
+    const root = `paired-${randomUUID()}.example.com`;
+    const added = await request(`sites/${site.id}/domains`, "POST", {
+      hostname: root,
+      wwwPrimary: true,
+    });
+    expect(added.status).toBe(201);
+    const database = await db();
+    const rows = await database.query<{
+      id: string;
+      hostname: string;
+      verification_token: string;
+      verified_at: string | null;
+    }>("SELECT * FROM domains WHERE site_id=$1", [site.id]);
+    expect(rows).toHaveLength(2);
+    const canonical = rows.find((row) => row.hostname === `www.${root}`)!;
+    const alias = rows.find((row) => row.hostname === root)!;
+    expect(
+      (await request(`sites/${site.id}/domains`)).data.domains,
+    ).toHaveLength(1);
+    expect(
+      (
+        await request(`sites/${site.id}/domains`, "DELETE", {
+          domainId: alias.id,
+        })
+      ).status,
+    ).toBe(409);
+    resolveTxt.mockResolvedValue([[canonical.verification_token]]);
+    expect(
+      (
+        await request(`sites/${site.id}/verify-domain`, "POST", {
+          domainId: canonical.id,
+        })
+      ).status,
+    ).toBe(200);
+    expect(resolveTxt).toHaveBeenLastCalledWith(`_brilliancy.${root}`);
+    expect(
+      await database.query(
+        "SELECT id FROM domains WHERE site_id=$1 AND verified_at IS NOT NULL",
+        [site.id],
+      ),
+    ).toHaveLength(2);
+    const { GET } =
+      await import("../src/app/website/[hostname]/[[...path]]/route");
+    const context = {
+      params: Promise.resolve({ hostname: root, path: ["article", "example"] }),
+    };
+    const req = new NextRequest(`https://${root}/article/example?ref=share`);
+    expect((await GET(req, context)).status).toBe(404);
+    await database.query(
+      "UPDATE domains SET activated_at=now() WHERE site_id=$1",
+      [site.id],
+    );
+    const redirected = await GET(req, context);
+    expect(redirected.status).toBe(308);
+    expect(redirected.headers.get("location")).toBe(
+      `https://www.${root}/article/example?ref=share`,
+    );
+    const login = await GET(
+      new NextRequest(`https://www.${root}/login?next=https://evil.example`),
+      { params: Promise.resolve({ hostname: `www.${root}`, path: ["login"] }) },
+    );
+    expect(login.headers.get("location")).toBe(`${appUrl}/login`);
+    expect(
+      (await request(`sites/${site.id}/domains`, "PUT", { domainId: alias.id }))
+        .status,
+    ).toBe(409);
+  });
+  it("rolls back www reservation when the bare name belongs to another portfolio", async () => {
+    const first = await createSite();
+    const second = await createSite();
+    const root = `occupied-${randomUUID()}.example.com`;
+    await addDomain(first.id, root);
+    expect(
+      (
+        await request(`sites/${second.id}/domains`, "POST", {
+          hostname: root,
+          wwwPrimary: true,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (await request(`sites/${second.id}/domains`)).data.domains,
+    ).toHaveLength(0);
+  });
+});

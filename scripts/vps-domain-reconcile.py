@@ -78,35 +78,46 @@ def write_atomic(path, text):
 
 def reconcile(row, expected_ip):
     host = row["hostname"]
-    key, caddy, proxy = domain_files(host)
-    check_conflicts(host, {caddy, proxy})
-    addresses = {item[4][0] for item in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)}
-    if not addresses or addresses != {expected_ip}:
-        raise ValueError("Set the domain A record to " + expected_ip + ". Remove conflicting A/AAAA records, wait for DNS, then retry.")
+    hosts = [host, *row.get("aliases", [])]
+    files = [domain_files(name) for name in hosts]
+    owned = {path for _, caddy, proxy in files for path in (caddy, proxy)}
+    # Validate every alias before writing any route or requesting certificates.
+    for name in hosts:
+        check_conflicts(name, owned)
+        addresses = {item[4][0] for item in socket.getaddrinfo(name, 443, type=socket.SOCK_STREAM)}
+        if not addresses or addresses != {expected_ip}:
+            raise ValueError("Set " + name + " to VPS IP " + expected_ip + " using the shown A record or www CNAME. Remove conflicting website A/AAAA records, wait for DNS, then retry.")
     if row["status"] == "queued":
-        config = worker("vps-domain.ts", "config", host)
-        # A public marker lets the next pass verify the exact TLS route.
-        config = config.replace("    encode zstd gzip", "    header X-Brilliancy-Domain " + host + "\n    encode zstd gzip")
-        write_atomic(caddy, config)
+        previous = {caddy: caddy.read_text() if caddy.exists() else None for _, caddy, _ in files}
         try:
+            for name, (_, caddy, _) in zip(hosts, files):
+                config = worker("vps-domain.ts", "config", name)
+                config = config.replace("    encode zstd gzip", "    header X-Brilliancy-Domain " + name + "\n    encode zstd gzip")
+                write_atomic(caddy, config)
             command("exec", "-T", "caddy", "caddy", "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile")
             command("exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile")
         except Exception:
-            caddy.unlink(missing_ok=True)  # Only this task's new generated file.
+            for path, original in previous.items():
+                if original is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    write_atomic(path, original)
             raise
-        write_atomic(proxy, json.dumps(proxy_config(host, key), indent=2))
-        worker("vps-domain-requests.ts", "status", row["id"], "connecting", "DNS confirmed. Waiting for HTTPS certificate; refresh status shortly.")
+        for name, (key, _, proxy) in zip(hosts, files):
+            write_atomic(proxy, json.dumps(proxy_config(name, key), indent=2))
+        worker("vps-domain-requests.ts", "status", row["id"], "connecting", "DNS confirmed. Issuing HTTPS certificates for your website and redirect address. Status updates automatically.")
         return
-    connection = http.client.HTTPSConnection(host, timeout=15)
-    try:
-        connection.request("GET", "/")
-        response = connection.getresponse()
-        if response.getheader("X-Brilliancy-Domain") != host:
-            raise ValueError("HTTPS has not reached this portfolio route yet. Retry connection after DNS settles.")
-    finally:
-        connection.close()
+    for name in hosts:
+        connection = http.client.HTTPSConnection(name, timeout=15)
+        try:
+            connection.request("GET", "/")
+            response = connection.getresponse()
+            if response.getheader("X-Brilliancy-Domain") != name:
+                raise ValueError("HTTPS is still being prepared for " + name + ". Retry connection shortly.")
+        finally:
+            connection.close()
     worker("vps-domain.ts", "activate", host)
-    worker("vps-domain-requests.ts", "status", row["id"], "ready", "HTTPS connected. Select this address and publish.")
+    worker("vps-domain-requests.ts", "status", row["id"], "ready", "HTTPS and redirects connected. Select this website address above, then review and publish.")
 
 
 def main():

@@ -58,9 +58,9 @@ try {
         );
       await tx.query(
         action === "activate"
-          ? "UPDATE domains SET activated_at=now() WHERE id=$1"
-          : "UPDATE domains SET activated_at=NULL,is_primary=false WHERE id=$1",
-        [domain.id],
+          ? "UPDATE domains SET activated_at=now() WHERE site_id=$2 AND (id=$1 OR redirect_to=$3) AND verified_at IS NOT NULL"
+          : "UPDATE domains SET activated_at=NULL,is_primary=false WHERE site_id=$2 AND (id=$1 OR redirect_to=$3)",
+        [domain.id, domain.site_id, hostname],
       );
     });
     console.log(

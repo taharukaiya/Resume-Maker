@@ -12,17 +12,26 @@ try {
       id: string;
       hostname: string;
       verification_token: string;
+      verification_hostname: string | null;
+      aliases: string[];
       status: string;
     }>(
-      "SELECT d.id,d.hostname,d.verification_token,s.value->>'status' AS status FROM domains d JOIN settings s ON s.key='vps.domain.request.' || d.id::text WHERE d.verified_at IS NOT NULL AND d.activated_at IS NULL AND s.value->>'status' IN ('queued','connecting') ORDER BY d.created_at LIMIT 10",
+      "SELECT d.id,d.hostname,d.verification_token,d.verification_hostname,ARRAY(SELECT a.hostname FROM domains a WHERE a.redirect_to=d.hostname AND a.site_id=d.site_id) AS aliases,s.value->>'status' AS status FROM domains d JOIN settings s ON s.key='vps.domain.request.' || d.id::text WHERE d.redirect_to IS NULL AND d.verified_at IS NOT NULL AND d.activated_at IS NULL AND s.value->>'status' IN ('queued','connecting') ORDER BY d.created_at LIMIT 10",
     );
     const output = [];
     for (const row of rows) {
       try {
-        const txt = await resolveTxt(`_brilliancy.${row.hostname}`);
+        const txt = await resolveTxt(
+          `_brilliancy.${row.verification_hostname || row.hostname}`,
+        );
         if (!txt.some((parts) => parts.join("") === row.verification_token))
           throw new Error("Ownership record changed.");
-        output.push({ id: row.id, hostname: row.hostname, status: row.status });
+        output.push({
+          id: row.id,
+          hostname: row.hostname,
+          aliases: row.aliases,
+          status: row.status,
+        });
       } catch {
         await database.query("UPDATE settings SET value=$2 WHERE key=$1", [
           `vps.domain.request.${row.id}`,

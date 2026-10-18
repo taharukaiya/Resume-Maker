@@ -18,7 +18,6 @@ test("admin can add a root domain while preserving an unsaved portfolio draft", 
     .getByLabel("Biography", { exact: true })
     .fill("Keep these unsaved edits.");
   await page.getByRole("tab", { name: "Website address", exact: true }).click();
-  await page.getByText("Connect a personal domain", { exact: true }).click();
   await expect(
     page.getByText("Suggested domain: researchbyraisa.com", { exact: true }),
   ).toBeVisible();
@@ -34,7 +33,7 @@ test("admin can add a root domain while preserving an unsaved portfolio draft", 
     .fill(`https://${hostname}/`);
   await page.getByRole("button", { name: "Add domain", exact: true }).click();
   await expect(
-    page.getByText(`_brilliancy.${hostname}`, { exact: true }),
+    page.getByText(`_brilliancy.${hostname}`, { exact: true }).first(),
   ).toBeVisible();
   const choice = page.getByLabel("Public website address", { exact: true });
   await expect(choice.locator("option", { hasText: hostname })).toBeDisabled();
@@ -155,6 +154,63 @@ test("selecting a connected domain keeps the live address until republishing", a
   ).toBe(true);
   await page.screenshot({
     path: ".test-data/website-address-mobile.png",
+    fullPage: true,
+  });
+});
+
+test("paired domain instructions are clear on desktop and mobile", async ({
+  page,
+}) => {
+  await signInAdmin(page);
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "Rukaiya Taha", slug: `domain-dns-${Date.now()}` },
+  });
+  const { id } = await created.json();
+  await page.route(`**/api/sites/${id}/domains`, (route) =>
+    route.fulfill({
+      json: {
+        hostingMode: "vps",
+        dnsTarget: "187.127.210.231",
+        studioUrl: "https://studio.example.com",
+        domains: [
+          {
+            id: "dc02ba25-002c-43d7-9e79-d9c4edab5350",
+            hostname: "www.researchbyrukaiya.com",
+            verification_hostname: "researchbyrukaiya.com",
+            verification_token: "example-ownership-token",
+            verified_at: null,
+            activated_at: null,
+            is_primary: false,
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/studio/portfolios/${id}`);
+  await page.getByRole("tab", { name: "Website address", exact: true }).click();
+  await expect(page.getByLabel("Domain name", { exact: true })).toHaveValue(
+    "researchbyrukaiya.com",
+  );
+  await expect(
+    page.getByRole("cell", { name: "187.127.210.231", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Check DNS & connect", exact: true }),
+  ).toBeVisible();
+  await page.locator(".domain-record").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "test-results/domain-dns-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/domain-dns-mobile.png",
     fullPage: true,
   });
 });

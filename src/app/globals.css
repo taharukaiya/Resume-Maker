@@ -3176,3 +3176,95 @@ select:focus {
 .article-rich-content ul,.article-rich-content ol{padding-left:26px}.article-rich-content blockquote{border-left:3px solid #dce2ec;padding-left:18px}
 .article-editor-help{margin:0;padding:10px 16px;font-size:12px;color:#64748b;border-top:1px solid #eef0f5}
 @media(max-width:600px){.article-rich-content{padding:14px;min-height:260px}.article-rich-toolbar{gap:2px}.article-rich-toolbar button{width:34px}}
+.domain-login-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+}
+.domain-login-note svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.domain-login-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.dns-records-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.dns-records {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+.dns-records caption {
+  text-align: left;
+  padding: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dns-records th,
+.dns-records td {
+  text-align: left;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.dns-records th {
+  background: var(--canvas);
+  font-weight: 600;
+}
+.dns-records th:first-child {
+  width: 85px;
+}
+.dns-records th:last-child {
+  width: 95px;
+}
+.dns-records code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dns-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+  color: inherit;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.domain-redirect-note {
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.domain-record {
+  min-width: 0;
+}
+.domain-record > .panel-description {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .dns-records {
+    min-width: 440px;
+  }
+  .domain-login-note {
+    padding: 12px;
+  }
+}

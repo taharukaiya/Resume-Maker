@@ -68,6 +68,25 @@ class DomainSafetyTests(unittest.TestCase):
         self.assertEqual(list((self.compose / "domains").iterdir()), [])
         self.assertEqual(list(self.proxy.iterdir()), [])
 
+    def test_alias_dns_failure_leaves_both_routes_untouched(self):
+        def addresses(host, *args, **kwargs):
+            ip = "187.127.210.231" if host.startswith("www.") else "203.0.113.9"
+            return [(None, None, None, None, (ip, 443))]
+        with patch.object(module.socket, "getaddrinfo", side_effect=addresses):
+            with self.assertRaises(ValueError):
+                module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"queued"}, "187.127.210.231")
+        self.assertEqual(list((self.compose / "domains").iterdir()), [])
+        self.assertEqual(list(self.proxy.iterdir()), [])
+
+    def test_pair_creates_separate_exact_routes(self):
+        with patch.object(module.socket, "getaddrinfo", return_value=[(None, None, None, None, ("187.127.210.231", 443))]), patch.object(module, "worker", return_value="    encode zstd gzip"), patch.object(module, "command"):
+            module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"queued"}, "187.127.210.231")
+        self.assertEqual(len(list(self.proxy.iterdir())),2)
+        for host in ["www.example.com","example.com"]:
+            _, caddy, proxy = module.domain_files(host)
+            self.assertIn("X-Brilliancy-Domain " + host,caddy.read_text())
+            self.assertIn("Host(`"+host+"`)",proxy.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

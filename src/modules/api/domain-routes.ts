@@ -20,6 +20,8 @@ type Domain = {
   distribution_id: string | null;
   cdn_hostname: string | null;
   is_primary: boolean;
+  verification_hostname: string | null;
+  redirect_to: string | null;
 };
 
 function normalizeHostname(input: string) {
@@ -94,7 +96,7 @@ export async function domainRoutes(
   if (action === "domains" && method === "GET") {
     return json({
       domains: await database.query<Domain>(
-        "SELECT d.*, (SELECT value FROM settings WHERE key='vps.domain.request.' || d.id::text) AS connection FROM domains d WHERE site_id=$1 ORDER BY created_at DESC,id DESC",
+        "SELECT d.*, (SELECT value FROM settings WHERE key='vps.domain.request.' || d.id::text) AS connection FROM domains d WHERE site_id=$1 AND redirect_to IS NULL ORDER BY created_at DESC,id DESC",
         [siteId],
       ),
       hostingMode: config().vps
@@ -102,6 +104,8 @@ export async function domainRoutes(
         : config().publishBucket
           ? "cloud"
           : "local",
+      dnsTarget: process.env.VPS_PUBLIC_IP || null,
+      studioUrl: config().appUrl,
     });
   }
   if (action === "connect-domain" && method === "POST") {
@@ -119,7 +123,7 @@ export async function domainRoutes(
       [domainId, siteId],
     );
     invariant(
-      domain?.verified_at,
+      domain?.verified_at && !domain.redirect_to,
       400,
       "Verify this domain's DNS ownership first.",
     );
@@ -150,22 +154,53 @@ export async function domainRoutes(
   }
   if (action === "domains" && method === "POST") {
     const input = z
-      .object({ hostname: z.string().min(1).max(2048) })
+      .object({
+        hostname: z.string().min(1).max(2048),
+        wwwPrimary: z.boolean().optional(),
+      })
       .strict()
       .parse(await body(request));
-    const hostname = normalizeHostname(input.hostname);
+    const entered = normalizeHostname(input.hostname);
+    invariant(
+      !input.wwwPrimary || config().vps,
+      400,
+      "Paired www setup requires VPS hosting.",
+    );
+    const root = input.wwwPrimary ? entered.replace(/^www\./, "") : entered;
+    const hostname = input.wwwPrimary
+      ? normalizeHostname(`www.${root}`)
+      : entered;
+    if (input.wwwPrimary) normalizeHostname(root);
     const domainId = randomUUID();
+    const verificationToken = token();
     await database.transaction(async (tx) => {
       await lockSite(tx, siteId);
       const created = await tx.query(
-        "INSERT INTO domains(id,site_id,hostname,verification_token) VALUES($1,$2,$3,$4) ON CONFLICT(hostname) DO NOTHING RETURNING id",
-        [domainId, siteId, hostname, token()],
+        "INSERT INTO domains(id,site_id,hostname,verification_token,verification_hostname) VALUES($1,$2,$3,$4,$5) ON CONFLICT(hostname) DO NOTHING RETURNING id",
+        [
+          domainId,
+          siteId,
+          hostname,
+          verificationToken,
+          input.wwwPrimary ? root : null,
+        ],
       );
       invariant(
         created.length,
         409,
         "This domain has already been added. Use its existing entry or choose another domain.",
       );
+      if (input.wwwPrimary) {
+        const alias = await tx.query(
+          "INSERT INTO domains(id,site_id,hostname,verification_token,verification_hostname,redirect_to) VALUES($1,$2,$3,$4,$3,$5) ON CONFLICT(hostname) DO NOTHING RETURNING id",
+          [randomUUID(), siteId, root, verificationToken, hostname],
+        );
+        invariant(
+          alias.length,
+          409,
+          "The address without www is already connected or reserved. Remove its unused setup first, or ask the hosting administrator to migrate the existing address.",
+        );
+      }
       await audit(user.id, siteId, "domain.added", { domainId, hostname }, tx);
     });
     return json({ id: domainId }, 201);
@@ -186,7 +221,8 @@ export async function domainRoutes(
         );
         invariant(selected, 404, "Domain not found for this portfolio.");
         invariant(
-          selected.verified_at &&
+          !selected.redirect_to &&
+            selected.verified_at &&
             selected.activated_at &&
             (config().vps || selected.distribution_id),
           409,
@@ -226,6 +262,11 @@ export async function domainRoutes(
       );
       invariant(domain, 404, "Domain not found for this portfolio.");
       invariant(
+        !domain.redirect_to,
+        409,
+        "Manage this redirect through its www domain.",
+      );
+      invariant(
         !domain.is_primary &&
           !domain.activated_at &&
           !domain.distribution_id &&
@@ -249,6 +290,10 @@ export async function domainRoutes(
         !used.length && !jobs.length && !history.length,
         409,
         "This domain has been used for publishing. Keep its history and ask the hosting administrator to retire it.",
+      );
+      await tx.query(
+        "DELETE FROM domains WHERE redirect_to=$1 AND site_id=$2",
+        [domain.hostname, siteId],
       );
       await tx.query("DELETE FROM domains WHERE id=$1 AND site_id=$2", [
         domainId,
@@ -274,9 +319,16 @@ export async function domainRoutes(
       [domainId, siteId],
     );
     invariant(domain, 404, "Domain not found for this portfolio.");
+    invariant(
+      !domain.redirect_to,
+      409,
+      "Manage this redirect through its www domain.",
+    );
     let values: string[][];
     try {
-      values = await resolveTxt(`_brilliancy.${domain.hostname}`);
+      values = await resolveTxt(
+        `_brilliancy.${domain.verification_hostname || domain.hostname}`,
+      );
     } catch {
       throw new AppError(
         400,
@@ -295,6 +347,10 @@ export async function domainRoutes(
         [domainId, siteId, domain.verification_token],
       );
       invariant(verified.length, 404, "Domain not found for this portfolio.");
+      await tx.query(
+        "UPDATE domains SET verified_at=now() WHERE redirect_to=$1 AND site_id=$2 AND verification_token=$3",
+        [domain.hostname, siteId, domain.verification_token],
+      );
       await audit(
         user.id,
         siteId,

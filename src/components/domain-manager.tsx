@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Check, Copy, Globe, LockKeyhole } from "lucide-react";
 import { api, Badge, Button, Field, Feedback, useFeedback } from "./ui";
 import { useConfirmation } from "./confirmation";
 type Domain = {
@@ -11,6 +12,7 @@ type Domain = {
   cdn_hostname: string | null;
   distribution_id: string | null;
   is_primary: boolean;
+  verification_hostname?: string | null;
   connection?: { status: string; message: string };
 };
 export function DomainManager({
@@ -30,18 +32,26 @@ export function DomainManager({
 }) {
   const feedback = useFeedback();
   const confirm = useConfirmation();
-  const [hostname, setHostname] = useState("");
+  const [hostname, setHostname] = useState(suggestedDomain);
+  const [dnsTarget, setDnsTarget] = useState<string | null>(null);
+  const [studioUrl, setStudioUrl] = useState("");
+  const [copied, setCopied] = useState("");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [origin, setOrigin] = useState("");
   const [hostingMode, setHostingMode] = useState("local");
   const [selection, setSelection] = useState("");
   const [loading, setLoading] = useState(true);
   async function load() {
-    const result = await api<{ domains: Domain[]; hostingMode: string }>(
-      `sites/${siteId}/domains`,
-    );
+    const result = await api<{
+      domains: Domain[];
+      hostingMode: string;
+      dnsTarget?: string | null;
+      studioUrl?: string;
+    }>(`sites/${siteId}/domains`);
     setDomains(result.domains);
     setHostingMode(result.hostingMode);
+    setDnsTarget(result.dnsTarget || null);
+    setStudioUrl(result.studioUrl || window.location.origin);
     setSelection(result.domains.find((domain) => domain.is_primary)?.id || "");
   }
   useEffect(() => {
@@ -49,6 +59,39 @@ export function DomainManager({
     setLoading(true);
     void feedback.run(load).finally(() => setLoading(false));
   }, [siteId]);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(""), 1800);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  const connecting = domains.some((domain) =>
+    ["queued", "connecting"].includes(domain.connection?.status || ""),
+  );
+  useEffect(() => {
+    if (!connecting) return;
+    const timer = setInterval(() => {
+      void api<{ domains: Domain[] }>(`sites/${siteId}/domains`)
+        .then((result) => setDomains(result.domains))
+        .catch(() => {});
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [connecting, siteId]);
+  const copy = (value: string) => (
+    <button
+      type="button"
+      className="dns-copy"
+      aria-label={`Copy ${value}`}
+      onClick={() =>
+        void feedback.run(async () => {
+          await navigator.clipboard.writeText(value);
+          setCopied(value);
+        })
+      }
+    >
+      {copied === value ? <Check size={15} /> : <Copy size={15} />}
+      {copied === value ? "Copied" : "Copy"}
+    </button>
+  );
   const primary = domains.find((domain) => domain.is_primary);
   const addressChanged = selection !== (primary?.id || "");
   useEffect(() => {
@@ -64,11 +107,10 @@ export function DomainManager({
   return (
     <section className="panel domain-manager">
       <p className="eyebrow">Website address</p>
-      <h2>Choose this portfolio’s address.</h2>
+      <h2>A personal address for this portfolio.</h2>
       <p className="panel-description">
-        Use a domain you own, such as researchbyrukaiya.com, as this portfolio’s
-        public website. Administrators can change the selected address after
-        connecting the new domain.
+        Choose a name, add the DNS records, then connect. You can use the
+        suggested name or enter any domain you own.
       </p>
       <div className="address-current">
         <span>
@@ -159,7 +201,16 @@ export function DomainManager({
             )}
         </form>
       )}
-      <details className="domain-setup" open={domains.length > 0 || undefined}>
+      <div className="domain-login-note">
+        <LockKeyhole size={18} aria-hidden="true" />
+        <p>
+          One secure dashboard for every portfolio:{" "}
+          <strong>{studioUrl}/login</strong>. Visitors to a connected
+          portfolio’s <strong>/login</strong> address are sent here. Clients
+          sign in to their own assigned portfolios.
+        </p>
+      </div>
+      <details className="domain-setup" open>
         <summary>Connect a personal domain</summary>
         {!!suggestedDomain && (
           <div className="domain-suggestion">
@@ -180,25 +231,24 @@ export function DomainManager({
         )}
         <ol className="domain-steps">
           <li>
-            <strong>Register the domain</strong>
+            <strong>Choose your name</strong>
             <span>
               Use a domain you already own, or register one with your domain
               provider. Adding a name here does not purchase it.
             </span>
           </li>
           <li>
-            <strong>Confirm ownership</strong>
+            <strong>Add DNS records</strong>
             <span>
-              Add the domain below, create its TXT record at your DNS provider,
-              then verify it.
+              Copy the records shown below into Hostinger or your domain
+              provider’s DNS settings.
             </span>
           </li>
           <li>
-            <strong>Connect hosting & HTTPS</strong>
+            <strong>Connect & publish</strong>
             <span>
-              Point the domain to this VPS, then use Connect hosting & HTTPS
-              below. Select it as the public website address above and
-              republish.
+              Verify ownership, connect HTTPS, then select the ready address
+              above and review your portfolio before publishing.
             </span>
           </li>
         </ol>
@@ -211,11 +261,12 @@ export function DomainManager({
                 method: "POST",
                 body: JSON.stringify({
                   hostname: hostname.trim().toLowerCase(),
+                  ...(hostingMode === "vps" ? { wwwPrimary: true } : {}),
                 }),
               });
-              setHostname("");
+              setHostname(suggestedDomain);
               await load();
-            }, "Domain added. Create the TXT record below to verify ownership.");
+            }, "Domain added. Follow the DNS instructions below.");
           }}
         >
           <Field
@@ -235,6 +286,13 @@ export function DomainManager({
             Add domain
           </Button>
         </form>
+        {hostingMode === "vps" && (
+          <p className="panel-description">
+            <Globe size={16} aria-hidden="true" /> Your main address will use
+            www. The address without www will redirect automatically, with HTTPS
+            on both.
+          </p>
+        )}
         {domains.map((domain) => (
           <div key={domain.id} className="domain-record">
             <div className="spread wrap">
@@ -251,35 +309,113 @@ export function DomainManager({
                 }
               />
             </div>
+            <p>
+              In Hostinger:{" "}
+              <strong>
+                Domains → Domain portfolio → Manage → DNS / Nameservers
+              </strong>
+              . If your DNS is managed elsewhere, add the records there. Use the
+              default TTL.
+            </p>
+            <div className="dns-records-scroll">
+              <table className="dns-records">
+                <caption>
+                  DNS records for{" "}
+                  {domain.verification_hostname || domain.hostname}
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Name / Host</th>
+                    <th>Value / Points to</th>
+                    <th>Copy value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>A</td>
+                    <td>
+                      {domain.verification_hostname ? "@" : domain.hostname}
+                    </td>
+                    <td>
+                      <code>
+                        {dnsTarget ||
+                          "VPS public IP — ask your hosting administrator"}
+                      </code>
+                    </td>
+                    <td>{dnsTarget && copy(dnsTarget)}</td>
+                  </tr>
+                  {domain.verification_hostname && (
+                    <tr>
+                      <td>CNAME</td>
+                      <td>www</td>
+                      <td>
+                        <code>{domain.verification_hostname}</code>
+                      </td>
+                      <td>{copy(domain.verification_hostname)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td>TXT</td>
+                    <td>
+                      <code>
+                        {domain.verification_hostname
+                          ? "_brilliancy"
+                          : `_brilliancy.${domain.hostname}`}
+                      </code>
+                    </td>
+                    <td>
+                      <code>{domain.verification_token}</code>
+                    </td>
+                    <td>{copy(domain.verification_token)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="panel-description">
+              Full verification record:{" "}
+              <code>
+                _brilliancy.{domain.verification_hostname || domain.hostname}
+              </code>
+              . Keep this TXT record after connecting. DNS changes may take up
+              to 48 hours. Update conflicting website A/AAAA/CNAME records only;
+              keep your email MX and TXT records.
+            </p>
+            {domain.verification_hostname && (
+              <p className="domain-redirect-note">
+                https://{domain.verification_hostname} →{" "}
+                <strong>https://{domain.hostname}</strong> · HTTPS and redirect
+                are configured together.
+              </p>
+            )}
             {!domain.verified_at ? (
               <>
-                <p>
-                  Create this TXT record at your DNS provider. Some providers
-                  ask for just <code>_brilliancy</code> within the domain’s DNS
-                  zone.
-                </p>
-                <dl className="dns-values">
-                  <dt>Type</dt>
-                  <dd>TXT</dd>
-                  <dt>Name</dt>
-                  <dd>_brilliancy.{domain.hostname}</dd>
-                  <dt>Value</dt>
-                  <dd>{domain.verification_token}</dd>
-                </dl>
                 <Button
                   variant="secondary small"
                   busy={feedback.busy}
                   onClick={() =>
-                    void feedback.run(async () => {
-                      await api(`sites/${siteId}/verify-domain`, {
-                        method: "POST",
-                        body: JSON.stringify({ domainId: domain.id }),
-                      });
-                      await load();
-                    }, "Ownership verified. Connect hosting and HTTPS next.")
+                    void feedback.run(
+                      async () => {
+                        await api(`sites/${siteId}/verify-domain`, {
+                          method: "POST",
+                          body: JSON.stringify({ domainId: domain.id }),
+                        });
+                        if (hostingMode === "vps")
+                          await api(`sites/${siteId}/connect-domain`, {
+                            method: "POST",
+                            body: JSON.stringify({ domainId: domain.id }),
+                          });
+                        await load();
+                      },
+                      hostingMode === "vps"
+                        ? "Ownership verified. Connecting HTTPS automatically; status updates here."
+                        : "Ownership verified.",
+                    )
                   }
                 >
-                  Verify DNS record
+                  {hostingMode === "vps"
+                    ? "Check DNS & connect"
+                    : "Verify DNS record"}
                 </Button>
               </>
             ) : (

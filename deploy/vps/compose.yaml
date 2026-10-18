@@ -17,6 +17,7 @@ x-runtime: &runtime
   SETUP_TOKEN: ${SETUP_TOKEN:-}
   RUN_WORKER: "false"
   RELEASE_RETENTION: ${RELEASE_RETENTION:-3}
+  VPS_PUBLIC_IP: ${VPS_PUBLIC_IP:-}
   CLAMAV_HOST: scanner
   CLAMAV_PORT: "3310"
   EMAIL_FROM: ${EMAIL_FROM:?Configure a verified sender}
