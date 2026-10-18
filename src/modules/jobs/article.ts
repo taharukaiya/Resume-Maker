@@ -1,4 +1,5 @@
 import { extractLabeledMetadata } from "@/modules/media/article-metadata";
+import { extractPositionedText } from "@/modules/media/pdf-text";
 import {
   articleContent,
   cleanPrintArtifacts,
@@ -40,15 +41,11 @@ export async function generateArticle(job: {
   invariant(file?.mime === "application/pdf", 400, "Select a PDF article.");
   const bytes = await getObject(file.storage_key);
   invariant(bytes, 404, "Article file not found.");
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: bytes });
   let text = "";
   try {
-    text = cleanPdfPageText((await parser.getText({ pageJoiner: "" })).pages);
+    text = cleanPdfPageText(await extractPositionedText(bytes, 40));
   } catch {
     /* Native PDF input can handle scanned articles. */
-  } finally {
-    await parser.destroy();
   }
   const usableText =
     text.trim().length >= 200 && text.length <= 240000
