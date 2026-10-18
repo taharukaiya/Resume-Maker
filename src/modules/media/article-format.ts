@@ -99,36 +99,49 @@ export function bodyFormat(
   text: string,
   blocks?: ArticleFormat,
 ): ArticleFormat {
-  const edited = matchingFormat(text, blocks);
-  if (edited) return edited;
-  return plainFormat(text).flatMap((block) => {
-    const value = block.runs[0].text;
-    if (block.kind !== "paragraph" || value.split(/\s+/).length < 220)
-      return [block];
-    // Imported text sometimes has no paragraph boundaries. Break only at complete
-    // sentence boundaries, retaining every word and never inventing section titles.
-    const sentences = value.match(
-      /[^.!?]+[.!?]+(?:["”’)]*)(?:\s+|$)|[^.!?]+$/g,
-    ) || [value];
-    const paragraphs: string[] = [];
-    let current = "";
-    for (const sentence of sentences) {
-      current += sentence;
-      if (current.trim().split(/\s+/).length >= 110) {
-        paragraphs.push(current.trim());
-        current = "";
+  return (matchingFormat(text, blocks) || plainFormat(text)).flatMap(
+    (block) => {
+      const value = block.runs.map((run) => run.text).join("");
+      if (block.kind !== "paragraph" || value.split(/\s+/).length < 220)
+        return [block];
+      // Imported text sometimes has no paragraph boundaries. Break only at complete
+      // sentence boundaries, retaining every word and never inventing section titles.
+      const sentences = value.match(
+        /[^.!?]+[.!?]+(?:["”’)]*)(?:\s+|$)|[^.!?]+$/g,
+      ) || [value];
+      const paragraphs: string[] = [];
+      let current = "";
+      for (const sentence of sentences) {
+        current += sentence;
+        if (current.trim().split(/\s+/).length >= 110) {
+          paragraphs.push(current.trim());
+          current = "";
+        }
       }
-    }
-    if (current.trim()) paragraphs.push(current.trim());
-    // Do not risk losing unusual punctuation if the sentence matcher cannot round-trip.
-    if (
-      paragraphs.join(" ").replace(/\s+/g, " ") !==
-      value.replace(/\s+/g, " ").trim()
-    )
-      return [block];
-    return paragraphs.map((text) => ({
-      kind: "paragraph" as const,
-      runs: [{ text }],
-    }));
-  });
+      if (current.trim()) paragraphs.push(current.trim());
+      // Do not risk losing unusual punctuation if the sentence matcher cannot round-trip.
+      if (
+        paragraphs.join(" ").replace(/\s+/g, " ") !==
+        value.replace(/\s+/g, " ").trim()
+      )
+        return [block];
+      let cursor = 0;
+      return paragraphs.map((text) => {
+        const start = value.indexOf(text, cursor),
+          end = start + text.length;
+        cursor = end;
+        let offset = 0;
+        const runs = block.runs.flatMap((run) => {
+          const runStart = offset;
+          offset += run.text.length;
+          const from = Math.max(start, runStart),
+            to = Math.min(end, offset);
+          return to > from
+            ? [{ ...run, text: run.text.slice(from - runStart, to - runStart) }]
+            : [];
+        });
+        return { kind: "paragraph" as const, runs };
+      });
+    },
+  );
 }

@@ -84,5 +84,17 @@ it("adds presentation paragraphs to long unformatted imports without changing wo
       .join(" "),
   ).toBe(text);
   const edited = [{ kind: "paragraph" as const, runs: [{ text, bold: true }] }];
-  expect(bodyFormat(text, edited)).toBe(edited);
+  const recovered = bodyFormat(text, edited);
+  expect(recovered.length).toBeGreaterThan(1);
+  expect(recovered.every((b) => b.runs.every((r) => r.bold))).toBe(true);
+  expect(
+    recovered.map((b) => b.runs.map((r) => r.text).join("")).join(" "),
+  ).toBe(text);
+  const short = [
+    {
+      kind: "paragraph" as const,
+      runs: [{ text: "My own paragraph.", italic: true }],
+    },
+  ];
+  expect(bodyFormat("My own paragraph.", short)).toEqual(short);
 });
