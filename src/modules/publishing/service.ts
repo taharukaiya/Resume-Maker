@@ -1,4 +1,4 @@
-import { articlePdf } from "./article-pdf";
+import { articlePdf, type PdfFigure } from "./article-pdf";
 import { socialCard } from "./social-card";
 import { portfolioSeo } from "../portfolios/seo";
 import { readFile } from "node:fs/promises";
@@ -146,7 +146,7 @@ export async function buildRelease(
       continue;
     for (const entry of section.entries) {
       if (!entry.fullText?.trim() && !entry.body.trim()) continue;
-      const figures: { bytes: Buffer; caption: string }[] = [];
+      const figures: PdfFigure[] = [];
       const images = [...(entry.images || [])];
       if (
         entry.coverId &&
@@ -165,6 +165,13 @@ export async function buildRelease(
             figures.push({
               bytes: await sharp(bytes).webp().toBuffer(),
               caption: figure.caption,
+              position:
+                figure.mediaId === entry.coverId &&
+                !(entry.images || []).some(
+                  (image) => image.mediaId === entry.coverId,
+                )
+                  ? "cover"
+                  : "afterBody",
             });
         }
       }

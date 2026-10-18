@@ -1,4 +1,4 @@
-import { matchingFormat, plainFormat } from "../media/article-format";
+import { bodyFormat } from "../media/article-format";
 import PDFDocument from "pdfkit";
 import path from "node:path";
 import sharp from "sharp";
@@ -6,11 +6,17 @@ import type { Entry } from "../portfolios/schema";
 import { formatDate } from "./render";
 import { articleContent, articleBlocks } from "../media/article-content";
 
+export type PdfFigure = {
+  bytes: Buffer;
+  caption: string;
+  position?: "cover" | "afterBody";
+};
+
 /** Typeset the reviewed article; source uploads remain unchanged in the library. */
 export async function articlePdf(
   entry: Entry,
   canonical: string,
-  figures: { bytes: Buffer; caption: string }[] = [],
+  figures: PdfFigure[] = [],
 ) {
   const content = articleContent(entry.fullText || "", {
     title: entry.title,
@@ -96,9 +102,13 @@ export async function articlePdf(
     .restore();
   pdf.y = dividerY + 24;
   if (abstract) drawAbstract(pdf, abstract, width);
+  if (entry.display?.images !== false)
+    for (const figure of figures.filter((f) => f.position === "cover"))
+      await drawFigure(pdf, figure, width);
   let number = 0;
-  for (const block of matchingFormat(content.body, entry.formattedBody) ||
-    plainFormat(content.body)) {
+  for (const block of entry.display?.fullText === false
+    ? []
+    : bodyFormat(content.body, entry.formattedBody)) {
     const heading = block.kind.startsWith("heading");
     if (heading && pdf.y > pdf.page.height - 130) pdf.addPage();
     number = block.kind === "number" ? number + 1 : 0;
@@ -139,32 +149,9 @@ export async function articlePdf(
     });
     pdf.moveDown(heading ? 0.6 : 0.9);
   }
-  for (const figure of figures) {
-    const image = await sharp(figure.bytes)
-      .rotate()
-      .resize({
-        width: 1400,
-        height: 1600,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .png()
-      .toBuffer();
-    const info = await sharp(image).metadata();
-    const scale = Math.min(width / info.width!, 420 / info.height!, 1),
-      height = info.height! * scale;
-    if (pdf.y + height + 50 > pdf.page.height - 58) pdf.addPage();
-    const y = pdf.y;
-    pdf.image(image, 58, y, { width: info.width! * scale, height });
-    pdf.y = y + height + 10;
-    if (figure.caption)
-      pdf
-        .font("heading")
-        .fontSize(9)
-        .fillColor("#526078")
-        .text(figure.caption, { width })
-        .moveDown();
-  }
+  if (entry.display?.images !== false)
+    for (const figure of figures.filter((f) => f.position !== "cover"))
+      await drawFigure(pdf, figure, width);
   const pages = pdf.bufferedPageRange();
   for (let i = pages.start; i < pages.start + pages.count; i++) {
     pdf.switchToPage(i);
@@ -260,4 +247,46 @@ function drawAbstract(pdf: PDFKit.PDFDocument, text: string, width: number) {
       continued = true;
     }
   }
+}
+
+async function drawFigure(
+  pdf: PDFKit.PDFDocument,
+  figure: PdfFigure,
+  width: number,
+) {
+  const image = await sharp(figure.bytes)
+    .rotate()
+    .resize({
+      width: 1400,
+      height: 1600,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .png()
+    .toBuffer();
+  const info = await sharp(image).metadata();
+  const scale = Math.min(width / info.width!, 420 / info.height!),
+    height = info.height! * scale;
+  if (pdf.y + height + 50 > pdf.page.height - 58) pdf.addPage();
+  const y = pdf.y;
+  const imageWidth = info.width! * scale;
+  pdf
+    .save()
+    .roundedRect(58 + (width - imageWidth) / 2, y, imageWidth, height, 7)
+    .clip();
+  pdf.image(image, 58 + (width - imageWidth) / 2, y, {
+    width: imageWidth,
+    height,
+  });
+  pdf.restore();
+  pdf.x = 58;
+  pdf.y = y + height + 10;
+  if (figure.caption)
+    pdf
+      .font("heading")
+      .fontSize(9)
+      .fillColor("#526078")
+      .text(figure.caption, { width })
+      .moveDown();
+  pdf.y += 20;
 }

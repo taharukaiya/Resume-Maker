@@ -111,3 +111,38 @@ it("preserves a multi-page abstract with embedded website fonts", async () => {
     await parser.destroy();
   }
 });
+
+it("places the cover before the body and other figures afterward", async () => {
+  const image = await sharp({
+    create: { width: 120, height: 60, channels: 3, background: "#1447e6" },
+  })
+    .png()
+    .toBuffer();
+  const bytes = await articlePdf(
+    {
+      ...emptyEntry(),
+      title: "Image order",
+      body: "A concise abstract.",
+      fullText:
+        "Introduction\n\nBody starts here.\n\nResults\n\nBody ends here.",
+    },
+    "https://example.test",
+    [
+      { bytes: image, caption: "Cover caption", position: "cover" },
+      { bytes: image, caption: "Final figure caption", position: "afterBody" },
+    ],
+  );
+  const parser = new PDFParse({ data: bytes });
+  try {
+    const { text } = await parser.getText();
+    expect(text.indexOf("Cover caption")).toBeLessThan(
+      text.indexOf("Body starts here."),
+    );
+    expect(text.indexOf("Final figure caption")).toBeGreaterThan(
+      text.indexOf("Body ends here."),
+    );
+    await writeFile(".test-data/image-order.pdf", bytes);
+  } finally {
+    await parser.destroy();
+  }
+});

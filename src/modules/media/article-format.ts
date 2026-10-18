@@ -93,3 +93,42 @@ export function formatHtml(blocks: ArticleFormat) {
     })
     .join("");
 }
+
+/** Share presentation-only paragraph recovery between web and PDF. Saved edits stay intact. */
+export function bodyFormat(
+  text: string,
+  blocks?: ArticleFormat,
+): ArticleFormat {
+  const edited = matchingFormat(text, blocks);
+  if (edited) return edited;
+  return plainFormat(text).flatMap((block) => {
+    const value = block.runs[0].text;
+    if (block.kind !== "paragraph" || value.split(/\s+/).length < 220)
+      return [block];
+    // Imported text sometimes has no paragraph boundaries. Break only at complete
+    // sentence boundaries, retaining every word and never inventing section titles.
+    const sentences = value.match(
+      /[^.!?]+[.!?]+(?:["”’)]*)(?:\s+|$)|[^.!?]+$/g,
+    ) || [value];
+    const paragraphs: string[] = [];
+    let current = "";
+    for (const sentence of sentences) {
+      current += sentence;
+      if (current.trim().split(/\s+/).length >= 110) {
+        paragraphs.push(current.trim());
+        current = "";
+      }
+    }
+    if (current.trim()) paragraphs.push(current.trim());
+    // Do not risk losing unusual punctuation if the sentence matcher cannot round-trip.
+    if (
+      paragraphs.join(" ").replace(/\s+/g, " ") !==
+      value.replace(/\s+/g, " ").trim()
+    )
+      return [block];
+    return paragraphs.map((text) => ({
+      kind: "paragraph" as const,
+      runs: [{ text }],
+    }));
+  });
+}

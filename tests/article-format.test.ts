@@ -1,3 +1,4 @@
+import { bodyFormat } from "../src/modules/media/article-format";
 import { expect, it } from "vitest";
 import { PDFParse } from "pdf-parse";
 import { writeFile } from "node:fs/promises";
@@ -65,4 +66,23 @@ it("typesets formatted headings and runs without losing body text or adding brow
   } finally {
     await parser.destroy();
   }
+});
+
+it("adds presentation paragraphs to long unformatted imports without changing words or manual formatting", () => {
+  const text = Array.from(
+    { length: 40 },
+    (_, i) =>
+      `Sentence ${i} describes the evidence and its limitations in careful detail.`,
+  ).join(" ");
+  const blocks = bodyFormat("Introduction\n\n" + text);
+  expect(blocks[0].kind).toBe("heading2");
+  expect(blocks.length).toBeGreaterThan(3);
+  expect(
+    blocks
+      .slice(1)
+      .map((b) => b.runs.map((r) => r.text).join(""))
+      .join(" "),
+  ).toBe(text);
+  const edited = [{ kind: "paragraph" as const, runs: [{ text, bold: true }] }];
+  expect(bodyFormat(text, edited)).toBe(edited);
 });
