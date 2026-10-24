@@ -87,6 +87,7 @@ test("admin can add a root domain while preserving an unsaved portfolio draft", 
     .getByLabel("Domain name", { exact: true })
     .fill(`https://${hostname}/`);
   await page.getByRole("button", { name: "Add domain", exact: true }).click();
+  await page.getByText("Manual DNS instructions", { exact: true }).click();
   await expect(
     page.getByText(`_brilliancy.${hostname}`, { exact: true }).first(),
   ).toBeVisible();
@@ -213,7 +214,7 @@ test("selecting a connected domain keeps the live address until republishing", a
   });
 });
 
-test("paired domain instructions are clear on desktop and mobile", async ({
+test("preparation is separate from go live on desktop and mobile", async ({
   page,
 }) => {
   await signInAdmin(page);
@@ -228,6 +229,12 @@ test("paired domain instructions are clear on desktop and mobile", async ({
         hostingMode: "vps",
         dnsTarget: "187.127.210.231",
         studioUrl: "https://studio.example.com",
+        automation: {
+          available: true,
+          configured: true,
+          goLiveEnabled: false,
+          allowedDomains: [],
+        },
         domains: [
           {
             id: "dc02ba25-002c-43d7-9e79-d9c4edab5350",
@@ -247,11 +254,41 @@ test("paired domain instructions are clear on desktop and mobile", async ({
   await expect(page.getByLabel("Domain name", { exact: true })).toHaveValue(
     "researchbyrukaiya.com",
   );
+  const calls: string[] = [];
+  await page.route(`**/api/sites/${id}/prepare-domain`, async (route) => {
+    calls.push(route.request().url());
+    expect(route.request().postDataJSON()).toEqual({
+      domainId: "dc02ba25-002c-43d7-9e79-d9c4edab5350",
+    });
+    await route.fulfill({ status: 202, json: { ok: true } });
+  });
+  await page.route(`**/api/sites/${id}/go-live-domain`, async (route) => {
+    calls.push(route.request().url());
+    await route.fulfill({ status: 409, json: { error: "Launch paused" } });
+  });
+  await expect(
+    page.getByRole("button", { name: "Go live", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Prepare domain", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Preparation requested. Your existing website stays unchanged.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("/prepare-domain");
+  await expect(
+    page.getByRole("button", { name: "Go live", exact: true }),
+  ).toBeDisabled();
+  await page.getByText("Manual DNS instructions", { exact: true }).click();
   await expect(
     page.getByRole("cell", { name: "187.127.210.231", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Check DNS & connect", exact: true }),
+    page.getByRole("button", { name: "Verify manual TXT record", exact: true }),
   ).toBeVisible();
   await page.locator(".domain-record").scrollIntoViewIfNeeded();
   await page.screenshot({

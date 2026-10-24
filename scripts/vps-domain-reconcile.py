@@ -13,6 +13,8 @@ import re
 import socket
 import subprocess
 import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hostinger_dns
 
 ROOT = Path(os.environ.get("BRILLIANCY_ROOT", "/opt/brilliancy"))
 COMPOSE = ROOT / "deploy/vps"
@@ -77,6 +79,7 @@ def write_atomic(path, text):
 
 
 def reconcile(row, expected_ip):
+    hostinger_dns.launch_allowed(row)
     host = row["hostname"]
     hosts = [host, *row.get("aliases", [])]
     files = [domain_files(name) for name in hosts]
@@ -84,10 +87,15 @@ def reconcile(row, expected_ip):
     # Validate every alias before writing any route or requesting certificates.
     for name in hosts:
         check_conflicts(name, owned)
+    if row['status'] == 'queued':
+        hostinger_dns.connect_dns(row, expected_ip)
+        worker('vps-domain-requests.ts', 'status', row['id'], 'dns_pending', 'Website DNS submitted. Waiting for propagation before connecting HTTPS.')
+        return
+    for name in hosts:
         addresses = {item[4][0] for item in socket.getaddrinfo(name, 443, type=socket.SOCK_STREAM)}
         if not addresses or addresses != {expected_ip}:
-            raise ValueError("Set " + name + " to VPS IP " + expected_ip + " using the shown A record or www CNAME. Remove conflicting website A/AAAA records, wait for DNS, then retry.")
-    if row["status"] == "queued":
+            return  # DNS propagation; keep the pending request for the next run.
+    if row["status"] == "dns_pending":
         previous = {caddy: caddy.read_text() if caddy.exists() else None for _, caddy, _ in files}
         try:
             for name, (_, caddy, _) in zip(hosts, files):
@@ -113,17 +121,28 @@ def reconcile(row, expected_ip):
             connection.request("GET", "/")
             response = connection.getresponse()
             if response.getheader("X-Brilliancy-Domain") != name:
-                raise ValueError("HTTPS is still being prepared for " + name + ". Retry connection shortly.")
+                return
+        except OSError:
+            return  # ACME may still be issuing the certificate.
         finally:
             connection.close()
     worker("vps-domain.ts", "activate", host)
-    worker("vps-domain-requests.ts", "status", row["id"], "ready", "HTTPS and redirects connected. Select this website address above, then review and publish.")
+    worker("vps-domain-requests.ts", "finish", row["id"])
 
 
 def main():
     expected_ip = str(ipaddress.ip_address(os.environ["BRILLIANCY_VPS_IP"]))
     if not ipaddress.ip_address(expected_ip).is_global:
         raise ValueError("Configure the public VPS IP.")
+    worker('vps-domain-requests.ts', 'capabilities', json.dumps({'configured': hostinger_dns.configured(), 'goLiveDomains': [name.strip() for name in os.environ.get('BRILLIANCY_GO_LIVE_DOMAINS', '').split(',') if name.strip()]}))
+    for row in json.loads(worker('vps-domain-requests.ts', 'prepare-list')):
+        try:
+            if row['status'] == 'preparing':
+                hostinger_dns.prepare(row)
+            worker('vps-domain-requests.ts', 'prepare-verify', row['id'])
+        except Exception as error:
+            message = str(error) if isinstance(error, ValueError) else 'Hostinger preparation could not finish. Ask the hosting administrator to check the private token configuration.'
+            worker('vps-domain-requests.ts', 'prepare-status', row['id'], 'error', message)
     for row in json.loads(worker("vps-domain-requests.ts", "list")):
         try:
             reconcile(row, expected_ip)
@@ -135,4 +154,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import fcntl
+    with open('/var/lock/brilliancy-domains.lock', 'w') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            main()
+        except BlockingIOError:
+            print('Another domain check is running.')

@@ -21,6 +21,7 @@ class DomainSafetyTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
         patch.object(module, "COMPOSE", self.compose).start()
         patch.object(module, "TRAEFIK", self.proxy).start()
+        patch.object(module.hostinger_dns, "launch_allowed").start()
 
     def test_existing_site_is_never_overwritten(self):
         legacy = self.proxy / "main.yaml"
@@ -29,10 +30,23 @@ class DomainSafetyTests(unittest.TestCase):
             module.check_conflicts("researchbyexisting.com", set())
         self.assertEqual(legacy.read_text(), 'rule: Host(`researchbyexisting.com`)')
 
+    def test_queued_launch_checks_legacy_routes_before_dns(self):
+        (self.proxy / 'main.yaml').write_text('rule: Host(`example.com`)')
+        with patch.object(module.hostinger_dns, 'connect_dns') as connect:
+            with self.assertRaisesRegex(ValueError, 'existing hosting route'):
+                module.reconcile({'id': 'test', 'hostname': 'www.example.com', 'aliases': ['example.com'], 'status': 'queued'}, '187.127.210.231')
+            connect.assert_not_called()
+
+    def test_queued_launch_waits_after_dns_without_writing_routes(self):
+        with patch.object(module.hostinger_dns, 'connect_dns') as connect, patch.object(module, 'worker') as worker:
+            module.reconcile({'id': 'test', 'hostname': 'www.example.com', 'aliases': ['example.com'], 'status': 'queued'}, '187.127.210.231')
+            connect.assert_called_once()
+            self.assertEqual(worker.call_args.args[3], 'dns_pending')
+        self.assertEqual(list(self.proxy.iterdir()), [])
+
     def test_dns_mismatch_cannot_write_routes(self):
         with patch.object(module.socket, "getaddrinfo", return_value=[(None, None, None, None, ("203.0.113.9", 443))]):
-            with self.assertRaisesRegex(ValueError, "A record"):
-                module.reconcile({"hostname": "researchbynew.com", "status": "queued"}, "187.127.210.231")
+            module.reconcile({"hostname": "researchbynew.com", "status": "dns_pending"}, "187.127.210.231")
         self.assertEqual(list(self.proxy.iterdir()), [])
 
     def test_builtin_fallbacks_allow_new_domains_but_unknown_wildcards_do_not(self):
@@ -64,7 +78,7 @@ class DomainSafetyTests(unittest.TestCase):
     def test_invalid_caddy_configuration_is_not_activated(self):
         with patch.object(module.socket, "getaddrinfo", return_value=[(None, None, None, None, ("187.127.210.231", 443))]), patch.object(module, "worker", return_value="bad config"), patch.object(module, "command", side_effect=RuntimeError("invalid")):
             with self.assertRaises(RuntimeError):
-                module.reconcile({"hostname": "researchbynew.com", "status": "queued"}, "187.127.210.231")
+                module.reconcile({"hostname": "researchbynew.com", "status": "dns_pending"}, "187.127.210.231")
         self.assertEqual(list((self.compose / "domains").iterdir()), [])
         self.assertEqual(list(self.proxy.iterdir()), [])
 
@@ -73,14 +87,13 @@ class DomainSafetyTests(unittest.TestCase):
             ip = "187.127.210.231" if host.startswith("www.") else "203.0.113.9"
             return [(None, None, None, None, (ip, 443))]
         with patch.object(module.socket, "getaddrinfo", side_effect=addresses):
-            with self.assertRaises(ValueError):
-                module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"queued"}, "187.127.210.231")
+            module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"dns_pending"}, "187.127.210.231")
         self.assertEqual(list((self.compose / "domains").iterdir()), [])
         self.assertEqual(list(self.proxy.iterdir()), [])
 
     def test_pair_creates_separate_exact_routes(self):
         with patch.object(module.socket, "getaddrinfo", return_value=[(None, None, None, None, ("187.127.210.231", 443))]), patch.object(module, "worker", return_value="    encode zstd gzip"), patch.object(module, "command"):
-            module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"queued"}, "187.127.210.231")
+            module.reconcile({"id":"test", "hostname":"www.example.com", "aliases":["example.com"], "status":"dns_pending"}, "187.127.210.231")
         self.assertEqual(len(list(self.proxy.iterdir())),2)
         for host in ["www.example.com","example.com"]:
             _, caddy, proxy = module.domain_files(host)

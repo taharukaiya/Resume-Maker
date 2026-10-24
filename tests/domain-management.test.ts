@@ -10,6 +10,7 @@ import { db, closeDb } from "../src/lib/db";
 import { hash } from "../src/lib/crypto";
 import { handle } from "../src/modules/api/router";
 import { emptyDocument, emptyEntry } from "../src/modules/portfolios/schema";
+import { finishDomainLaunch } from "../src/modules/portfolios/domain-launch";
 import { processOneJob } from "../src/modules/jobs/worker";
 
 const directory = path.resolve(".test-data", `domains-${randomUUID()}`);
@@ -127,24 +128,22 @@ afterAll(async () => {
 });
 
 describe.sequential("Administrator website address management", () => {
-  it("queues only verified administrator-owned domains without activating or changing their address", async () => {
-    const site = await createSite();
-    const foreign = await createSite();
-    const domain = await addDomain(site.id);
-    expect(
-      (
-        await request(`sites/${site.id}/connect-domain`, "POST", {
-          domainId: domain.id,
-        })
-      ).status,
-    ).toBe(400);
-    await (
-      await db()
-    ).query("UPDATE domains SET verified_at=now() WHERE id=$1", [domain.id]);
+  it("separates safe preparation from an approved reviewed launch and blocks the old shortcut", async () => {
+    const site = await createSite(),
+      foreign = await createSite();
+    const root = `research-${randomUUID()}.com`;
+    const domain = (
+      await request(`sites/${site.id}/domains`, "POST", {
+        hostname: root,
+        wwwPrimary: true,
+      })
+    ).data;
+    const database = await db();
+    const input = { domainId: domain.id, confirmHostname: `www.${root}` };
     expect(
       (
         await request(
-          `sites/${site.id}/connect-domain`,
+          `sites/${site.id}/prepare-domain`,
           "POST",
           { domainId: domain.id },
           clientCookie,
@@ -153,22 +152,117 @@ describe.sequential("Administrator website address management", () => {
     ).toBe(403);
     expect(
       (
-        await request(`sites/${foreign.id}/connect-domain`, "POST", {
+        await request(`sites/${foreign.id}/prepare-domain`, "POST", {
           domainId: domain.id,
         })
       ).status,
-    ).toBe(400);
+    ).toBe(404);
     expect(
       (
-        await request(`sites/${site.id}/connect-domain`, "POST", {
+        await request(`sites/${site.id}/prepare-domain`, "POST", {
           domainId: domain.id,
         })
       ).status,
-    ).toBe(200);
-    const listed = await request(`sites/${site.id}/domains`);
-    expect(listed.data.domains[0].connection.status).toBe("queued");
-    expect(listed.data.domains[0].activated_at).toBeNull();
-    expect(listed.data.domains[0].is_primary).toBe(false);
+    ).toBe(202);
+    let listed = (await request(`sites/${site.id}/domains`)).data;
+    expect(listed.domains[0].preparation.status).toBe("preparing");
+    expect(listed.domains[0].activated_at).toBeNull();
+    expect(listed.domains[0].is_primary).toBe(false);
+    expect(
+      (
+        await request(`sites/${site.id}/domains`, "DELETE", {
+          domainId: domain.id,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (await database.query("SELECT id FROM jobs WHERE site_id=$1", [site.id]))
+        .length,
+    ).toBe(0);
+    for (const action of ["go-live-domain", "connect-domain"])
+      expect(
+        (await request(`sites/${site.id}/${action}`, "POST", input)).status,
+      ).toBe(409);
+    await database.query(
+      "UPDATE domains SET verified_at=now() WHERE site_id=$1",
+      [site.id],
+    );
+    await database.query("UPDATE settings SET value=$2 WHERE key=$1", [
+      `vps.domain.prepare.${domain.id}`,
+      JSON.stringify({ status: "prepared" }),
+    ]);
+    vi.stubEnv("DOMAIN_GO_LIVE_ENABLED", "true");
+    try {
+      expect(
+        (await request(`sites/${site.id}/go-live-domain`, "POST", input))
+          .status,
+      ).toBe(409);
+      await database.query(
+        "INSERT INTO settings(key,value) VALUES('vps.domain.automation',$1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        [
+          JSON.stringify({
+            configured: true,
+            checkedAt: new Date().toISOString(),
+            goLiveDomains: [root],
+          }),
+        ],
+      );
+      expect(
+        (await request(`sites/${site.id}/go-live-domain`, "POST", input))
+          .status,
+      ).toBe(409); // unpublished
+      await request(`sites/${site.id}/publish`, "POST", { revision: 1 });
+      await processOneJob();
+      expect(
+        (
+          await request(`sites/${site.id}/go-live-domain`, "POST", {
+            ...input,
+            confirmHostname: "different.example.com",
+          })
+        ).status,
+      ).toBe(400);
+      expect(
+        (await request(`sites/${site.id}/go-live-domain`, "POST", input))
+          .status,
+      ).toBe(200);
+      expect(
+        (await request(`sites/${site.id}/go-live-domain`, "POST", input))
+          .status,
+      ).toBe(409); // duplicate
+      listed = (await request(`sites/${site.id}/domains`)).data;
+      expect(listed.domains[0].connection.status).toBe("queued");
+      expect(listed.domains[0].activated_at).toBeNull();
+      await database.query(
+        "UPDATE domains SET activated_at=now() WHERE site_id=$1",
+        [site.id],
+      );
+      await database.query(
+        'UPDATE settings SET value=value || \'{"status":"connecting"}\'::jsonb WHERE key=$1',
+        [`vps.domain.request.${domain.id}`],
+      );
+      await database.query("UPDATE sites SET revision=2 WHERE id=$1", [
+        site.id,
+      ]);
+      await expect(finishDomainLaunch(database, domain.id)).rejects.toThrow(
+        /changed/,
+      );
+      await database.query("UPDATE sites SET revision=1 WHERE id=$1", [
+        site.id,
+      ]);
+      const jobId = await finishDomainLaunch(database, domain.id);
+      expect(await finishDomainLaunch(database, domain.id)).toBe(jobId); // safe retry
+      const [job] = await database.query<{ payload: { canonicalUrl: string } }>(
+        "SELECT payload FROM jobs WHERE id=$1",
+        [jobId],
+      );
+      expect(job.payload.canonicalUrl).toBe(`https://www.${root}`);
+      await processOneJob();
+      expect((await request(`sites/${site.id}`)).data.publishedUrl).toBe(
+        `https://www.${root}`,
+      );
+    } finally {
+      vi.stubEnv("DOMAIN_GO_LIVE_ENABLED", "false");
+    }
   });
   it("requires an authenticated administrator and preserves site isolation", async () => {
     const site = await createSite();

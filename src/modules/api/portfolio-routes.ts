@@ -103,7 +103,13 @@ export async function portfolioRoutes(
       site = await getSite(user, id);
     if (
       path.length === 3 &&
-      ["domains", "verify-domain", "connect-domain"].includes(action)
+      [
+        "domains",
+        "verify-domain",
+        "connect-domain",
+        "prepare-domain",
+        "go-live-domain",
+      ].includes(action)
     ) {
       return domainRoutes(request, action, id, database, user);
     }

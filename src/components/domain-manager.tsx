@@ -14,6 +14,7 @@ type Domain = {
   is_primary: boolean;
   verification_hostname?: string | null;
   connection?: { status: string; message: string };
+  preparation?: { status: string; message: string };
 };
 export function DomainManager({
   siteId,
@@ -41,14 +42,22 @@ export function DomainManager({
   const [hostingMode, setHostingMode] = useState("local");
   const [selection, setSelection] = useState("");
   const [loading, setLoading] = useState(true);
+  const [automation, setAutomation] = useState({
+    configured: false,
+    available: false,
+    goLiveEnabled: false,
+    allowedDomains: [] as string[],
+  });
   async function load() {
     const result = await api<{
       domains: Domain[];
       hostingMode: string;
       dnsTarget?: string | null;
       studioUrl?: string;
+      automation?: typeof automation;
     }>(`sites/${siteId}/domains`);
     setDomains(result.domains);
+    if (result.automation) setAutomation(result.automation);
     setHostingMode(result.hostingMode);
     setDnsTarget(result.dnsTarget || null);
     setStudioUrl(result.studioUrl || window.location.origin);
@@ -64,18 +73,32 @@ export function DomainManager({
     const timer = setTimeout(() => setCopied(""), 1800);
     return () => clearTimeout(timer);
   }, [copied]);
-  const connecting = domains.some((domain) =>
-    ["queued", "connecting"].includes(domain.connection?.status || ""),
+  const connecting = domains.some(
+    (domain) =>
+      ["queued", "dns_pending", "connecting", "publishing"].includes(
+        domain.connection?.status || "",
+      ) ||
+      ["preparing", "awaiting_dns"].includes(domain.preparation?.status || ""),
   );
   useEffect(() => {
     if (!connecting) return;
     const timer = setInterval(() => {
-      void api<{ domains: Domain[] }>(`sites/${siteId}/domains`)
-        .then((result) => setDomains(result.domains))
+      void api<{ domains: Domain[]; automation?: typeof automation }>(
+        `sites/${siteId}/domains`,
+      )
+        .then((result) => {
+          setSelection((current) =>
+            current === (domains.find((domain) => domain.is_primary)?.id || "")
+              ? result.domains.find((domain) => domain.is_primary)?.id || ""
+              : current,
+          );
+          setDomains(result.domains);
+          if (result.automation) setAutomation(result.automation);
+        })
         .catch(() => {});
     }, 10000);
     return () => clearInterval(timer);
-  }, [connecting, siteId]);
+  }, [connecting, siteId, domains]);
   const copy = (value: string) => (
     <button
       type="button"
@@ -109,8 +132,8 @@ export function DomainManager({
       <p className="eyebrow">Website address</p>
       <h2>A personal address for this portfolio.</h2>
       <p className="panel-description">
-        Choose a name, add the DNS records, then connect. You can use the
-        suggested name or enter any domain you own.
+        Choose a domain you own, prepare it safely, then go live after reviewing
+        your portfolio.
       </p>
       <div className="address-current">
         <span>
@@ -238,17 +261,17 @@ export function DomainManager({
             </span>
           </li>
           <li>
-            <strong>Add DNS records</strong>
+            <strong>Prepare domain</strong>
             <span>
-              Copy the records shown below into Hostinger or your domain
-              provider’s DNS settings.
+              Let Hostinger add the ownership record automatically, or use the
+              manual instructions. Preparation keeps your current website live.
             </span>
           </li>
           <li>
-            <strong>Connect & publish</strong>
+            <strong>Go live after review</strong>
             <span>
-              Verify ownership, connect HTTPS, then select the ready address
-              above and review your portfolio before publishing.
+              Publish and review your portfolio at its shared address first.
+              Going live is a separate, approved step.
             </span>
           </li>
         </ol>
@@ -266,7 +289,7 @@ export function DomainManager({
               });
               setHostname(suggestedDomain);
               await load();
-            }, "Domain added. Follow the DNS instructions below.");
+            }, "Domain added. Prepare it below; your existing website is unchanged.");
           }}
         >
           <Field
@@ -299,175 +322,237 @@ export function DomainManager({
               <strong>{domain.hostname}</strong>
               <Badge
                 value={
-                  domain.is_primary && ready(domain)
-                    ? "selected for publishing"
-                    : ready(domain)
-                      ? "ready to select"
-                      : domain.verified_at
-                        ? "HTTPS setup needed"
-                        : "awaiting verification"
+                  domain.connection?.status === "ready"
+                    ? "live"
+                    : domain.preparation?.status === "prepared" &&
+                        !ready(domain)
+                      ? "prepared � not live"
+                      : domain.is_primary && ready(domain)
+                        ? "selected for publishing"
+                        : ready(domain)
+                          ? "ready to select"
+                          : domain.verified_at
+                            ? "HTTPS setup needed"
+                            : "awaiting verification"
                 }
               />
             </div>
-            <p>
-              In Hostinger:{" "}
-              <strong>
-                Domains → Domain portfolio → Manage → DNS / Nameservers
-              </strong>
-              . If your DNS is managed elsewhere, add the records there. Use the
-              default TTL.
-            </p>
-            <div className="dns-records-scroll">
-              <table className="dns-records">
-                <caption>
-                  DNS records for{" "}
-                  {domain.verification_hostname || domain.hostname}
-                </caption>
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Name / Host</th>
-                    <th>Value / Points to</th>
-                    <th>Copy value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>A</td>
-                    <td>
-                      {domain.verification_hostname ? "@" : domain.hostname}
-                    </td>
-                    <td>
-                      <code>
-                        {dnsTarget ||
-                          "VPS public IP — ask your hosting administrator"}
-                      </code>
-                    </td>
-                    <td>{dnsTarget && copy(dnsTarget)}</td>
-                  </tr>
-                  {domain.verification_hostname && (
-                    <tr>
-                      <td>CNAME</td>
-                      <td>www</td>
-                      <td>
-                        <code>{domain.verification_hostname}</code>
-                      </td>
-                      <td>{copy(domain.verification_hostname)}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td>TXT</td>
-                    <td>
-                      <code>
-                        {domain.verification_hostname
-                          ? "_brilliancy"
-                          : `_brilliancy.${domain.hostname}`}
-                      </code>
-                    </td>
-                    <td>
-                      <code>{domain.verification_token}</code>
-                    </td>
-                    <td>{copy(domain.verification_token)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="panel-description">
-              Full verification record:{" "}
-              <code>
-                _brilliancy.{domain.verification_hostname || domain.hostname}
-              </code>
-              . Keep this TXT record after connecting. DNS changes may take up
-              to 48 hours. Update conflicting website A/AAAA/CNAME records only;
-              keep your email MX and TXT records.
-            </p>
-            {domain.verification_hostname && (
-              <p className="domain-redirect-note">
-                https://{domain.verification_hostname} →{" "}
-                <strong>https://{domain.hostname}</strong> · HTTPS and redirect
-                are configured together.
+            <details className="domain-setup">
+              <summary>Manual DNS instructions</summary>
+              <p>
+                In Hostinger:{" "}
+                <strong>
+                  Domains → Domain portfolio → Manage → DNS / Nameservers
+                </strong>
+                . If your DNS is managed elsewhere, add the records there. Use
+                the default TTL.
               </p>
-            )}
-            {!domain.verified_at ? (
-              <>
-                <Button
-                  variant="secondary small"
-                  busy={feedback.busy}
-                  onClick={() =>
-                    void feedback.run(
-                      async () => {
+              <div className="dns-records-scroll">
+                <table className="dns-records">
+                  <caption>
+                    DNS records for{" "}
+                    {domain.verification_hostname || domain.hostname}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Name / Host</th>
+                      <th>Value / Points to</th>
+                      <th>Copy value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>A</td>
+                      <td>
+                        {domain.verification_hostname ? "@" : domain.hostname}
+                      </td>
+                      <td>
+                        <code>
+                          {dnsTarget ||
+                            "VPS public IP — ask your hosting administrator"}
+                        </code>
+                      </td>
+                      <td>{dnsTarget && copy(dnsTarget)}</td>
+                    </tr>
+                    {domain.verification_hostname && (
+                      <tr>
+                        <td>CNAME</td>
+                        <td>www</td>
+                        <td>
+                          <code>{domain.verification_hostname}</code>
+                        </td>
+                        <td>{copy(domain.verification_hostname)}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td>TXT</td>
+                      <td>
+                        <code>
+                          {domain.verification_hostname
+                            ? "_brilliancy"
+                            : `_brilliancy.${domain.hostname}`}
+                        </code>
+                      </td>
+                      <td>
+                        <code>{domain.verification_token}</code>
+                      </td>
+                      <td>{copy(domain.verification_token)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="panel-description">
+                Full verification record:{" "}
+                <code>
+                  _brilliancy.{domain.verification_hostname || domain.hostname}
+                </code>
+                . Keep this TXT record after connecting. DNS changes may take up
+                to 48 hours. Update conflicting website A/AAAA/CNAME records
+                only; keep your email MX and TXT records.
+              </p>
+              {domain.verification_hostname && (
+                <p className="domain-redirect-note">
+                  https://{domain.verification_hostname} →{" "}
+                  <strong>https://{domain.hostname}</strong> · HTTPS and
+                  redirect are configured together.
+                </p>
+              )}
+            </details>
+            {hostingMode === "vps" && !ready(domain) && (
+              <div className="stack">
+                <p className="panel-description">
+                  Preparation adds only an ownership TXT record. Website traffic
+                  changes only through an approved Go live request.
+                </p>
+                {!automation.configured && (
+                  <p>
+                    Hostinger is not connected yet. Your hosting administrator
+                    can securely connect it once for all portfolios. Manual
+                    instructions are available above.
+                  </p>
+                )}
+                {domain.preparation && (
+                  <p role="status">{domain.preparation.message}</p>
+                )}
+                {domain.connection && (
+                  <p role="status">{domain.connection.message}</p>
+                )}
+                <div className="row wrap">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    busy={feedback.busy}
+                    disabled={
+                      !automation.configured ||
+                      ["preparing", "awaiting_dns"].includes(
+                        domain.preparation?.status || "",
+                      ) ||
+                      [
+                        "queued",
+                        "dns_pending",
+                        "connecting",
+                        "publishing",
+                      ].includes(domain.connection?.status || "")
+                    }
+                    onClick={() =>
+                      void feedback.run(async () => {
+                        await api(`sites/${siteId}/prepare-domain`, {
+                          method: "POST",
+                          body: JSON.stringify({ domainId: domain.id }),
+                        });
+                        await load();
+                      }, "Preparation requested. Your existing website stays unchanged.")
+                    }
+                  >
+                    Prepare domain
+                  </Button>
+                  <Button
+                    type="button"
+                    busy={feedback.busy}
+                    disabled={
+                      !automation.goLiveEnabled ||
+                      !automation.allowedDomains.includes(
+                        domain.verification_hostname || domain.hostname,
+                      ) ||
+                      domain.preparation?.status !== "prepared" ||
+                      !domain.verified_at ||
+                      [
+                        "queued",
+                        "dns_pending",
+                        "connecting",
+                        "publishing",
+                      ].includes(domain.connection?.status || "")
+                    }
+                    onClick={() =>
+                      void (async () => {
+                        if (
+                          !(await confirm({
+                            title: `Go live at ${domain.hostname}?`,
+                            description: `Connect website DNS and HTTPS for ${domain.hostname} and publish the already reviewed portfolio there. Email records stay unchanged. Existing websites with conflicting hosting or DNS require a separate reviewed migration.`,
+                            confirmLabel: "Go live",
+                          }))
+                        )
+                          return;
+                        await feedback.run(async () => {
+                          await api(`sites/${siteId}/go-live-domain`, {
+                            method: "POST",
+                            body: JSON.stringify({
+                              domainId: domain.id,
+                              confirmHostname: domain.hostname,
+                            }),
+                          });
+                          await load();
+                        }, "Go live requested. DNS and HTTPS progress will appear here.");
+                      })()
+                    }
+                  >
+                    Go live
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary small"
+                    busy={feedback.busy}
+                    onClick={() => void feedback.run(load)}
+                  >
+                    Refresh status
+                  </Button>
+                </div>
+                {(!automation.goLiveEnabled ||
+                  !automation.allowedDomains.includes(
+                    domain.verification_hostname || domain.hostname,
+                  )) && (
+                  <p className="panel-description">
+                    Go live is paused until this portfolio has been reviewed and
+                    its domain approved for launch. Preparing it will not switch
+                    an existing website.
+                  </p>
+                )}
+                {!domain.verified_at && (
+                  <Button
+                    type="button"
+                    variant="secondary small"
+                    busy={feedback.busy}
+                    onClick={() =>
+                      void feedback.run(async () => {
                         await api(`sites/${siteId}/verify-domain`, {
                           method: "POST",
                           body: JSON.stringify({ domainId: domain.id }),
                         });
-                        if (hostingMode === "vps")
-                          await api(`sites/${siteId}/connect-domain`, {
-                            method: "POST",
-                            body: JSON.stringify({ domainId: domain.id }),
-                          });
                         await load();
-                      },
-                      hostingMode === "vps"
-                        ? "Ownership verified. Connecting HTTPS automatically; status updates here."
-                        : "Ownership verified.",
-                    )
-                  }
-                >
-                  {hostingMode === "vps"
-                    ? "Check DNS & connect"
-                    : "Verify DNS record"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <p>
-                  {ready(domain)
-                    ? "Hosting is connected. Select this domain above and republish to update navigation and search-engine URLs."
-                    : "Ownership is verified. Your website address is waiting to be connected."}
-                </p>
-                {domain.cdn_hostname && (
-                  <div className="code-box">
-                    DNS target: {domain.cdn_hostname}
-                  </div>
+                      }, "Ownership verified. No website was switched.")
+                    }
+                  >
+                    Verify manual TXT record
+                  </Button>
                 )}
-                <p className="panel-description">
-                  {ready(domain)
-                    ? "Connecting a different domain does not change the selected address automatically."
-                    : "Point the domain's A record to your VPS. Existing websites are never replaced by automatic setup. Your current website stays available."}
-                </p>
-                {hostingMode === "vps" && !ready(domain) && (
-                  <div className="stack">
-                    {domain.connection && (
-                      <p role="status">{domain.connection.message}</p>
-                    )}
-                    <div className="row wrap">
-                      <Button
-                        type="button"
-                        variant="secondary small"
-                        busy={feedback.busy}
-                        onClick={() =>
-                          void feedback.run(async () => {
-                            await api(`sites/${siteId}/connect-domain`, {
-                              method: "POST",
-                              body: JSON.stringify({ domainId: domain.id }),
-                            });
-                            await load();
-                          }, "Connection requested.")
-                        }
-                      >
-                        Connect hosting & HTTPS
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary small"
-                        onClick={() => void feedback.run(load)}
-                      >
-                        Refresh connection status
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
+              </div>
+            )}
+            {ready(domain) && (
+              <p role="status">
+                {domain.connection?.message ||
+                  "HTTPS is connected. Select this address above and review your publication."}
+              </p>
             )}
             {!domain.activated_at &&
               !domain.distribution_id &&

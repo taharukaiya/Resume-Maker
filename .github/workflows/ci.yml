@@ -29,6 +29,8 @@ jobs:
         run: |
           for script in deploy/vps/*.sh; do bash -n "$script"; done
           python3 tests/test_backup_files.py
+          python3 tests/test_hostinger_dns.py
+          python3 tests/test_domain_reconcile.py
       - name: Validate Compose configuration
         run: |
           docker compose -f deploy/vps/compose.yaml config --quiet

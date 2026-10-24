@@ -89,14 +89,32 @@ export async function domainRoutes(
   database: Database,
   user: User,
 ): Promise<Response | null> {
-  if (!["domains", "verify-domain", "connect-domain"].includes(action))
+  if (
+    ![
+      "domains",
+      "verify-domain",
+      "connect-domain",
+      "prepare-domain",
+      "go-live-domain",
+    ].includes(action)
+  )
     return null;
   requireAdmin(user);
   const method = request.method;
   if (action === "domains" && method === "GET") {
+    const [automation] = await database.query<{
+      value: {
+        configured?: boolean;
+        checkedAt?: string;
+        goLiveDomains?: string[];
+      };
+    }>("SELECT value FROM settings WHERE key='vps.domain.automation'");
+    const available =
+      !!automation?.value.checkedAt &&
+      Date.now() - Date.parse(automation.value.checkedAt) < 180000;
     return json({
       domains: await database.query<Domain>(
-        "SELECT d.*, (SELECT value FROM settings WHERE key='vps.domain.request.' || d.id::text) AS connection FROM domains d WHERE site_id=$1 AND redirect_to IS NULL ORDER BY created_at DESC,id DESC",
+        "SELECT d.*, (SELECT value FROM settings WHERE key='vps.domain.request.' || d.id::text) AS connection, (SELECT value FROM settings WHERE key='vps.domain.prepare.' || d.id::text) AS preparation FROM domains d WHERE site_id=$1 AND redirect_to IS NULL ORDER BY created_at DESC,id DESC",
         [siteId],
       ),
       hostingMode: config().vps
@@ -106,16 +124,87 @@ export async function domainRoutes(
           : "local",
       dnsTarget: process.env.VPS_PUBLIC_IP || null,
       studioUrl: config().appUrl,
+      automation: {
+        available,
+        configured: available && automation?.value.configured === true,
+        goLiveEnabled: process.env.DOMAIN_GO_LIVE_ENABLED === "true",
+        allowedDomains: available ? automation?.value.goLiveDomains || [] : [],
+      },
     });
   }
-  if (action === "connect-domain" && method === "POST") {
+  if (action === "prepare-domain" && method === "POST") {
+    invariant(config().vps, 400, "Automatic preparation requires VPS hosting.");
+    const { domainId } = z
+      .object({ domainId: idSchema })
+      .strict()
+      .parse(await body(request));
+    await database.transaction(async (tx) => {
+      await lockSite(tx, siteId);
+      const [domain] = await tx.query<Domain>(
+        "SELECT * FROM domains WHERE id=$1 AND site_id=$2 FOR UPDATE",
+        [domainId, siteId],
+      );
+      invariant(
+        domain && !domain.redirect_to,
+        404,
+        "Domain not found for this portfolio.",
+      );
+      invariant(!domain.activated_at, 409, "This domain is already connected.");
+      invariant(
+        domain.verification_hostname &&
+          domain.hostname === `www.${domain.verification_hostname}`,
+        400,
+        "Use manual DNS setup for this address.",
+      );
+      const [active] = await tx.query<{ value: { status: string } }>(
+        "SELECT value FROM settings WHERE key=$1",
+        [`vps.domain.request.${domainId}`],
+      );
+      invariant(
+        !["queued", "dns_pending", "connecting", "publishing"].includes(
+          active?.value.status,
+        ),
+        409,
+        "A connection is already in progress.",
+      );
+      await tx.query(
+        "INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        [
+          `vps.domain.prepare.${domainId}`,
+          JSON.stringify({
+            status: "preparing",
+            message:
+              "Preparing ownership verification. Website and email routing stay unchanged.",
+            requestedAt: new Date().toISOString(),
+          }),
+        ],
+      );
+      await audit(
+        user.id,
+        siteId,
+        "domain.preparation_requested",
+        { domainId, hostname: domain.hostname },
+        tx,
+      );
+    });
+    return json({ ok: true }, 202);
+  }
+  if (
+    ["connect-domain", "go-live-domain"].includes(action) &&
+    method === "POST"
+  ) {
     invariant(
       config().vps,
       400,
       "Automatic connection is available on VPS hosting.",
     );
-    const { domainId } = z
-      .object({ domainId: idSchema })
+    invariant(
+      process.env.DOMAIN_GO_LIVE_ENABLED === "true",
+      409,
+      "Go live is paused while existing websites are being reviewed. Prepare domain is still available.",
+    );
+    const { domainId, confirmHostname } = z
+      .object({ domainId: idSchema, confirmHostname: z.string() })
       .strict()
       .parse(await body(request));
     const [domain] = await database.query<Domain>(
@@ -128,8 +217,67 @@ export async function domainRoutes(
       "Verify this domain's DNS ownership first.",
     );
     invariant(!domain.activated_at, 409, "This domain is already connected.");
+    invariant(
+      confirmHostname === domain.hostname,
+      400,
+      "Confirm the exact website address before going live.",
+    );
     await database.transaction(async (tx) => {
       await lockSite(tx, siteId);
+      await requireIdlePublisher(tx, siteId);
+      const [currentDomain] = await tx.query<Domain>(
+        "SELECT * FROM domains WHERE id=$1 AND site_id=$2 FOR UPDATE",
+        [domainId, siteId],
+      );
+      invariant(
+        currentDomain?.verified_at &&
+          !currentDomain.activated_at &&
+          !currentDomain.redirect_to,
+        409,
+        "Domain setup changed. Refresh and try again.",
+      );
+      const [pending] = await tx.query<{ value: { status: string } }>(
+        "SELECT value FROM settings WHERE key=$1",
+        [`vps.domain.request.${domainId}`],
+      );
+      invariant(
+        !["queued", "dns_pending", "connecting", "publishing"].includes(
+          pending?.value.status,
+        ),
+        409,
+        "A domain launch is already in progress.",
+      );
+      const [preparation] = await tx.query<{ value: { status: string } }>(
+        "SELECT value FROM settings WHERE key=$1",
+        [`vps.domain.prepare.${domainId}`],
+      );
+      invariant(
+        preparation?.value.status === "prepared",
+        409,
+        "Prepare this domain and wait for ownership verification first.",
+      );
+      const [automation] = await tx.query<{
+        value: { checkedAt: string; goLiveDomains: string[] };
+      }>("SELECT value FROM settings WHERE key='vps.domain.automation'");
+      invariant(
+        automation?.value.goLiveDomains?.includes(
+          domain.verification_hostname || domain.hostname,
+        ) && Date.now() - Date.parse(automation.value.checkedAt) < 180000,
+        409,
+        "This domain has not been approved for launch by the hosting administrator.",
+      );
+      const [review] = await tx.query<{
+        revision: number;
+        published_release_id: string;
+      }>(
+        "SELECT s.revision,s.published_release_id FROM sites s JOIN releases r ON r.id=s.published_release_id AND r.site_id=s.id AND r.revision=s.revision WHERE s.id=$1",
+        [siteId],
+      );
+      invariant(
+        review,
+        409,
+        "Review and publish the latest draft at its shared address before going live.",
+      );
       await tx.query(
         "INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         [
@@ -139,13 +287,16 @@ export async function domainRoutes(
             message:
               "Checking DNS and HTTPS. Refresh status in about a minute.",
             requestedAt: new Date().toISOString(),
+            reviewedReleaseId: review.published_release_id,
+            revision: review.revision,
+            actorId: user.id,
           }),
         ],
       );
       await audit(
         user.id,
         siteId,
-        "domain.connection_requested",
+        "domain.go_live_requested",
         { domainId, hostname: domain.hostname },
         tx,
       );
@@ -261,6 +412,15 @@ export async function domainRoutes(
         [domainId, siteId],
       );
       invariant(domain, 404, "Domain not found for this portfolio.");
+      const inProgress = await tx.query(
+        "SELECT key FROM settings WHERE key IN ($1,$2) AND value->>'status' IN ('preparing','awaiting_dns','queued','dns_pending','connecting','publishing')",
+        [`vps.domain.prepare.${domainId}`, `vps.domain.request.${domainId}`],
+      );
+      invariant(
+        !inProgress.length,
+        409,
+        "Wait for domain preparation or connection to finish before removing it.",
+      );
       invariant(
         !domain.redirect_to,
         409,

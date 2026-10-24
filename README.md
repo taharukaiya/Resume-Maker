@@ -147,7 +147,7 @@ Production runs PostgreSQL, web, worker, and ClamAV services. VPS mode requires 
 
 For an existing installation, retain its environment and secrets, select the existing Compose topology, apply any required migrations, and deploy a tested image. Do not replace a live server's proxy or rerun initial setup as an upgrade procedure.
 
-The admin panel supplies DNS records and ownership checks; domain registration is separate. Automatic HTTPS and root-to-`www` redirects also require correct DNS and the deployed proxy/domain reconciler. AWS deployments use the separate provisioning workflow under `infra/` and `scripts/`.
+The admin panel separates **Prepare domain** (ownership TXT only) from **Go live** (an explicitly approved launch). See [automatic domain setup](docs/AUTOMATIC_DOMAINS.md) for secure host-only Hostinger token configuration and launch safeguards. Existing websites are never taken over automatically. Domain registration is separate. Automatic HTTPS and root-to-`www` redirects require the deployed proxy/domain reconciler. AWS deployments use the separate provisioning workflow under `infra/` and `scripts/`.
 
 ### Backups and operations
 
