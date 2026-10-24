@@ -283,10 +283,10 @@ async function drawFigure(
   pdf.y = y + height + 10;
   if (figure.caption)
     pdf
-      .font("heading")
+      .font("body")
       .fontSize(9)
-      .fillColor("#526078")
-      .text(figure.caption, { width })
+      .fillColor("#62748e")
+      .text(figure.caption, { width, lineGap: 3 })
       .moveDown();
   pdf.y += 20;
 }
