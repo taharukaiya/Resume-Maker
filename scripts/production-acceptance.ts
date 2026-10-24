@@ -165,13 +165,13 @@ try {
       fullText: content.body,
       mediaId: media.id,
       coverId: figureId,
-      images: [
-        {
-          mediaId: figureId,
+      images: media.article_assets.imageIds.map(
+        (imageId: string, index: number) => ({
+          mediaId: imageId,
           alt: "Synthetic chart",
-          caption: `Reviewed caption for ${filename}`,
-        },
-      ],
+          caption: `Reviewed caption for ${filename}, figure ${index + 1}`,
+        }),
+      ),
     });
     results[filename] = {
       images: media.article_assets.imageIds.length,
@@ -250,7 +250,10 @@ try {
   for (const [route, object] of Object.entries(release.manifest.routes)) {
     const bytes = await getObject(object.key);
     assert.ok(bytes, `Missing release object: ${route}`);
-    if (object.type.startsWith("text/html") && route.startsWith("article/")) {
+    if (
+      object.type.startsWith("text/html") &&
+      /^article\/[^/]+\/index\.html$/.test(route)
+    ) {
       const html = bytes.toString();
       assert.match(html, /Reviewed caption/);
       assert.match(html, /class="abstract article-text"/);
