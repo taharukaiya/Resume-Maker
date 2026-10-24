@@ -14,6 +14,16 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class ZoneUnavailable(ValueError):
+    pass
+
+
+class PreparationActionRequired(ValueError):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
 def read_token():
     path = Path(os.environ.get('HOSTINGER_API_TOKEN_FILE', '/etc/brilliancy-hostinger.token'))
     info = path.lstat()
@@ -43,7 +53,12 @@ def root_for(row):
 def request(root, method='GET', payload=None):
     if not re.fullmatch(r'[a-z0-9.-]+', root):
         raise ValueError('Invalid DNS zone.')
-    req = urllib.request.Request('https://developers.hostinger.com/api/dns/v1/zones/' + root,
+    return api_request('/api/dns/v1/zones/' + root, method, payload)
+
+
+def api_request(path, method='GET', payload=None):
+    # Internal callers use fixed provider paths; never accept a URL from a draft.
+    req = urllib.request.Request('https://developers.hostinger.com' + path,
         method=method, data=json.dumps(payload).encode() if payload is not None else None,
         headers={'Authorization': 'Bearer ' + read_token(), 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Brilliancy-Domain-Setup/1.0'})
     try:
@@ -57,12 +72,30 @@ def request(root, method='GET', payload=None):
         if error.code in (401, 403):
             raise ValueError('Hostinger access was rejected. Check the token and domain access.') from None
         if error.code == 404:
-            raise ValueError('This DNS zone is not accessible in the connected Hostinger account.') from None
+            raise ZoneUnavailable('This DNS zone is not accessible in the connected Hostinger account.') from None
         if error.code == 429:
             raise ValueError('Hostinger is temporarily rate limiting requests. Retry preparation later.') from None
         raise ValueError('Hostinger could not complete this DNS request. Check its service status and retry.') from None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         raise ValueError('Hostinger could not be reached securely. Retry later.') from None
+
+
+def check_registration(root):
+    label, tld = root.rsplit('.', 1)
+    result = api_request('/api/domains/v1/availability', 'POST', {
+        'domain': label, 'tlds': [tld], 'with_alternatives': False,
+    })
+    matches = [item for item in result if isinstance(item, dict) and item.get('domain') == root] if isinstance(result, list) else []
+    if len(matches) != 1 or not isinstance(matches[0].get('is_available'), bool):
+        raise ValueError('Registration could not be checked. Retry Prepare domain later; no DNS records were changed.')
+    if matches[0]['is_available']:
+        raise PreparationActionRequired('purchase_required',
+            f'{root} needs to be purchased before setup. Hostinger reports it is available for registration. Purchase it with your registrar, then select Prepare domain again. Adding a name here does not buy it.')
+
+
+def dns_setup_required():
+    return PreparationActionRequired('dns_setup_required',
+        'This domain is not available to register, but its DNS zone is not accessible through the connected Hostinger account. If you own it, add it once in Hostinger DNS Manager, then retry Prepare domain. Keep its current nameservers and website records unchanged; external DNS needs manual TXT verification.')
 
 
 def zone(root):
@@ -91,15 +124,28 @@ def contents(record):
 
 def prepare(row):
     root = root_for(row)
-    records = zone(root)
+    try:
+        records = zone(root)
+    except ZoneUnavailable:
+        check_registration(root)
+        raise dns_setup_required() from None
+    # Hostinger can return an empty list for a domain missing from the account.
+    # Availability is a lookup only: never call purchase/setup/nameserver APIs.
+    if not records:
+        check_registration(root)
     proof = row['verification_token']
     if any(name(r, root) == '_brilliancy' and r['type'] == 'CNAME' for r in records):
         raise ValueError('The ownership name has a conflicting CNAME. Ask the hosting administrator to review it.')
     if any(name(r, root) == '_brilliancy' and r['type'] == 'TXT' and proof in contents(r) for r in records):
         return
     snapshot(root, records)
-    # Explicit false: append ownership proof without replacing other TXT values.
-    request(root, 'PUT', {'overwrite': False, 'zone': [{'name': '_brilliancy', 'type': 'TXT', 'ttl': 300, 'records': [{'content': proof}]}]})
+    # Preserve all values in this TXT record set as well as unrelated records.
+    existing = [r for r in records if name(r, root) == '_brilliancy' and r['type'] == 'TXT']
+    values = [value for record in existing for value in record['records']]
+    try:
+        request(root, 'PUT', {'overwrite': False, 'zone': [{'name': '_brilliancy', 'type': 'TXT', 'ttl': existing[0].get('ttl', 300) if existing else 300, 'records': [*values, {'content': proof}]}]})
+    except ZoneUnavailable:
+        raise dns_setup_required() from None
 
 
 def launch_allowed(row):

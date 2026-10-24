@@ -44,6 +44,7 @@ import { UploadManager, type RemovedUpload } from "./upload-manager";
 import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PersonalityEditor } from "./personality-editor";
 import { PortraitEditor } from "./portrait-editor";
+import { ProfileCompletion } from "./profile-completion";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { PagePlanner } from "./page-planner";
@@ -702,6 +703,10 @@ export function PortfolioEditor({ id }: { id: string }) {
           message="Your administrator controls which fields you can edit. Your changes go live only after administrator review and publishing."
         />
       )}
+      <ProfileCompletion
+        profile={document.profile}
+        onEdit={() => selectTab("profile")}
+      />
       <EditorWorkflow
         tab={tab}
         tabs={tabs}

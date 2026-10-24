@@ -322,18 +322,22 @@ export function DomainManager({
               <strong>{domain.hostname}</strong>
               <Badge
                 value={
-                  domain.connection?.status === "ready"
-                    ? "live"
-                    : domain.preparation?.status === "prepared" &&
-                        !ready(domain)
-                      ? "prepared � not live"
-                      : domain.is_primary && ready(domain)
-                        ? "selected for publishing"
-                        : ready(domain)
-                          ? "ready to select"
-                          : domain.verified_at
-                            ? "HTTPS setup needed"
-                            : "awaiting verification"
+                  domain.preparation?.status === "purchase_required"
+                    ? "purchase required"
+                    : domain.preparation?.status === "dns_setup_required"
+                      ? "add to Hostinger"
+                      : domain.connection?.status === "ready"
+                        ? "live"
+                        : domain.preparation?.status === "prepared" &&
+                            !ready(domain)
+                          ? "prepared — not live"
+                          : domain.is_primary && ready(domain)
+                            ? "selected for publishing"
+                            : ready(domain)
+                              ? "ready to select"
+                              : domain.verified_at
+                                ? "HTTPS setup needed"
+                                : "awaiting verification"
                 }
               />
             </div>
@@ -422,8 +426,9 @@ export function DomainManager({
             {hostingMode === "vps" && !ready(domain) && (
               <div className="stack">
                 <p className="panel-description">
-                  Preparation adds only an ownership TXT record. Website traffic
-                  changes only through an approved Go live request.
+                  Prepare checks registration and adds the ownership TXT record
+                  to an accessible Hostinger DNS zone. It does not purchase a
+                  domain, change nameservers, or switch your website.
                 </p>
                 {!automation.configured && (
                   <p>
@@ -434,6 +439,45 @@ export function DomainManager({
                 )}
                 {domain.preparation && (
                   <p role="status">{domain.preparation.message}</p>
+                )}
+                {domain.preparation?.status === "purchase_required" && (
+                  <div className="domain-action-needed">
+                    <strong>Purchase this domain first</strong>
+                    <p>
+                      Register {domain.verification_hostname || domain.hostname}{" "}
+                      with a domain registrar. Then return here and check again.
+                      The purchase is separate from portfolio setup.
+                    </p>
+                    <a
+                      href="https://hpanel.hostinger.com/domains/domain-checker"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open Hostinger domain search ↗
+                    </a>
+                  </div>
+                )}
+                {domain.preparation?.status === "dns_setup_required" && (
+                  <div className="domain-action-needed">
+                    <strong>
+                      Add the domain to Hostinger DNS Manager once
+                    </strong>
+                    <p>
+                      This domain needs a one-time setup in Hostinger. Add the
+                      domain you own there, then retry here to create and verify
+                      the TXT record automatically. If your DNS is hosted
+                      elsewhere, use the manual TXT instructions. Changing
+                      nameservers can affect your existing website and email;
+                      preparation does not change them.
+                    </p>
+                    <a
+                      href="https://hpanel.hostinger.com/domains/dns"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open Hostinger DNS Manager ↗
+                    </a>
+                  </div>
                 )}
                 {domain.connection && (
                   <p role="status">{domain.connection.message}</p>
@@ -465,7 +509,9 @@ export function DomainManager({
                       }, "Preparation requested. Your existing website stays unchanged.")
                     }
                   >
-                    Prepare domain
+                    {domain.preparation?.status === "purchase_required"
+                      ? "Check again after purchase"
+                      : "Prepare domain"}
                   </Button>
                   <Button
                     type="button"

@@ -142,7 +142,8 @@ def main():
             worker('vps-domain-requests.ts', 'prepare-verify', row['id'])
         except Exception as error:
             message = str(error) if isinstance(error, ValueError) else 'Hostinger preparation could not finish. Ask the hosting administrator to check the private token configuration.'
-            worker('vps-domain-requests.ts', 'prepare-status', row['id'], 'error', message)
+            status = error.status if isinstance(error, hostinger_dns.PreparationActionRequired) else 'error'
+            worker('vps-domain-requests.ts', 'prepare-status', row['id'], status, message)
     for row in json.loads(worker("vps-domain-requests.ts", "list")):
         try:
             reconcile(row, expected_ip)

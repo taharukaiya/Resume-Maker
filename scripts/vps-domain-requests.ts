@@ -84,7 +84,10 @@ try {
   } else if (
     ["status", "prepare-status"].includes(action) &&
     validId &&
-    ["dns_pending", "connecting", "ready", "error"].includes(status)
+    (action === "prepare-status"
+      ? ["error", "purchase_required", "dns_setup_required"]
+      : ["dns_pending", "connecting", "ready", "error"]
+    ).includes(status)
   ) {
     await database.query(
       "UPDATE settings SET value=value || $2::jsonb WHERE key=$1",

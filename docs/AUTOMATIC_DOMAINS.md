@@ -13,6 +13,10 @@ Go live is disabled by default. Existing website DNS or proxy routes are never t
 
 Automatic preparation currently supports a two-label registered domain such as `example.com` with its `www` alias, in a DNS zone accessible through the connected Hostinger account. Multi-level registered domains, other subdomains, and external DNS providers use the collapsed manual instructions. A token does not purchase domains or change nameservers.
 
+When a zone is missing or empty, preparation checks Hostinger's registration availability endpoint. An exact available result displays **Purchase required**, with a domain-search link and a retry button. Failed or ambiguous checks never claim a name is available. A registered/unavailable name whose zone cannot be accessed displays **Add to Hostinger** with the one-time account setup instructions. Hostinger's public API currently exposes record updates but no external DNS Manager zone-enrollment endpoint; the integration does not invent one, buy domains, or change nameservers. After the account entry exists, Prepare automatically adds the TXT proof and checks public DNS. If another provider remains authoritative, add the TXT there manually instead of switching nameservers during preparation.
+
+The editor also shows a live **Profile completion** percentage: five equally weighted basics (name, headline, biography, portrait, and contact email or web profile link). The checklist explains missing items. Optional CVs, affiliations, publications, domains, and release status do not affect this score; 100% is not approval to publish.
+
 ## Connect Hostinger securely
 
 Create a dedicated expiring token in Hostinger's **Dev tools → API → API tokens**. Select DNS-only access if the account offers that restriction. Keep the token in a password manager. Never paste it into chat, source code, a command argument, or the studio.

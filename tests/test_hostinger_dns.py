@@ -30,7 +30,40 @@ class HostingerSafetyTests(unittest.TestCase):
             dns.prepare(self.row)
             backup.assert_called_once_with('researchbyexample.com', original)
         self.assertEqual(self.records, original)
-        self.assertEqual(api.call_args.args, ('researchbyexample.com', 'PUT', {'overwrite': False, 'zone': [{'name': '_brilliancy', 'type': 'TXT', 'ttl': 300, 'records': [{'content': 'public-proof'}]}]}))
+        self.assertEqual(api.call_args.args, ('researchbyexample.com', 'PUT', {'overwrite': False, 'zone': [{'name': '_brilliancy', 'type': 'TXT', 'ttl': 300, 'records': [{'content': 'another-proof'}, {'content': 'public-proof'}]}]}))
+
+    def test_unregistered_domain_never_writes_dns(self):
+        with patch.object(dns, 'request', return_value=[]) as api, patch.object(dns, 'api_request', return_value=[{'domain': 'researchbyexample.com', 'is_available': True}]) as availability, patch.object(dns, 'snapshot') as backup:
+            with self.assertRaises(dns.PreparationActionRequired) as raised: dns.prepare(self.row)
+            self.assertEqual(raised.exception.status, 'purchase_required')
+            self.assertEqual(api.call_count, 1)
+            backup.assert_not_called()
+            availability.assert_called_once_with('/api/domains/v1/availability', 'POST', {'domain': 'researchbyexample', 'tlds': ['com'], 'with_alternatives': False})
+
+    def test_missing_zone_returns_one_time_setup_without_registering_or_repointing(self):
+        with patch.object(dns, 'request', side_effect=dns.ZoneUnavailable('missing')) as api, patch.object(dns, 'api_request', return_value=[{'domain':'researchbyexample.com','is_available':False}]) as availability:
+            with self.assertRaises(dns.PreparationActionRequired) as raised: dns.prepare(self.row)
+            self.assertEqual(raised.exception.status, 'dns_setup_required')
+            self.assertEqual(api.call_count, 1)
+            self.assertEqual(availability.call_count, 1)
+
+    def test_empty_registered_zone_gets_only_ownership_record(self):
+        with patch.object(dns, 'request', return_value=[]) as api, patch.object(dns, 'check_registration'), patch.object(dns, 'snapshot'):
+            dns.prepare(self.row)
+            payload = api.call_args.args[2]
+            self.assertFalse(payload['overwrite'])
+            self.assertEqual([(r['name'],r['type']) for r in payload['zone']], [('_brilliancy','TXT')])
+
+    def test_empty_missing_zone_update_reports_setup_required(self):
+        with patch.object(dns, 'request', side_effect=[[], dns.ZoneUnavailable('missing')]), patch.object(dns, 'check_registration'), patch.object(dns, 'snapshot'):
+            with self.assertRaises(dns.PreparationActionRequired) as raised: dns.prepare(self.row)
+            self.assertEqual(raised.exception.status, 'dns_setup_required')
+
+    def test_unknown_availability_cannot_claim_purchase_is_required(self):
+        for result in [[], {'is_available': True}, [{'domain':'other.com','is_available':True}], [{'domain':'researchbyexample.com','is_available':'true'}]]:
+            with patch.object(dns, 'request', return_value=[]) as api, patch.object(dns, 'api_request', return_value=result):
+                with self.assertRaisesRegex(ValueError, 'could not be checked'): dns.prepare(self.row)
+                self.assertEqual(api.call_count, 1)
 
     def test_prepare_is_idempotent(self):
         self.records[-1]['records'].append({'content': '"public-proof"'})

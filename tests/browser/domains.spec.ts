@@ -3,6 +3,98 @@ import { signInAdmin } from "./admin-session";
 
 const headers = { origin: "http://localhost:3100" };
 
+test("profile progress updates and domain purchase guidance keeps launch disabled", async ({
+  page,
+}) => {
+  await signInAdmin(page);
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "Completion Test", slug: `completion-${Date.now()}` },
+  });
+  const { id } = await created.json();
+  let preparation = {
+    status: "purchase_required",
+    message: "This domain needs to be purchased before setup.",
+  };
+  await page.route(`**/api/sites/${id}/domains`, (route) =>
+    route.fulfill({
+      json: {
+        hostingMode: "vps",
+        automation: {
+          configured: true,
+          available: true,
+          goLiveEnabled: false,
+          allowedDomains: [],
+        },
+        domains: [
+          {
+            id: "dc02ba25-002c-43d7-9e79-d9c4edab5350",
+            hostname: "www.researchbytaha.com",
+            verification_hostname: "researchbytaha.com",
+            verified_at: null,
+            activated_at: null,
+            verification_token: "test-proof",
+            is_primary: false,
+            preparation,
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`/studio/portfolios/${id}`);
+  const progress = page.getByRole("progressbar", {
+    name: "Profile completion",
+  });
+  await expect(progress).toHaveAttribute("value", "20");
+  await page
+    .getByLabel("Biography", { exact: true })
+    .fill("A biography added without saving.");
+  await expect(progress).toHaveAttribute("value", "40");
+  await page.getByText("See what’s left to add", { exact: true }).click();
+  await expect(
+    page.getByText("Biography — Added", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Website address", exact: true }).click();
+  await expect(
+    page.getByText("Purchase this domain first", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Check again after purchase" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Go live", exact: true }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: ".test-data/purchase-guidance-desktop.png",
+    fullPage: true,
+  });
+  preparation = {
+    status: "dns_setup_required",
+    message: "The DNS zone needs to be added to your Hostinger account.",
+  };
+  await page
+    .getByRole("button", { name: "Refresh status", exact: true })
+    .click();
+  await expect(
+    page.getByText("Add the domain to Hostinger DNS Manager once", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Go live", exact: true }),
+  ).toBeDisabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".test-data/profile-domain-mobile.png",
+    fullPage: true,
+  });
+});
+
 test("a stale initial editor response cannot replace a newer edit", async ({
   page,
 }) => {
