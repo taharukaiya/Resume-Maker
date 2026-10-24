@@ -30,6 +30,7 @@ services:
     volumes:
       - ${ACCEPTANCE_DIRECTORY:?Choose a new test directory}:/acceptance-data
       - ../../tests/fixtures:/fixtures:ro
+      - ../../scripts/production-acceptance.ts:/app/scripts/production-acceptance.ts:ro
     networks: [isolated, scanner]
     # Optional private file containing only AI provider configuration for synthetic tests.
     env_file: ${ACCEPTANCE_AI_ENV:-/dev/null}

@@ -143,10 +143,15 @@ try {
     assert.doesNotMatch(content.body, /about:blank|--\s*\d+ of \d+\s*--/i);
     if (filename.endsWith(".pdf")) {
       assert.equal(media.article_assets.imageIds.length, 2);
-      assert.deepEqual(Object.values(media.article_assets.captions), [
-        "Figure 1. Synthetic verification chart.",
-        "Figure 2. Synthetic verification chart.",
-      ]);
+      assert.deepEqual(
+        media.article_assets.imageIds.map(
+          (imageId: string) => media.article_assets.captions[imageId],
+        ),
+        [
+          "Figure 1. Synthetic verification chart.",
+          "Figure 2. Synthetic verification chart.",
+        ],
+      );
     }
     const figureId = media.article_assets.imageIds[0];
     entries.push({
@@ -249,7 +254,10 @@ try {
       const html = bytes.toString();
       assert.match(html, /Reviewed caption/);
       assert.match(html, /class="abstract article-text"/);
-      await writeFile(`/acceptance-data/evidence/article-${++articles}.html`, html);
+      await writeFile(
+        `/acceptance-data/evidence/article-${++articles}.html`,
+        html,
+      );
     }
     if (route.endsWith(".pdf") && !route.startsWith("assets/")) {
       const parser = new PDFParse({ data: bytes });
