@@ -410,12 +410,12 @@ test("client invitation, permitted submission, files, private pages, and public 
         (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
       ),
   ).toBe(true);
-  await page.getByLabel("Your name", { exact: true }).fill("Browser Visitor");
+  await page.getByLabel("Your name *", { exact: true }).fill("Browser Visitor");
   await page
-    .getByLabel("Email address", { exact: true })
+    .getByLabel("Email address *", { exact: true })
     .fill("visitor@integration.test");
   const message = `Collaboration inquiry ${stamp} from the public portfolio.`;
-  await page.getByLabel("Message", { exact: true }).fill(message);
+  await page.getByLabel("Message *", { exact: true }).fill(message);
   await page.getByRole("button", { name: "Send inquiry" }).click();
   await expect(
     page.getByRole("heading", { name: "Thank you for reaching out." }),

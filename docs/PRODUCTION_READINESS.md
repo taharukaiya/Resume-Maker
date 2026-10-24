@@ -54,14 +54,22 @@ These checks do not replace live network verification or independent security te
 - `npm audit`: zero known vulnerabilities after updates (including development dependencies).
 - `npm run typecheck`: passed.
 - `npm test`: 208 tests passed across 33 files. Includes SQL-looking input, disguised executable uploads, anonymous/client access denial, origin checks, draft protection, removal/restoration and password-recovery token invalidation.
-- Browser acceptance: upload removal/restoration with unsaved edits preserved, 390 px mobile layout, login password controls, and paired-domain instructions passed (7 checks).
-- Additional publishing/scale and production-build results are recorded below when completed.
+- Browser acceptance: 14 distinct checks passed across focused runs. Coverage includes upload removal/restoration with unsaved edits preserved, 390 px mobile layout, login password controls, paired-domain instructions, client invitations and field permissions, private drafts, public inquiries, publishing, article metadata/figures/PDF controls, selective CV review and a 250-article archive.
+- `npm run build`: passed with Next.js 16.4.3. Browser assertions were updated to the current fixed design, navigation and required-field labels; an isolated client-flow rerun also passed with its setup fixture.
 
 Tests use isolated synthetic data. Production AI extraction, email delivery, malware scanning, TLS issuance, backup restoration and simultaneous traffic across hundreds of portfolios were not established by those tests.
 
+## VPS verification
+
+- Created a consistent database, upload, certificate and configuration backup at `/var/backups/brilliancy/20261024T070153Z`; all four archive checksums passed.
+- Restored the PostgreSQL dump with `--exit-on-error` into a temporary PostgreSQL 17 container with no network and no published ports. The restored portfolio/media counts matched the source (1 portfolio, 7 media records). Removed the temporary container afterward. This verifies this database dump, not a complete disaster recovery of files, routing, credentials and the legacy platform.
+- Preserved the previous application image as `brilliancy:pre-security-20261024` for rollback. The database change is additive.
+- Built and activated `brilliancy:416b98351004` on the existing demo studio after applying migration 011. Verified runtime Next.js 16.4.3, the `media.removed_at` column, healthy web/database/scanner containers, a running worker and an HTTPS 200 response from `/login`.
+- Confirmed the signed-in portfolio editor loads revision 32 and exposes contextual document/image management and removal controls. No existing uploads were removed during live verification. Other hosted application containers remained running; no domain routing was changed.
+
 ## Outstanding launch gates
 
-1. **Deploy the patched build and migration to the demonstration installation**, then repeat acceptance there before changing public portfolio routes. A Git push alone does not deploy the VPS. Run migration with the existing migration service/credentials before starting code that queries `removed_at`; do not rerun initial configuration or reset the database.
+1. **Confirm the permanent studio hostname.** The patched build and migration are deployed on the existing demonstration installation. Before relocating authentication, approve the company studio address and verify its DNS, HTTPS, fresh login, invitations and recovery links. Preserve the current database and configuration; do not rerun initial setup.
 2. **Secure management access.** The observed EasyPanel tab uses plain HTTP on public port 3000. Configure an HTTPS management hostname and restrict direct management-port access using a verified recovery path. Enroll the administrator in MFA (the live studio currently offers setup); credential/MFA entry is performed by the account holder. Do not lock out the operator during firewall changes.
 3. **Back up and restore-test both systems.** Preserve the legacy applications, databases, uploads, environment/configuration and router rules. Keep an encrypted off-server backup and prove restoration on an isolated target. A backup command or VPS snapshot without a restoration test is not sufficient evidence.
 4. **Import and review all legacy content.** Obtain exports/original uploads, create each portfolio and assign the correct client. Compare biography, portrait/CV, article counts, authors/dates/abstracts, images/captions, downloads and old URL paths. Preserve manually edited content. Do not fabricate missing author/domain mappings or overwrite reviewed drafts.
