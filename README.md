@@ -153,6 +153,16 @@ The admin panel supplies DNS records and ownership checks; domain registration i
 
 Back up the database, persistent uploads and releases, configuration, and certificate data. The VPS [backup script](deploy/vps/backup.sh) briefly stops application services to create a consistent backup. Store backups off-server and test restoration.
 
+The backup script checks disk headroom, resumes only previously running containers, and writes a `COMPLETE` marker after checksums. Run `bash deploy/vps/verify-backup.sh /var/backups/brilliancy/<timestamp>` on the VPS to restore the database and check every referenced file in disposable storage. It does not load the saved environment or modify live volumes. The optional `brilliancy-backup.service` and `.timer` schedule backups at approximately 02:15 Asia/Dhaka; install them under `/etc/systemd/system/` and enable the timer only after verifying a manual backup. Local backups alone do not protect against VPS loss. Configure encrypted off-server storage separately and monitor backup failures and retention.
+
+Capacity settings are documented in `.env.example`: `PORTFOLIO_MEDIA_LIMIT_MB` includes recoverable removed uploads; `MAX_CONCURRENT_UPLOADS` limits multipart processing per web process; `STORAGE_MIN_FREE_MB` reserves disk space before local VPS writes. These safeguards are not a storage reservation across other applications. Budget originals, extracted figures, generated releases and backups before increasing quotas.
+
+### Isolated production acceptance
+
+`deploy/vps/compose.acceptance.yaml` creates a disposable PostgreSQL database and application with no published ports. Supply a private `--env-file` containing `ACCEPTANCE_IMAGE`, a new `ACCEPTANCE_DIRECTORY`, and random `ACCEPTANCE_DB_PASSWORD`, `ACCEPTANCE_SESSION_SECRET` and `ACCEPTANCE_SETUP_TOKEN` values. The data directory must be writable by UID 1001. An optional private `ACCEPTANCE_AI_ENV` file may contain only AI-provider settings for the synthetic fixtures. Never commit either file. The stack expects the existing `brilliancy_default` scanner network; inspect the target deployment first.
+
+Use that Compose file and environment for every command: start `acceptance-db`, run `web` with `node node_modules/tsx/dist/cli.mjs scripts/migrate.ts`, start `web`, then execute `node node_modules/tsx/dist/cli.mjs scripts/production-acceptance.ts` inside it. The harness refuses the live database name or data directory. It tests actual PDF/DOCX conversion, malware rejection, draft review, captions, generated PDFs, expired worker leases and listing 400 synthetic portfolios. Evidence is written to the acceptance data directory. This listing benchmark does not certify 400 concurrent users or the storage needed for their PDFs. Keep evidence, then remove only the disposable acceptance project and its volume; never run cleanup against the live Compose project.
+
 Monitor disk usage, job failures, scanner health, email delivery, and provider quotas. Configure release retention for the expected workload; retained releases can take considerably more space than the original uploads. Historical deployment guides describe specific server snapshots, so confirm current capacity and configuration before following them.
 
 ## Repository layout

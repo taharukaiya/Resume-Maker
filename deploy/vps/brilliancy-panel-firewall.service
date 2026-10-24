@@ -1,0 +1,13 @@
+[Unit]
+Description=Restrict direct public EasyPanel management access
+After=docker.service network-online.target
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/brilliancy/deploy/vps/protect-panel-port.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target docker.service
