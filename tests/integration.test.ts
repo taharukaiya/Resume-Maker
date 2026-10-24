@@ -209,6 +209,204 @@ describe.sequential(
           .status,
       ).toBe(404);
     });
+    it("removes unused uploads recoverably, isolates clients, and protects saved references", async () => {
+      const database = await db();
+      const id = randomUUID();
+      const imageId = randomUUID();
+      const created = await request("sites", "POST", {
+        name: "Upload lifecycle",
+        slug: `uploads-${id}`,
+      });
+      const uploadSite = created.data.id;
+      const owner = (await request("auth/me")).data.user.id;
+      const storageKey = `private/${uploadSite}/${id}.pdf`;
+      await putObject(storageKey, "synthetic source", "application/pdf");
+      for (const [fileId, mime] of [
+        [id, "application/pdf"],
+        [imageId, "image/webp"],
+      ]) {
+        await database.query(
+          "INSERT INTO media(id,site_id,filename,mime,bytes,storage_key,uploaded_by) VALUES($1,$2,$3,$4,16,$5,$6)",
+          [
+            fileId,
+            uploadSite,
+            "synthetic upload",
+            mime,
+            fileId === id
+              ? storageKey
+              : `private/${uploadSite}/${imageId}.webp`,
+            owner,
+          ],
+        );
+      }
+      expect(
+        (await request(`media/${id}`, "DELETE", undefined, "")).status,
+      ).toBe(401);
+      expect(
+        (await request(`media/${id}`, "DELETE", undefined, clientCookie))
+          .status,
+      ).toBe(404);
+      expect(
+        (await request(`media/${id}/restore`, "POST", {}, clientCookie)).status,
+      ).toBe(404);
+      expect(
+        (
+          await request(
+            `media/${id}`,
+            "DELETE",
+            undefined,
+            adminCookie,
+            "https://attacker.test",
+          )
+        ).status,
+      ).toBe(403);
+      const doc = (await request(`sites/${uploadSite}`)).data.site.draft;
+      doc.profile.cvId = id;
+      doc.profile.portraitId = imageId;
+      expect(
+        (
+          await request(`sites/${uploadSite}`, "PUT", {
+            document: doc,
+            revision: 1,
+          })
+        ).status,
+      ).toBe(200);
+      expect((await request(`media/${id}`, "DELETE")).status).toBe(409);
+      expect((await request(`media/${imageId}`, "DELETE")).status).toBe(409);
+      doc.profile.cvId = "";
+      doc.profile.portraitId = "";
+      expect(
+        (
+          await request(`sites/${uploadSite}`, "PUT", {
+            document: doc,
+            revision: 2,
+          })
+        ).status,
+      ).toBe(200);
+      expect((await request(`media/${id}`, "DELETE")).status).toBe(200);
+      expect((await request(`media/${imageId}`, "DELETE")).status).toBe(200);
+      const listing = (await request(`sites/${uploadSite}`)).data;
+      expect(listing.media).toHaveLength(0);
+      expect(listing.removedMedia).toHaveLength(2);
+      expect(listing.removedMedia[0]).not.toHaveProperty("storage_key");
+      expect((await getObject(storageKey))?.toString()).toBe(
+        "synthetic source",
+      );
+      const hidden = await handle(
+        new NextRequest(`http://localhost:3000/api/media/${id}`, {
+          headers: { cookie: adminCookie },
+        }),
+        ["media", id],
+      );
+      expect(hidden.status).toBe(404);
+      expect(
+        (
+          await request(`sites/${uploadSite}/restore`, "POST", {
+            revision: 2,
+            currentRevision: 3,
+          })
+        ).status,
+      ).toBe(400);
+      expect((await request(`media/${id}/restore`, "POST", {})).status).toBe(
+        200,
+      );
+      expect(
+        (await request(`media/${imageId}/restore`, "POST", {})).status,
+      ).toBe(200);
+      expect(
+        (
+          await request(`sites/${uploadSite}/restore`, "POST", {
+            revision: 2,
+            currentRevision: 3,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await request(`sites/${uploadSite}`)).data.site.draft.profile.cvId,
+      ).toBe(id);
+      const events = await database.query(
+        "SELECT action FROM audit_events WHERE site_id=$1 AND action IN ('media.removed','media.restored')",
+        [uploadSite],
+      );
+      expect(events).toHaveLength(4);
+    });
+    it("treats SQL payloads as data and rejects executable uploaded files", async () => {
+      const hostile = `Robert'); DROP TABLE sites;--`;
+      expect(
+        (
+          await request("sites", "POST", {
+            name: hostile,
+            slug: `security-${randomUUID()}`,
+          })
+        ).status,
+      ).toBe(201);
+      expect(
+        (await request("sites")).data.sites.some(
+          (s: { name: string }) => s.name === hostile,
+        ),
+      ).toBe(true);
+      expect(
+        (await request(`sites/${encodeURIComponent("' OR 1=1--")}`)).status,
+      ).toBe(400);
+      for (const filename of ["payload.html", "payload.svg", "disguised.pdf"]) {
+        const form = new FormData();
+        form.set(
+          "file",
+          new File(["<script>alert(document.cookie)</script>"], filename, {
+            type: "application/pdf",
+          }),
+        );
+        const response = await handle(
+          new NextRequest(`http://localhost:3000/api/sites/${siteId}/media`, {
+            method: "POST",
+            headers: { origin: "http://localhost:3000", cookie: adminCookie },
+            body: form,
+          }),
+          ["sites", siteId, "media"],
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+    it("invalidates recovery tokens and other sessions after a password change", async () => {
+      const owner = (await request("auth/me")).data.user.id;
+      const database = await db();
+      const resetToken = randomUUID();
+      await database.query(
+        "INSERT INTO account_tokens(token_hash,user_id,kind,expires_at) VALUES($1,$2,'reset',now()+interval '30 minutes')",
+        [hash(resetToken), owner],
+      );
+      const other = await request(
+        "auth/login",
+        "POST",
+        { email: adminEmail, password },
+        "",
+      );
+      const otherCookie = other.response.headers
+        .get("set-cookie")!
+        .split(";")[0];
+      expect(
+        (
+          await request("auth/password", "POST", {
+            current: password,
+            password,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await request("auth/me", "GET", undefined, otherCookie)).status,
+      ).toBe(401);
+      expect((await request("auth/me")).status).toBe(200);
+      expect(
+        (
+          await request(
+            "auth/accept",
+            "POST",
+            { token: resetToken, password },
+            "",
+          )
+        ).status,
+      ).toBe(400);
+    });
     it("blocks clients from managing accounts, permissions, and publishing", async () => {
       expect(
         (await request("users", "GET", undefined, clientCookie)).status,

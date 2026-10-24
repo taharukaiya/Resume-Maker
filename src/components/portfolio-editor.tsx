@@ -12,6 +12,7 @@ import {
   defaultLabels,
   documentSchema,
   profileLinkUrlSchema,
+  collectAssetIds,
 } from "@/modules/portfolios/schema";
 import type { Site } from "@/modules/portfolios/service";
 import {
@@ -39,6 +40,7 @@ import { replaceSectionGroup } from "@/modules/portfolios/structure";
 import { PublicationsEditor } from "./publications-editor";
 import { DeletePortfolio } from "./delete-portfolio";
 import { CvImporter } from "./cv-importer";
+import { UploadManager, type RemovedUpload } from "./upload-manager";
 import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PersonalityEditor } from "./personality-editor";
 import { PortraitEditor } from "./portrait-editor";
@@ -77,6 +79,7 @@ type Release = { id: string; revision: number; created_at: string };
 type EditorData = {
   site: Site;
   media: Media[];
+  removedMedia?: RemovedUpload[];
   jobs: Job[];
   releases: Release[];
   publishedDocument?: PortfolioDocument | null;
@@ -409,6 +412,44 @@ export function PortfolioEditor({ id }: { id: string }) {
     ["history", "History"],
   ];
   const assets = data.media;
+  async function removeUpload(file: Media) {
+    if (document && collectAssetIds(document).includes(file.id)) {
+      feedback.setError(
+        "This file is selected in your draft. Unselect or replace it, save your draft, then remove the upload.",
+      );
+      return;
+    }
+    if (
+      !(await confirm({
+        title: "Remove this upload?",
+        description: `“${file.filename}” will be removed from upload choices. You can restore it from Manage uploaded files. Published websites and saved history are kept.`,
+        confirmLabel: "Remove upload",
+        destructive: true,
+      }))
+    )
+      return;
+    await feedback.run(async () => {
+      await api(`media/${file.id}`, { method: "DELETE" });
+      await load();
+    }, "Upload removed. You can restore it beside the upload controls.");
+  }
+  async function restoreUpload(file: RemovedUpload) {
+    await feedback.run(async () => {
+      await api(`media/${file.id}/restore`, { method: "POST" });
+      await load();
+    }, "Upload restored.");
+  }
+  const uploadManager = (kind: "documents" | "images") =>
+    admin && (
+      <UploadManager
+        files={assets}
+        removed={data.removedMedia || []}
+        kind={kind}
+        busy={feedback.busy}
+        onRemove={removeUpload}
+        onRestore={restoreUpload}
+      />
+    );
   const matchingFiles = assets
     .filter(
       (file) =>
@@ -697,6 +738,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 }
                 onChange={change}
                 onRefresh={() => load()}
+                onRemove={removeUpload}
               />
             )}
             <section className="panel">
@@ -803,6 +845,8 @@ export function PortfolioEditor({ id }: { id: string }) {
                 />
                 {assetSelect("Curriculum vitae", "cvId", "application/pdf")}
                 {admin && assetSelect("Website logo", "logoId", "image/")}
+                {uploadManager("documents")}
+                {uploadManager("images")}
                 {admin && (
                   <details className="editor-options full-span">
                     <summary>
@@ -1357,24 +1401,9 @@ export function PortfolioEditor({ id }: { id: string }) {
                         {admin && (
                           <button
                             className="icon-button"
-                            aria-label={`Delete ${file.filename}`}
+                            aria-label={`Remove upload ${file.filename}`}
                             disabled={feedback.busy}
-                            onClick={async () => {
-                              if (
-                                await confirm({
-                                  title: "Delete this file?",
-                                  description: `“${file.filename}” will be permanently removed from the media library. Copies in published releases remain available.`,
-                                  confirmLabel: "Delete file",
-                                  destructive: true,
-                                })
-                              )
-                                void feedback.run(async () => {
-                                  await api(`media/${file.id}`, {
-                                    method: "DELETE",
-                                  });
-                                  await load();
-                                }, "File deleted.");
-                            }}
+                            onClick={() => void removeUpload(file)}
                           >
                             <Trash2 size={15} />
                           </button>

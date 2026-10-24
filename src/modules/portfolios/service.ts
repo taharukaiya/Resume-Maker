@@ -62,13 +62,13 @@ export async function saveDocument(
     const assetIds = collectAssetIds(document);
     if (assetIds.length) {
       const media = await tx.query<{ id: string; mime: string }>(
-        "SELECT id,mime FROM media WHERE site_id=$1",
+        "SELECT id,mime FROM media WHERE site_id=$1 AND removed_at IS NULL",
         [id],
       );
       invariant(
         assetIds.every((asset) => media.some((m) => m.id === asset)),
         400,
-        "A selected file does not belong to this portfolio.",
+        "A selected file is unavailable or belongs to another portfolio. Restore any removed upload before using it.",
       );
       for (const asset of [
         document.profile.portraitId,

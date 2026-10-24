@@ -41,7 +41,8 @@ export function Settings() {
             <section className="panel">
               <h2>Agency identity</h2>
               <p className="panel-description">
-                Used in the credit on newly published portfolios.
+                Your agency name for workspace records. Public portfolios focus
+                on the researcher.
               </p>
               <form
                 onSubmit={(e) => {
@@ -51,7 +52,7 @@ export function Settings() {
                       method: "PUT",
                       body: JSON.stringify({ name }),
                     });
-                  }, "Agency identity saved. Republish portfolios to update their credit.");
+                  }, "Agency identity saved.");
                 }}
               >
                 <Field label="Agency name">

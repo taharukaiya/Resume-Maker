@@ -17,6 +17,7 @@ import { aiConfig } from "@/modules/ai/config";
 import { wordExtension, wordToPdf } from "./word";
 import { extractArticleAssets, type ArticleAssets } from "./article-assets";
 export type Media = {
+  removed_at?: string | null;
   article_assets?: ArticleAssets | null;
   article_metadata?: import("@/modules/ai/article").ArticleMetadata | null;
   extracted_text?: string | null;

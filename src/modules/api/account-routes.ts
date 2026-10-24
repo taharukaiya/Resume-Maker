@@ -80,6 +80,7 @@ export async function accountRoutes(
         "DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2",
         [user.id, hash(request.cookies.get(cookieName())?.value || "")],
       );
+      await tx.query("DELETE FROM account_tokens WHERE user_id=$1", [user.id]);
       await audit(user.id, null, "auth.password_changed", {}, tx);
     });
     return json({ ok: true });

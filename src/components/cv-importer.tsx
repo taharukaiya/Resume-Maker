@@ -25,6 +25,7 @@ export function CvImporter({
   error,
   onChange,
   onRefresh,
+  onRemove,
 }: {
   siteId: string;
   media: Media[];
@@ -37,6 +38,7 @@ export function CvImporter({
   error?: string;
   onChange: (doc: PortfolioDocument) => void;
   onRefresh: () => Promise<void>;
+  onRemove?: (file: Media) => Promise<void>;
 }) {
   const [mediaId, setMediaId] = useState("");
   const [selection, setSelection] = useState<CvSelection>({
@@ -165,6 +167,15 @@ export function CvImporter({
           />
         </Field>
       </div>
+      {selected && onRemove && (
+        <Button
+          variant="secondary small"
+          disabled={feedback.busy || pending || !!waiting}
+          onClick={() => void onRemove(selected)}
+        >
+          Remove selected upload
+        </Button>
+      )}
       <p className="panel-description">
         {browserAi
           ? "Free AI downloads roughly 1 GB of model files from Hugging Face on first use and runs on your computer. Use desktop Chrome or Edge with WebGPU and enough available GPU memory (allow about 3 GB). Keep this tab open. The uploaded PDF stays on this app's server; its extracted text is processed in your browser."

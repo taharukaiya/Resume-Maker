@@ -1,7 +1,7 @@
 import { bodyFormat } from "../src/modules/media/article-format";
 import { expect, it } from "vitest";
 import { PDFParse } from "pdf-parse";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import {
   articleFormatSchema,
   formatHtml,
@@ -62,6 +62,7 @@ it("typesets formatted headings and runs without losing body text or adding brow
     expect(text).toContain("careful interpretation");
     expect(text).toContain("2. Explain the limitations.");
     expect(text).not.toMatch(/about:blank|CITE THIS ARTICLE/);
+    await mkdir(".test-data", { recursive: true });
     await writeFile(".test-data/formatted-article.pdf", bytes);
   } finally {
     await parser.destroy();

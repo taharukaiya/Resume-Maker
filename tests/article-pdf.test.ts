@@ -26,6 +26,7 @@ it("typesets a clean uploaded article without duplicate abstract, browser footer
     );
     expect(text).toContain("Introduction");
     expect(text).toContain("Lovelace (2024)");
+    await mkdir(".test-data", { recursive: true });
     await writeFile(".test-data/clean-uploaded-article.pdf", bytes);
   } finally {
     await parser.destroy();

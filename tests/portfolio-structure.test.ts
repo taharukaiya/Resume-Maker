@@ -89,7 +89,7 @@ describe("Portfolio page structure", () => {
       "<title>Contact | Researcher</title>",
     );
     expect(pages["contact/index.html"]).toContain(
-      'name="description" content="Contact | Researcher. Get in touch"',
+      'name="description" content="Contact | Researcher. Contact"',
     );
     expect(pages["sitemap.xml"]).toContain("/contact</loc>");
     expect(pages["index.html"]).toContain('popovertarget="portfolio-menu"');

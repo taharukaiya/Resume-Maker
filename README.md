@@ -15,6 +15,7 @@ The repository is named **Resume-Maker**; the application is **Brilliancy Resear
 - **Publishing:** save drafts, preview, publish an approved version, restore editing history, roll back to a previous release, or take a portfolio offline.
 - **Website addresses:** suggested personal domain names, editable domains, DNS instructions, ownership verification, and routing integrations for HTTPS and canonical `www` addresses.
 - **Administration:** invitations, client permissions, inquiry inbox, audit history, account recovery, and authenticator-app MFA.
+- **Upload removal:** administrators can remove unused documents and images beside the upload controls, and restore them later. Saved draft references are protected; published assets and history are preserved. Removed uploads remain stored and count toward the media allowance.
 
 ## Technology
 
@@ -130,6 +131,8 @@ Local browser tests use installed Google Chrome, port **3100**, and an isolated 
 A successful build verifies the application code. Production acceptance also includes uploads, document conversion, worker processing, email, DNS/HTTPS, and a backup restoration check in the deployed environment.
 
 ## Production deployment
+
+Read the [production readiness and researchby migration review](docs/PRODUCTION_READINESS.md) before replacing an existing portfolio. Passing local tests does not approve a bulk domain cutover.
 
 The application provides its own admin panel. **cPanel is not required.** A central studio serves administrators and clients, while each published portfolio can use its own domain.
 

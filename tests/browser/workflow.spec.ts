@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import sharp from "sharp";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
-import { styles, palettes } from "../../src/modules/portfolios/design";
 import { textPdf } from "../pdf-fixture";
 const email = "browser-admin@integration.test",
   password = "Browser testing passphrase 2026!";
@@ -129,7 +128,7 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
     .click();
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
   await page
-    .getByLabel("Academic headline")
+    .getByLabel("Profession or headline")
     .fill("Investigating equitable and reliable scientific systems.");
   await page
     .getByLabel("Biography", { exact: true })
@@ -155,7 +154,10 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   const preview = page.frameLocator('iframe[title="Draft portfolio preview"]');
   await expect(
-    preview.getByRole("heading", { name, exact: true }),
+    preview.getByRole("heading", {
+      name: "Investigating equitable and reliable scientific systems.",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     preview.getByText("My research explores how evidence"),
@@ -178,7 +180,12 @@ test("administrator setup, editor, permissions, publishing, and mobile layout", 
     fullPage: true,
   });
   await page.goto(publicUrl!);
-  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Investigating equitable and reliable scientific systems.",
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
     new URL(publicUrl!, "http://localhost:3100").href,
@@ -283,7 +290,9 @@ test("client invitation, permitted submission, files, private pages, and public 
       .click();
     await expect(clientPage).toHaveURL(/\/studio$/);
     await clientPage.goto(`/studio/portfolios/${id}`);
-    await expect(clientPage.getByLabel("Academic headline")).toBeDisabled();
+    await expect(
+      clientPage.getByLabel("Profession or headline"),
+    ).toBeDisabled();
     await expect(
       clientPage.getByRole("tab", { name: "Permissions", exact: true }),
     ).toHaveCount(0);
@@ -393,10 +402,10 @@ test("client invitation, permitted submission, files, private pages, and public 
   await expect(
     page.getByText("A biography submitted by the invited researcher."),
   ).toBeVisible();
-  await expect(page.locator("img.portrait")).toBeVisible();
+  await expect(page.locator("img.hero-portrait")).toBeVisible();
   expect(
     await page
-      .locator("img.portrait")
+      .locator("img.hero-portrait")
       .evaluate(
         (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
       ),
@@ -415,7 +424,7 @@ test("client invitation, permitted submission, files, private pages, and public 
   await expect(page.getByText(message, { exact: true })).toBeVisible();
 });
 
-test("design compositions, local fonts, mobile layouts and selective CV review", async ({
+test("fixed design, mobile layouts and selective CV review", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -494,28 +503,21 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
     portrait: "arch",
     decoration: "glow",
   };
-  let revision = 1;
-  for (const [i, style] of styles.entries()) {
-    const { name: paletteName, ...palette } =
-      palettes[style.id === "folio" ? 6 : i % palettes.length];
-    doc.theme = { ...doc.theme, ...palette, style: style.id };
-    const saved = await page.request.put(`/api/sites/${id}`, {
-      headers: { origin: "http://localhost:3100" },
-      data: { document: doc, revision },
-    });
-    expect(saved.status(), paletteName).toBe(200);
-    revision = (await saved.json()).revision;
+  const saved = await page.request.put(`/api/sites/${id}`, {
+    headers: { origin: "http://localhost:3100" },
+    data: { document: doc, revision: 1 },
+  });
+  expect(saved.status()).toBe(200);
+  {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/api/sites/${id}/preview`);
     await page.evaluate(() => document.fonts.ready);
-    expect(
-      await page.evaluate(() =>
-        document.fonts.check('500 30px "Portfolio Fraunces"'),
-      ),
-    ).toBe(true);
-    await expect(page.locator("body")).toHaveClass(style.id);
+    await expect(page.locator("body")).toHaveClass("shiba");
+    await expect(
+      page.getByRole("heading", { name: doc.profile.headline, exact: true }),
+    ).toBeVisible();
     await page.screenshot({
-      path: `.test-data/design-${style.id}-desktop.png`,
+      path: ".test-data/design-current-desktop.png",
       fullPage: true,
     });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -525,14 +527,15 @@ test("design compositions, local fonts, mobile layouts and selective CV review",
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `.test-data/design-${style.id}-mobile.png`,
+      path: ".test-data/design-current-mobile.png",
       fullPage: true,
     });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/studio/portfolios/${id}`);
-  await page.getByRole("tab", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: "Archive · Oxblood" }).click();
+  await expect(
+    page.getByRole("tab", { name: "Design", exact: true }),
+  ).toHaveCount(0);
   await page.screenshot({
     path: ".test-data/design-editor.png",
     fullPage: true,

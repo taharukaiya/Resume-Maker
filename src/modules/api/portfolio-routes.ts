@@ -188,7 +188,7 @@ export async function portfolioRoutes(
             )
           : Promise.resolve([]),
         database.query<Media>(
-          `SELECT id,site_id,filename,mime,bytes,summary,created_at${user.role === "admin" ? ",cv_import,article_metadata,extracted_text,article_assets" : ""} FROM media WHERE site_id=$1 ORDER BY created_at DESC`,
+          `SELECT id,site_id,filename,mime,bytes,summary,created_at,removed_at${user.role === "admin" ? ",cv_import,article_metadata,extracted_text,article_assets" : ""} FROM media WHERE site_id=$1 ${user.role === "admin" ? "" : "AND removed_at IS NULL"} ORDER BY created_at DESC`,
           [id],
         ),
         database.query(
@@ -204,7 +204,22 @@ export async function portfolioRoutes(
         site,
         publishedDocument: published[0]?.document || null,
         publishedUrl: publishedAddress(published[0]?.manifest?.baseUrl),
-        media,
+        media: media.filter((file) => !file.removed_at),
+        removedMedia:
+          user.role === "admin"
+            ? media
+                .filter((file) => file.removed_at)
+                .map(
+                  ({ id, filename, mime, bytes, created_at, removed_at }) => ({
+                    id,
+                    filename,
+                    mime,
+                    bytes,
+                    created_at,
+                    removed_at,
+                  }),
+                )
+            : [],
         jobs,
         releases,
       });

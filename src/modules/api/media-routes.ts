@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { invariant } from "@/lib/errors";
-import { deleteObject, getObject } from "@/lib/storage";
+import { getObject } from "@/lib/storage";
 import {
   audit,
   rateLimit,
@@ -10,7 +10,7 @@ import {
 } from "@/modules/auth/service";
 import { type Media } from "@/modules/media/service";
 import { collectAssetIds } from "@/modules/portfolios/schema";
-import { getSite } from "@/modules/portfolios/service";
+import type { Site } from "@/modules/portfolios/service";
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { idSchema, json } from "./shared";
@@ -40,6 +40,28 @@ export async function mediaRoutes(
     );
     invariant(media, 404, "File not found.");
     await siteAccess(user, media.site_id);
+    if (path.length === 3 && path[2] === "restore" && method === "POST") {
+      requireAdmin(user);
+      await database.transaction(async (tx) => {
+        await tx.query("SELECT id FROM sites WHERE id=$1 FOR UPDATE", [
+          media.site_id,
+        ]);
+        await tx.query("UPDATE media SET removed_at=NULL WHERE id=$1", [id]);
+        await audit(
+          user.id,
+          media.site_id,
+          "media.restored",
+          { mediaId: id },
+          tx,
+        );
+      });
+      return json({ ok: true });
+    }
+    invariant(
+      !media.removed_at,
+      404,
+      "This upload was removed. Restore it before using it again.",
+    );
     if (
       path.length === 3 &&
       path[2] === "browser-ai" &&
@@ -144,15 +166,28 @@ export async function mediaRoutes(
     }
     if (path.length === 2 && method === "DELETE") {
       requireAdmin(user);
-      const site = await getSite(user, media.site_id);
-      invariant(
-        !collectAssetIds(site.draft).includes(id),
-        409,
-        "Remove this file from the current draft before deleting it.",
-      );
-      await database.query("DELETE FROM media WHERE id=$1", [id]);
-      await deleteObject(media.storage_key);
-      await audit(user.id, media.site_id, "media.deleted", { mediaId: id });
+      // Serialize with saves/publishing. Keep bytes for recovery and historical
+      // revisions; published releases contain independent copies of their assets.
+      await database.transaction(async (tx) => {
+        const [site] = await tx.query<Site>(
+          "SELECT * FROM sites WHERE id=$1 FOR UPDATE",
+          [media.site_id],
+        );
+        invariant(site, 404, "Portfolio not found.");
+        invariant(
+          !collectAssetIds(site.draft).includes(id),
+          409,
+          "This file is used in the saved draft. Unselect or replace it, save the draft, then remove the upload.",
+        );
+        await tx.query("UPDATE media SET removed_at=now() WHERE id=$1", [id]);
+        await audit(
+          user.id,
+          media.site_id,
+          "media.removed",
+          { mediaId: id },
+          tx,
+        );
+      });
       return json({ ok: true });
     }
     if (path[2] === "abstract" && method === "POST") {
