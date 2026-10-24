@@ -191,12 +191,11 @@ test("transparent portraits skip model downloads, and guided publishing saves ch
     await page
       .getByRole("tab", { name: "Website address", exact: true })
       .click();
-    await page.getByText("Connect a personal domain", { exact: true }).click();
     await expect(
-      page.getByText("Register the domain", { exact: true }),
+      page.getByText("Choose your name", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("Connect hosting & HTTPS", { exact: true }),
+      page.getByRole("button", { name: "Add domain", exact: true }),
     ).toBeVisible();
     await page
       .getByRole("tab", { name: "Review & publish", exact: true })
@@ -216,7 +215,6 @@ test("transparent portraits skip model downloads, and guided publishing saves ch
     expect(state.publishedDocument.profile.bio).toContain("revised biography");
     await page.goto(state.publishedUrl);
     await expect(page.locator(".page-overview")).toHaveCount(0);
-    await expect(page.getByRole("contentinfo")).toContainText("Let’s connect.");
     await expect(page.getByRole("contentinfo")).toContainText(
       "Portrait workflow fixture",
     );

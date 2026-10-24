@@ -1,9 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { signInAdmin } from "./admin-session";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
-import { signatureLooks } from "../../src/modules/portfolios/design";
 
-test("six curated designs, automatic search preview, publications workflow and mobile layouts", async ({
+test("fixed design, automatic search preview, research workflow and mobile layouts", async ({
   page,
   browser,
 }) => {
@@ -28,9 +27,9 @@ test("six curated designs, automatic search preview, publications workflow and m
       "Academic sections: add at least one visible education entry.",
     ),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Design", exact: true }).click();
-  await expect(page.locator(".curated-card")).toHaveCount(6);
-  await expect(page.locator("input[type=color]")).toHaveCount(0);
+  await expect(
+    page.getByRole("tab", { name: "Design", exact: true }),
+  ).toHaveCount(0);
   await page.screenshot({
     path: ".test-data/curated-editor-desktop.png",
     fullPage: true,
@@ -50,7 +49,7 @@ test("six curated designs, automatic search preview, publications workflow and m
   await expect(
     page.getByLabel("Social sharing title", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Publications", exact: true }).click();
+  await page.getByRole("tab", { name: "Research", exact: true }).click();
   await page
     .getByLabel("Add section", { exact: true })
     .selectOption("publications");
@@ -105,15 +104,13 @@ test("six curated designs, automatic search preview, publications workflow and m
     },
   ];
   const context = await browser.newContext({
-    javaScriptEnabled: false,
     storageState: await page.context().storageState(),
     reducedMotion: "reduce",
   });
   const preview = await context.newPage();
   try {
     let revision = 1;
-    for (const look of signatureLooks) {
-      doc.theme = { ...doc.theme, ...look.theme };
+    {
       const saved = await page.request.put(`/api/sites/${id}`, {
         headers,
         data: { document: doc, revision },
@@ -123,10 +120,13 @@ test("six curated designs, automatic search preview, publications workflow and m
       await preview.setViewportSize({ width: 1440, height: 1000 });
       await preview.goto(`/api/sites/${id}/preview`);
       await expect(
-        preview.getByRole("heading", { name: doc.profile.name, exact: true }),
+        preview.getByRole("heading", {
+          name: doc.profile.headline,
+          exact: true,
+        }),
       ).toBeVisible();
       await preview.screenshot({
-        path: `.test-data/curated-${look.theme.style}-desktop.png`,
+        path: ".test-data/current-template-desktop.png",
         fullPage: true,
         animations: "disabled",
       });
@@ -145,7 +145,7 @@ test("six curated designs, automatic search preview, publications workflow and m
       ).toBeVisible();
       await preview
         .getByRole("navigation", { name: "Mobile navigation", exact: true })
-        .getByRole("link", { name: "Research", exact: true })
+        .getByRole("link", { name: /^research$/i })
         .click();
       await expect(
         preview.getByRole("heading", {
@@ -154,7 +154,7 @@ test("six curated designs, automatic search preview, publications workflow and m
         }),
       ).toBeVisible();
       await preview.screenshot({
-        path: `.test-data/curated-${look.theme.style}-mobile.png`,
+        path: ".test-data/current-template-mobile.png",
         fullPage: true,
         animations: "disabled",
       });

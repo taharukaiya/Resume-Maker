@@ -8,6 +8,9 @@ export default defineConfig({
   expect: { timeout: 15000 },
   use: {
     baseURL: "http://localhost:3100",
+    // Local Windows development routes compile on first access.
+    actionTimeout: process.env.CI ? 15000 : 60000,
+    navigationTimeout: 60000,
     channel: process.env.CI ? undefined : "chrome",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

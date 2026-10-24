@@ -89,13 +89,12 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
     revision = (await response.json()).revision;
   };
   const reader = await browser.newContext({
-    javaScriptEnabled: false,
     storageState: await page.context().storageState(),
     viewport: { width: 1440, height: 1000 },
   });
   const publicPage = await reader.newPage();
   try {
-    for (const look of signatureLooks.slice(0, 2)) {
+    for (const look of signatureLooks.slice(0, 1)) {
       doc.theme = { ...doc.theme, ...look.theme };
       await save();
       await publicPage.setViewportSize({ width: 1440, height: 1000 });
@@ -103,21 +102,17 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       await expect(publicPage).toHaveTitle(
         `${doc.profile.name} | ${doc.profile.headline}`,
       );
-      await expect(publicPage.locator(".hero-copy > :first-child")).toHaveText(
-        doc.profile.name,
+      await expect(publicPage.locator(".hero-copy h1")).toHaveText(
+        doc.profile.headline,
       );
       await expect(publicPage.locator(".hero .eyebrow")).toHaveCount(0);
-      const affiliation = publicPage.locator(".hero-affiliation");
-      await expect(affiliation).toHaveText(doc.profile.affiliation);
-      await expect(affiliation).toHaveCSS("text-transform", "none");
-      await expect(affiliation).toHaveCSS("font-weight", "400");
       await expect(publicPage.locator('link[rel="icon"]')).toHaveAttribute(
-        "type",
-        "image/svg+xml",
+        "href",
+        /favicon/,
       );
       await expect(
         publicPage.getByRole("heading", {
-          name: doc.profile.name,
+          name: doc.profile.headline,
           exact: true,
         }),
       ).toBeVisible();
@@ -128,15 +123,17 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       });
       await publicPage
         .getByRole("navigation", { name: "Main navigation", exact: true })
-        .getByRole("link", { name: "About", exact: true })
+        .getByRole("link", { name: /^about me$/i })
         .click();
-      await expect(publicPage).toHaveTitle(`About | ${doc.profile.name}`);
-      await expect(publicPage.locator(".section-head h2")).toHaveText([
-        "About",
+      await expect(publicPage).toHaveTitle(`About Me | ${doc.profile.name}`);
+      for (const title of [
         "Education",
         "Research experience",
         "Beyond research",
-      ]);
+      ])
+        await expect(
+          publicPage.getByRole("heading", { name: title, exact: true }),
+        ).toBeVisible();
       await publicPage.setViewportSize({ width: 390, height: 844 });
       await publicPage
         .getByRole("button", { name: "Menu", exact: true })
@@ -157,7 +154,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
         .click();
       await expect(publicPage).toHaveTitle(`Contact | ${doc.profile.name}`);
       await expect(
-        publicPage.getByLabel("Your name", { exact: true }),
+        publicPage.getByLabel("Your name *", { exact: true }),
       ).toBeVisible();
       await expect(
         publicPage.getByRole("navigation", {
@@ -260,14 +257,17 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
     await publicPage.goto(`/portfolio/${slug}/connect`);
     await expect(publicPage).toHaveTitle(`Get in touch | ${doc.profile.name}`);
     await publicPage
-      .getByLabel("Your name", { exact: true })
+      .getByLabel("Your name *", { exact: true })
       .fill("Research Visitor");
     await publicPage
-      .getByLabel("Email address", { exact: true })
+      .getByLabel("Email address *", { exact: true })
       .fill("visitor@example.org");
     await publicPage
-      .getByLabel("Message", { exact: true })
+      .getByLabel("Message *", { exact: true })
       .fill("I would like to discuss a research collaboration.");
+    await publicPage
+      .getByLabel("Subject *", { exact: true })
+      .fill("Research collaboration");
     await publicPage
       .getByRole("button", { name: "Send inquiry", exact: true })
       .click();

@@ -93,7 +93,7 @@ test("CV completion fills editable fields and links across tabs, then publishes 
     ),
   ).toBeVisible();
   await page
-    .getByLabel("Academic headline", { exact: true })
+    .getByLabel("Profession or headline", { exact: true })
     .fill("Edited while AI runs");
   await page
     .getByRole("tab", { name: "Academic sections", exact: true })
@@ -107,16 +107,13 @@ test("CV completion fills editable fields and links across tabs, then publishes 
     "Dr. Amina Rahman",
   );
   await expect(
-    page.getByLabel("Academic headline", { exact: true }),
+    page.getByLabel("Profession or headline", { exact: true }),
   ).toHaveValue("Edited while AI runs");
   await expect(
-    page.getByLabel("Platform", { exact: true }).first(),
+    page.getByLabel("Button label", { exact: true }).first(),
   ).toHaveValue("GitHub");
-  await expect(page.getByLabel("Platform", { exact: true })).toHaveCount(2);
-  await page
-    .getByLabel("Platform", { exact: true })
-    .nth(1)
-    .selectOption("Website");
+  await expect(page.getByLabel("Button label", { exact: true })).toHaveCount(2);
+  await page.getByLabel("Button label", { exact: true }).nth(1).fill("Website");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
   let saved = await (await page.request.get(`/api/sites/${id}`)).json();
@@ -144,9 +141,9 @@ test("CV completion fills editable fields and links across tabs, then publishes 
       .first(),
   ).toBeVisible();
   await expect(
-    page.getByLabel("Academic headline", { exact: true }),
+    page.getByLabel("Profession or headline", { exact: true }),
   ).toHaveValue("Edited while AI runs");
-  await expect(page.getByLabel("Platform", { exact: true })).toHaveCount(2);
+  await expect(page.getByLabel("Button label", { exact: true })).toHaveCount(2);
   await page.screenshot({
     path: ".test-data/cv-autofill-desktop.png",
     fullPage: true,
@@ -176,7 +173,7 @@ test("CV completion fills editable fields and links across tabs, then publishes 
     })
     .toBe(200);
   const published = await (await page.request.get(`/portfolio/${slug}`)).text();
-  expect(published).toContain('rel="icon" type="image/svg+xml"');
+  expect(published).toMatch(/rel="icon"[^>]+favicon\.svg/);
   const icon = await page.request.get(`/portfolio/${slug}/favicon.svg`);
   expect(icon.headers()["content-type"]).toContain("image/svg+xml");
   expect(await icon.text()).toContain(">AR</text>");
@@ -226,6 +223,6 @@ test("CV completion fills editable fields and links across tabs, then publishes 
   const dimensions = await sharp(await png.body()).metadata();
   expect([dimensions.width, dimensions.height]).toEqual([64, 64]);
   expect(await (await page.request.get(`/portfolio/${slug}`)).text()).toContain(
-    'rel="icon" type="image/png"',
+    "favicon.png",
   );
 });

@@ -4,9 +4,12 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   vps-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       STUDIO_HOST: studio.example.test
@@ -21,13 +24,10 @@ jobs:
       APP_VERSION: ci
       EASYPANEL_PROXY_CIDRS: 10.77.0.0/24
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check shell scripts
         run: |
-          bash -n deploy/vps/configure.sh
-          bash -n deploy/vps/backup.sh
-          bash -n deploy/vps/inspect-server.sh
-          bash -n deploy/vps/build-limited.sh
+          for script in deploy/vps/*.sh; do bash -n "$script"; done
       - name: Validate Compose configuration
         run: |
           docker compose -f deploy/vps/compose.yaml config --quiet
@@ -89,13 +89,13 @@ jobs:
         if: always()
         run: docker compose -f deploy/vps/compose.yaml down -v
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
@@ -106,7 +106,7 @@ jobs:
       - run: npm run test:e2e
       - run: npm run build
       - run: npm audit --omit=dev
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: browser-test-results

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import sharp from "sharp";
 import { emptyDocument, emptyEntry } from "../../src/modules/portfolios/schema";
 import { textPdf } from "../pdf-fixture";
+import { signInAdmin } from "./admin-session";
 const email = "browser-admin@integration.test",
   password = "Browser testing passphrase 2026!";
 test("free browser AI explains unsupported hardware without changing the draft", async ({
@@ -231,11 +232,7 @@ test("client invitation, permitted submission, files, private pages, and public 
   browser,
 }) => {
   test.setTimeout(120000);
-  await page.goto("/login");
-  await page.getByLabel("Email address", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in to workspace" }).click();
-  await expect(page).toHaveURL(/\/studio$/);
+  await signInAdmin(page);
   const stamp = Date.now();
   const clientEmail = `client-${stamp}@integration.test`;
   await page.goto("/studio/clients");
@@ -428,13 +425,7 @@ test("fixed design, mobile layouts and selective CV review", async ({
   page,
 }) => {
   test.setTimeout(120000);
-  await page.goto("/login");
-  await page.getByLabel("Email address", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in to workspace" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Good to see you, Browser." }),
-  ).toBeVisible();
+  await signInAdmin(page);
   const stamp = Date.now();
   const created = await page.request.post("/api/sites", {
     headers: { origin: "http://localhost:3100" },
