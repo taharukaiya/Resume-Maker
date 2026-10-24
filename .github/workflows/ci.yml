@@ -38,8 +38,12 @@ jobs:
           docker compose -f deploy/vps/compose.yaml -f deploy/vps/compose.easypanel.yaml config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); services=c["services"]; assert all(not s.get("ports") for s in services.values()), "EasyPanel mode must not publish any ports"; assert [name for name,s in services.items() if "easypanel" in s.get("networks",{})]==["caddy"], "Only the gateway may join the shared overlay"; assert sum(int(s["mem_limit"]) for name,s in services.items() if name!="migrate")==4608*1024*1024, "Unexpected pilot memory budget"'
       - name: Build production container
         run: |
+          # A deployment checkout may use umask 077. Runtime files must still
+          # be readable by the non-root application user.
+          chmod 600 scripts/vps-domain-requests.ts src/modules/portfolios/domain-launch.ts
           bash deploy/vps/build-limited.sh
           docker tag brilliancy:local brilliancy:ci
+          docker run --rm --entrypoint node brilliancy:ci -e "const fs=require('node:fs');if(process.getuid()===0)process.exit(1);for(const f of ['scripts/vps-domain-requests.ts','src/modules/portfolios/domain-launch.ts'])fs.accessSync(f,fs.constants.R_OK)"
       - name: Validate HTTPS proxy configuration
         run: >-
           docker run --rm -e STUDIO_HOST=studio.example.test
