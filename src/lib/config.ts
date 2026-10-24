@@ -1,4 +1,5 @@
 import path from "node:path";
+import { capacityLimits } from "./capacity";
 export function config() {
   return {
     appUrl:
@@ -18,6 +19,7 @@ export function config() {
   };
 }
 export function assertProductionConfig() {
+  capacityLimits();
   if (!config().production) return;
   if (!["ses", "resend"].includes(process.env.EMAIL_PROVIDER || "ses"))
     throw new Error("EMAIL_PROVIDER must be ses or resend.");

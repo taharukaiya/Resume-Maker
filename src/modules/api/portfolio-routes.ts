@@ -1,4 +1,5 @@
 import { config } from "@/lib/config";
+import { capacityLimits, withUploadCapacity } from "@/lib/capacity";
 import { db } from "@/lib/db";
 import { invariant } from "@/lib/errors";
 import { deleteObject, putObject, getObject } from "@/lib/storage";
@@ -177,7 +178,7 @@ export async function portfolioRoutes(
     if (!action && method === "GET") {
       // Access was checked above. These independent reads can share the pool
       // instead of adding one database round trip after another.
-      const [published, media, jobs, releases] = await Promise.all([
+      const [published, media, jobs, releases, usage] = await Promise.all([
         site.published_release_id
           ? database.query<{
               document: unknown;
@@ -199,12 +200,20 @@ export async function portfolioRoutes(
           "SELECT id,revision,created_at FROM releases WHERE site_id=$1 ORDER BY created_at DESC LIMIT 30",
           [id],
         ),
+        database.query<{ bytes: string }>(
+          "SELECT COALESCE(SUM(bytes),0) AS bytes FROM media WHERE site_id=$1",
+          [id],
+        ),
       ]);
       return json({
         site,
         publishedDocument: published[0]?.document || null,
         publishedUrl: publishedAddress(published[0]?.manifest?.baseUrl),
         media: media.filter((file) => !file.removed_at),
+        mediaUsage: {
+          bytes: Number(usage[0].bytes),
+          limitBytes: capacityLimits().mediaBytes,
+        },
         removedMedia:
           user.role === "admin"
             ? media
@@ -267,18 +276,22 @@ export async function portfolioRoutes(
     }
     if (action === "media" && method === "POST") {
       await rateLimit(`upload:${user.id}`, 60, 3600);
-      const bytes = await readLimited(request, 21 * 1024 * 1024);
-      const form = await new Request(request.url, {
-        method: "POST",
-        headers: { "content-type": request.headers.get("content-type") || "" },
-        body: bytes,
-      }).formData();
-      const file = form.get("file");
-      invariant(file instanceof File, 400, "Select a file to upload.");
-      const purpose = z
-        .enum(["article", "cv", "image"])
-        .parse(form.get("purpose") || "article");
-      return json(await upload(user, id, file, purpose), 201);
+      return withUploadCapacity(async () => {
+        const bytes = await readLimited(request, 21 * 1024 * 1024);
+        const form = await new Request(request.url, {
+          method: "POST",
+          headers: {
+            "content-type": request.headers.get("content-type") || "",
+          },
+          body: bytes,
+        }).formData();
+        const file = form.get("file");
+        invariant(file instanceof File, 400, "Select a file to upload.");
+        const purpose = z
+          .enum(["article", "cv", "image"])
+          .parse(form.get("purpose") || "article");
+        return json(await upload(user, id, file, purpose), 201);
+      });
     }
     if (action === "publish" && method === "POST") {
       requireAdmin(user);

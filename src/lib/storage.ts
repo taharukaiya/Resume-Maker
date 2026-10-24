@@ -13,11 +13,14 @@ import {
   unlink,
   writeFile,
   rm,
+  statfs,
 } from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
 import { db, type Sql } from "./db";
 import { putDemoObject } from "./demo-storage";
+import { capacityLimits } from "./capacity";
+import { invariant } from "./errors";
 function keyPath(key: string) {
   if (
     !/^[a-zA-Z0-9_./-]+$/.test(key) ||
@@ -53,6 +56,15 @@ export async function putObject(
   }
   const target = keyPath(key);
   await mkdir(path.dirname(target), { recursive: true });
+  if (config().vps) {
+    const space = await statfs(config().dataDir, { bigint: true });
+    invariant(
+      space.bavail * space.bsize >=
+        BigInt(capacityLimits().reserveBytes + Buffer.byteLength(body)),
+      507,
+      "Storage is nearly full. An administrator must add capacity before uploading or publishing more files.",
+    );
+  }
   const temporary = `${target}.${randomUUID()}.tmp`;
   await writeFile(temporary, body);
   await rename(temporary, target);

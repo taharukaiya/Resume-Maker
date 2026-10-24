@@ -288,6 +288,10 @@ describe.sequential(
       const listing = (await request(`sites/${uploadSite}`)).data;
       expect(listing.media).toHaveLength(0);
       expect(listing.removedMedia).toHaveLength(2);
+      expect(listing.mediaUsage).toEqual({
+        bytes: 32,
+        limitBytes: 100 * 1024 * 1024,
+      });
       expect(listing.removedMedia[0]).not.toHaveProperty("storage_key");
       expect((await getObject(storageKey))?.toString()).toBe(
         "synthetic source",

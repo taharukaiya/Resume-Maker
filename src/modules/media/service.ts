@@ -1,5 +1,6 @@
 import { extractLabeledMetadata } from "./article-metadata";
 import { config } from "@/lib/config";
+import { capacityLimits } from "@/lib/capacity";
 import { db } from "@/lib/db";
 import { invariant } from "@/lib/errors";
 import { deleteObject, putObject } from "@/lib/storage";
@@ -204,9 +205,9 @@ export async function upload(
         Number(usage.total) +
           bytes.length +
           figures.reduce((sum, figure) => sum + figure.data.length, 0) <=
-          100 * 1024 * 1024,
+          capacityLimits().mediaBytes,
         400,
-        "This portfolio has reached its 100 MB media allowance.",
+        `This portfolio has reached its ${capacityLimits().mediaBytes / 1024 / 1024} MB media allowance. Removed uploads also count toward storage.`,
       );
       await tx.query(
         "INSERT INTO media(id,site_id,filename,mime,bytes,storage_key,uploaded_by,purpose) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",

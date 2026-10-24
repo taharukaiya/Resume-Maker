@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Brilliancy backup at 02:15 Asia/Dhaka
+
+[Timer]
+OnCalendar=*-*-* 20:15:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

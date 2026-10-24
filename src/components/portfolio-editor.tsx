@@ -80,6 +80,7 @@ type EditorData = {
   site: Site;
   media: Media[];
   removedMedia?: RemovedUpload[];
+  mediaUsage?: { bytes: number; limitBytes: number };
   jobs: Job[];
   releases: Release[];
   publishedDocument?: PortfolioDocument | null;
@@ -1207,12 +1208,17 @@ export function PortfolioEditor({ id }: { id: string }) {
                     </Button>
                     <p className="panel-description">
                       {(
-                        assets.reduce((sum, m) => sum + m.bytes, 0) /
+                        (data.mediaUsage?.bytes ??
+                          assets.reduce((sum, m) => sum + m.bytes, 0)) /
                         1024 /
                         1024
                       ).toFixed(1)}{" "}
-                      MB of 100 MB used. Files remain private until included in
-                      a published release.
+                      MB of{" "}
+                      {(data.mediaUsage?.limitBytes ?? 100 * 1024 * 1024) /
+                        1024 /
+                        1024}{" "}
+                      MB used, including removed uploads. Files remain private
+                      until included in a published release.
                     </p>
                   </div>
                 </div>

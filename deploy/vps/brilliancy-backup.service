@@ -1,0 +1,13 @@
+[Unit]
+Description=Consistent Brilliancy platform backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/brilliancy/deploy/vps
+ExecStart=/bin/bash /opt/brilliancy/deploy/vps/backup.sh
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=15min

@@ -1,0 +1,62 @@
+# Disposable synthetic-data acceptance stack. No host ports or live volumes.
+name: brilliancy-acceptance
+services:
+  acceptance-db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: brilliancy_acceptance
+      POSTGRES_PASSWORD: ${ACCEPTANCE_DB_PASSWORD:?Set a temporary test password}
+    volumes: [acceptance-db:/var/lib/postgresql/data]
+    networks: [isolated]
+    mem_limit: 256m
+    cpus: 0.25
+    command: [postgres, -c, shared_buffers=32MB, -c, max_connections=30]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d brilliancy_acceptance"]
+      interval: 2s
+      retries: 30
+  web:
+    image: ${ACCEPTANCE_IMAGE:?Choose the tested application image}
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1280m
+    cpus: 0.75
+    pids_limit: 192
+    tmpfs:
+      - /tmp:uid=1001,gid=1001,mode=1770,size=256m
+      - /app/.next/cache:uid=1001,gid=1001,mode=0700,size=64m
+    volumes:
+      - ${ACCEPTANCE_DIRECTORY:?Choose a new test directory}:/acceptance-data
+      - ../../tests/fixtures:/fixtures:ro
+    networks: [isolated, scanner]
+    # Optional private file containing only AI provider configuration for synthetic tests.
+    env_file: ${ACCEPTANCE_AI_ENV:-/dev/null}
+    environment:
+      ACCEPTANCE_TEST_ONLY: "yes"
+      NODE_ENV: production
+      DEPLOYMENT_MODE: vps
+      VPS_PROXY_MODE: existing
+      APP_URL: https://acceptance.invalid
+      PUBLIC_ASSET_URL: https://media.acceptance.invalid
+      DATA_DIR: /acceptance-data
+      DATABASE_URL: postgresql://postgres:${ACCEPTANCE_DB_PASSWORD}@acceptance-db:5432/brilliancy_acceptance
+      SESSION_SECRET: ${ACCEPTANCE_SESSION_SECRET:?Set a temporary session secret}
+      SETUP_TOKEN: ${ACCEPTANCE_SETUP_TOKEN:?Set a temporary setup token}
+      RUN_WORKER: "false"
+      CLAMAV_HOST: brilliancy-scanner-1
+      EMAIL_PROVIDER: ses
+      EMAIL_FROM: acceptance@example.test
+      NODE_OPTIONS: --max-old-space-size=512
+      RELEASE_RETENTION: "3"
+    depends_on:
+      acceptance-db: { condition: service_healthy }
+networks:
+  isolated:
+    internal: true
+  scanner:
+    external: true
+    name: brilliancy_default
+volumes:
+  acceptance-db:
