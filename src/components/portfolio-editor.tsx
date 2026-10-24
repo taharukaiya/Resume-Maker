@@ -45,6 +45,7 @@ import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PersonalityEditor } from "./personality-editor";
 import { PortraitEditor } from "./portrait-editor";
 import { ProfileCompletion } from "./profile-completion";
+import type { CompletionTarget } from "@/modules/portfolios/profile-completion";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { PagePlanner } from "./page-planner";
@@ -103,6 +104,8 @@ export function PortfolioEditor({ id }: { id: string }) {
   const [autoSummary, setAutoSummary] = useState(false);
   const [invalidLink, setInvalidLink] = useState<number | null>(null);
   const [addressDirty, setAddressDirty] = useState(false);
+  const [completionTarget, setCompletionTarget] =
+    useState<CompletionTarget | null>(null);
   const [importCleanupReady, setImportCleanupReady] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
@@ -309,6 +312,32 @@ export function PortfolioEditor({ id }: { id: string }) {
         ?.focus();
     }
   }, [tab, invalidLink]);
+  useEffect(() => {
+    if (!completionTarget || completionTarget.tab !== tab) return;
+    const dom = window.document;
+    const target =
+      (completionTarget.sectionId &&
+        dom.getElementById(`edit-section-${completionTarget.sectionId}`)) ||
+      (completionTarget.pageId &&
+        dom.getElementById(`edit-page-${completionTarget.pageId}`)) ||
+      (completionTarget.field &&
+        dom.getElementById(`edit-profile-${completionTarget.field}`)) ||
+      dom.querySelector<HTMLElement>('[aria-label="Add section"]');
+    if (!target) return;
+    // Reveal nested editors before moving focus; this never modifies the draft.
+    let ancestor: HTMLElement | null = target;
+    while (ancestor) {
+      if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+      ancestor = ancestor.parentElement;
+    }
+    const focus = target.matches("input, textarea, select, button")
+      ? target
+      : target.querySelector<HTMLElement>(
+          "summary, input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled)",
+        );
+    focus?.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [completionTarget, tab]);
   async function save() {
     if (!document || !data) return;
     const navigationResult = documentSchema.shape.navigation.safeParse(
@@ -533,7 +562,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   const seoPreview = portfolioSeo(document);
   const readiness = publicationIssues(document);
   const currentStep = portfolioSteps.findIndex(([key]) => key === tab);
-  function selectTab(key: string) {
+  function selectTab(key: string, target: CompletionTarget | null = null) {
     if (tab === "address" && key !== "address" && addressDirty) {
       void confirm({
         title: "Leave the unsaved address selection?",
@@ -543,11 +572,13 @@ export function PortfolioEditor({ id }: { id: string }) {
       }).then((approved) => {
         if (approved) {
           setAddressDirty(false);
+          setCompletionTarget(target);
           openTab(key);
         }
       });
       return;
     }
+    setCompletionTarget(target);
     openTab(key);
   }
   function openTab(key: string) {
@@ -704,8 +735,9 @@ export function PortfolioEditor({ id }: { id: string }) {
         />
       )}
       <ProfileCompletion
-        profile={document.profile}
-        onEdit={() => selectTab("profile")}
+        document={document}
+        admin={admin}
+        onEdit={(target) => selectTab(target.tab, { ...target })}
       />
       <EditorWorkflow
         tab={tab}
@@ -773,6 +805,7 @@ export function PortfolioEditor({ id }: { id: string }) {
                 ).map((key) => (
                   <div
                     key={key}
+                    id={`edit-profile-${key}`}
                     className={
                       ["headline", "affiliation"].includes(key)
                         ? "full-span"
@@ -821,42 +854,46 @@ export function PortfolioEditor({ id }: { id: string }) {
                       />
                     </Field>
                   )}
-                  <Field
-                    label="Biography"
-                    hint="Used as the introduction unless you enter separate homepage or About Me text below."
-                  >
-                    <textarea
-                      rows={7}
-                      maxLength={10000}
-                      value={document.profile.bio}
-                      disabled={!canEdit("profile.bio")}
-                      onChange={(e) => profile("bio", e.target.value)}
-                    />
-                  </Field>
+                  <div id="edit-profile-bio">
+                    <Field
+                      label="Biography"
+                      hint="Used as the introduction unless you enter separate homepage or About Me text below."
+                    >
+                      <textarea
+                        rows={7}
+                        maxLength={10000}
+                        value={document.profile.bio}
+                        disabled={!canEdit("profile.bio")}
+                        onChange={(e) => profile("bio", e.target.value)}
+                      />
+                    </Field>
+                  </div>
                 </div>
-                <PortraitEditor
-                  siteId={id}
-                  media={assets}
-                  value={document.profile.portraitId}
-                  editable={canEdit("profile.portraitId")}
-                  uploadAllowed={admin || !demo}
-                  demo={demo}
-                  onSelect={(value) => profile("portraitId", value)}
-                  onUploaded={async (portraitId) => {
-                    await load();
-                    // Keep edits made while the image was uploading.
-                    setDocument((current) =>
-                      current
-                        ? {
-                            ...current,
-                            profile: { ...current.profile, portraitId },
-                          }
-                        : current,
-                    );
-                    setDirty(true);
-                    feedback.setMessage("");
-                  }}
-                />
+                <div id="edit-profile-portraitId" className="full-span">
+                  <PortraitEditor
+                    siteId={id}
+                    media={assets}
+                    value={document.profile.portraitId}
+                    editable={canEdit("profile.portraitId")}
+                    uploadAllowed={admin || !demo}
+                    demo={demo}
+                    onSelect={(value) => profile("portraitId", value)}
+                    onUploaded={async (portraitId) => {
+                      await load();
+                      // Keep edits made while the image was uploading.
+                      setDocument((current) =>
+                        current
+                          ? {
+                              ...current,
+                              profile: { ...current.profile, portraitId },
+                            }
+                          : current,
+                      );
+                      setDirty(true);
+                      feedback.setMessage("");
+                    }}
+                  />
+                </div>
                 {assetSelect("Curriculum vitae", "cvId", "application/pdf")}
                 {admin && assetSelect("Website logo", "logoId", "image/")}
                 {uploadManager("documents")}
@@ -1591,7 +1628,11 @@ export function PortfolioEditor({ id }: { id: string }) {
             </Button>
           </div>
           {document.pages.map((page, index) => (
-            <section className="panel" key={page.id}>
+            <section
+              className="panel"
+              key={page.id}
+              id={`edit-page-${page.id}`}
+            >
               <div className="spread" style={{ marginBottom: 20 }}>
                 <h2>{page.title || "New page"}</h2>
                 <Button

@@ -140,6 +140,7 @@ export function SectionsEditor({
         return (
           <details
             className="section-editor"
+            id={`edit-section-${section.id}`}
             key={section.id}
             open={sections.length === 1 ? true : undefined}
           >

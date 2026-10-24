@@ -43,14 +43,14 @@ test("profile progress updates and domain purchase guidance keeps launch disable
   );
   await page.goto(`/studio/portfolios/${id}`);
   const progress = page.getByRole("progressbar", {
-    name: "Profile completion",
+    name: "Portfolio completion",
   });
-  await expect(progress).toHaveAttribute("value", "20");
+  await expect(progress).toHaveAttribute("value", "11");
   await page
     .getByLabel("Biography", { exact: true })
     .fill("A biography added without saving.");
-  await expect(progress).toHaveAttribute("value", "40");
-  await page.getByText("See what’s left to add", { exact: true }).click();
+  await expect(progress).toHaveAttribute("value", "22");
+  await page.getByText("See what’s missing (7)", { exact: true }).click();
   await expect(
     page.getByText("Biography — Added", { exact: false }),
   ).toBeVisible();
@@ -396,5 +396,112 @@ test("preparation is separate from go live on desktop and mobile", async ({
   await page.screenshot({
     path: "test-results/domain-dns-mobile.png",
     fullPage: true,
+  });
+});
+
+test("completion links open the right editors and keep unsaved changes", async ({
+  page,
+}) => {
+  await signInAdmin(page);
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "Checklist", slug: `checklist-${Date.now()}` },
+  });
+  const { id } = await created.json();
+  const { emptyEntry } = await import("../../src/modules/portfolios/schema");
+  await page.route(`**/api/sites/${id}`, async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.site.draft.pages = [
+      {
+        id: "custom-page",
+        title: "Teaching",
+        slug: "teaching",
+        description: "",
+        sections: [
+          {
+            id: "custom-education",
+            type: "education",
+            title: "My degrees",
+            visible: true,
+            intro: "",
+            entries: [emptyEntry()],
+          },
+        ],
+      },
+    ];
+    data.site.draft.sections = [
+      {
+        id: "main-articles",
+        type: "articles",
+        title: "Writing",
+        visible: true,
+        intro: "",
+        entries: [emptyEntry()],
+      },
+    ];
+    await route.fulfill({ response, json: data });
+  });
+  await page.goto(`/studio/portfolios/${id}`);
+  await page
+    .getByLabel("Biography", { exact: true })
+    .fill("Keep this unsaved biography.");
+  await page.getByText("See what’s missing (7)", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Open Education", exact: true })
+    .click();
+  await expect(page.locator("#edit-section-custom-education")).toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(
+    page.locator("#edit-section-custom-education > summary"),
+  ).toBeFocused();
+  await page
+    .getByRole("button", { name: "Open Articles", exact: true })
+    .click();
+  await expect(page.locator("#edit-section-main-articles")).toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(
+    page.locator("#edit-section-main-articles > summary"),
+  ).toBeFocused();
+  await page
+    .getByRole("button", { name: "Open Experience", exact: true })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "Add section", exact: true }),
+  ).toBeFocused();
+  await page
+    .getByRole("button", { name: "Open Biography", exact: true })
+    .click();
+  await expect(page.getByLabel("Biography", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("Biography", { exact: true })).toHaveValue(
+    "Keep this unsaved biography.",
+  );
+  await expect(
+    page.getByText("Unsaved changes", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("region", { name: "Portfolio completion", exact: true })
+    .evaluate((element) => element.scrollIntoView({ block: "start" }));
+  await page.screenshot({
+    path: ".test-data/portfolio-completion-desktop.png",
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const sidebar = document.querySelector("aside");
+    return !sidebar || sidebar.getBoundingClientRect().right <= 0;
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".test-data/portfolio-completion-mobile.png",
+    fullPage: false,
   });
 });

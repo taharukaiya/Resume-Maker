@@ -7,6 +7,7 @@ The repository is named **Resume-Maker**; the application is **Brilliancy Resear
 ## Features
 
 - **Portfolio editor:** profile, portrait, CV, biography, academic history, research, articles, custom pages, social and academic links, quotes, and cards.
+- **Portfolio completion:** an equal-weight checklist covers profile details, education, experience, research, articles, and additional visible sections on every page. Missing content links directly to its editor; the score updates with draft edits and does not publish content or activate domains.
 - **Consistent presentation:** responsive portfolio design, editable navigation and labels, configurable icons, subtle motion, and accessible mobile navigation.
 - **Article imports:** upload PDF, DOCX, or DOC documents; extract readable text and embedded images; review proposed metadata and abstracts before publishing.
 - **Caption extraction:** match labelled captions to nearby figures in PDFs and converted Word documents. Captions remain editable and stay attached when images are reordered. Uncertain matches are left blank for review.

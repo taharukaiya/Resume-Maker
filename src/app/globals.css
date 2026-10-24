@@ -2261,6 +2261,22 @@ select:focus {
   font-size: 0.875rem;
   max-width: 70ch;
 }
+.profile-completion .completion-checklist {
+  list-style: none;
+  padding: 0;
+}
+.completion-checklist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border, #e1e5ed);
+}
+.completion-checklist li > div { min-width: 0; overflow-wrap: anywhere; }
+.completion-checklist li strong { font-size: 0.875rem; }
+.completion-checklist li p { margin: 0.25rem 0 0; color: var(--muted); }
+.completion-checklist li button { flex-shrink: 0; }
 .domain-action-needed {
   padding: 1rem;
   border: 1px solid #e8d3a5;
