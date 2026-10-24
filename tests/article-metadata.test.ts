@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { extractLabeledMetadata } from "../src/modules/media/article-metadata";
 
 describe("article metadata without AI", () => {
+  it("does not absorb an image caption between the abstract and first heading", () => {
+    expect(
+      extractLabeledMetadata(
+        "Abstract\nOriginal findings.\n\nFigure 1. Coastal chart.\nIntroduction\nBody.",
+      ).abstract,
+    ).toBe("Original findings.");
+  });
   it("does not mistake words within abstract prose for section headings", () => {
     const result = extractLabeledMetadata(
       "Abstract\nWe report key\nresults/outcomes and their implications.\n1. Introduction\nBody text.",

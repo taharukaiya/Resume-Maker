@@ -505,6 +505,7 @@ export function PortfolioEditor({ id }: { id: string }) {
         authors: meta?.authors,
         category: meta?.category,
         abstract: meta?.abstract || file.summary?.abstract,
+        captions: Object.values(file.article_assets?.captions || {}),
       }).body,
       mediaId: file.id,
       coverId: file.article_assets?.imageIds[0] || "",

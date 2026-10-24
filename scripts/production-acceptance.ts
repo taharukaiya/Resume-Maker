@@ -135,12 +135,15 @@ try {
     assert.match(metadata.authors, /Jamie Example/);
     assert.ok(metadata.abstract.length > 60);
     assert.equal(metadata.abstractSource, "original");
+    assert.doesNotMatch(metadata.abstract, /Figure \d\./);
     const content = articleContent(media.extracted_text, {
       title: metadata?.title,
       authors: metadata?.authors,
       abstract: metadata?.abstract,
+      captions: Object.values(media.article_assets.captions || {}) as string[],
     });
     assert.doesNotMatch(content.body, /about:blank|--\s*\d+ of \d+\s*--/i);
+    assert.doesNotMatch(content.body, /Figure \d\. Synthetic/);
     if (filename.endsWith(".pdf")) {
       assert.equal(media.article_assets.imageIds.length, 2);
       assert.deepEqual(

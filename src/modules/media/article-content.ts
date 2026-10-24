@@ -4,7 +4,12 @@ export type ArticleEvidence = {
   authors?: string;
   abstract?: string;
   category?: string;
+  captions?: string[];
 };
+
+/** A standalone labeled caption is front-matter separation, not abstract prose. */
+export const figureCaptionLine =
+  /^\s*(?:figure|fig\.?|table)\s+\d+[a-z]?\s*[.:\u2013\u2014-]\s+\S/i;
 
 /** Remove repeated page-margin text, without deleting matching text in the body. */
 export function cleanPdfPageText(pages: { text: string }[]) {
@@ -135,6 +140,7 @@ export function articleContent(raw: string, evidence: ArticleEvidence = {}) {
       .findIndex(
         (line) =>
           printStamp.test(line) ||
+          figureCaptionLine.test(line) ||
           /^\s*about:blank\b/i.test(line) ||
           /^\s*(?:(?:\d+\.?\s+)?(?:introduction|background|methods|methodology|results|conclusions?|references)\s*[:：]?\s*$|key\s*words\s*:)/i.test(
             line,
@@ -180,6 +186,18 @@ export function articleContent(raw: string, evidence: ArticleEvidence = {}) {
     )
     .replace(/^Key\s*words\s*:[^\n]*\n?/i, "")
     .trim();
+  // Only remove captions positively identified with extracted images during
+  // import. Ordinary references and manually edited prose are left alone.
+  for (const caption of evidence.captions || []) {
+    if (!caption.trim()) continue;
+    body = body.replace(
+      new RegExp(
+        "(^|\\n)[ \\t]*" + wordsPattern(caption) + "[ \\t]*(?=\\n|$)",
+        "g",
+      ),
+      "$1",
+    );
+  }
   return {
     abstract,
     body: articleBlocks(body)

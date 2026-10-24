@@ -10,6 +10,21 @@ import {
 import { printedArticle } from "./fixtures/printed-article";
 
 describe("article content separation", () => {
+  it("separates a leading figure caption from the abstract and imports it only as an image caption", () => {
+    const result = articleContent(
+      "Abstract\nOriginal findings.\n\nFigure 1. Coastal chart.\nIntroduction\nFigure 1 shows the results.\n\nMethods\nWe compared observations.",
+      { captions: ["Figure 1. Coastal chart."] },
+    );
+    expect(result.abstract).toBe("Original findings.");
+    expect(result.body).toBe(
+      "Introduction\n\nFigure 1 shows the results.\n\nMethods\n\nWe compared observations.",
+    );
+    expect(
+      articleContent("My edited paragraph.", {
+        abstract: "Figure 1. My reviewed abstract.",
+      }).abstract,
+    ).toBe("Figure 1. My reviewed abstract.");
+  });
   it("removes recurring page-margin furniture and page counters without deleting interior content", () => {
     const text = cleanPdfPageText([
       {
