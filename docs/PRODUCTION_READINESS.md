@@ -4,13 +4,13 @@ Review date: 24 October 2026. This is a scoped engineering review, not a penetra
 
 ## Decision
 
-**Do not switch the existing researchby domains yet.** The application supports verified custom domains and a central studio, but source-content migration and production acceptance are still required. No DNS, proxy routes, or existing portfolio content were changed during this review.
+**Do not switch the existing researchby domains yet.** The application and permanent studio have passed the checks below, but off-server backup storage and reviewed legacy replacements are still required. No existing portfolio domain routes, apex/www records, mail records or portfolio content were migrated. Only the approved studio subdomain and its old-address redirect were configured.
 
-The signed-in live studio at `studio.researchbyshiba.com` listed only **Rukaiya Taha**, a draft, during this review. It did not contain reviewed replacements for the 29 domains listed below. Changing routing now could replace working sites with missing or incorrect content.
+The signed-in live studio at `studio.brilliancy-research.com` lists only **Rukaiya Taha**, a draft. It does not contain reviewed replacements for the 29 domains listed below. Changing routing now could replace working sites with missing or incorrect content.
 
 ## Address and login design
 
-Use a company-controlled central studio, ideally `studio.brilliancy-research.com` if that is the company's approved brand/domain. That parent domain appears active in Hostinger; the proposed studio subdomain's DNS, certificate, and routing have not been configured or verified. `brilliancyresearch.net` was pending. Do not assume ownership or availability of `brilliancyresearch.com`.
+The approved central studio is **https://studio.brilliancy-research.com**. Its A record, valid HTTPS, host routing, same-origin mutations and a fresh administrator sign-in were verified on 24 October. The parent company's website and mail records were preserved. The old demo studio redirects with HTTP 302, preserving paths and query strings for existing bookmarks and account links.
 
 - Public portfolio: `https://www.researchbyshaila.com/`.
 - Bare domain: redirects to the canonical `www` address, preserving the path.
@@ -53,13 +53,35 @@ These checks do not replace live network verification or independent security te
 
 - `npm audit`: zero known vulnerabilities after updates (including development dependencies).
 - `npm run typecheck`: passed.
-- `npm test`: 208 tests passed across 33 files. Includes SQL-looking input, disguised executable uploads, anonymous/client access denial, origin checks, draft protection, removal/restoration and password-recovery token invalidation.
-- Browser acceptance: 14 distinct checks passed across focused runs. Coverage includes upload removal/restoration with unsaved edits preserved, 390 px mobile layout, login password controls, paired-domain instructions, client invitations and field permissions, private drafts, public inquiries, publishing, article metadata/figures/PDF controls, selective CV review and a 250-article archive.
+- `npm test`: 213 tests passed across 34 files. Includes SQL-looking input, disguised executable uploads, anonymous/client access denial, origin checks, draft protection, removal/restoration, password-recovery token invalidation, upload capacity and caption/abstract separation.
+- Browser acceptance: all **29 enabled checks passed** in the full GitHub run. The optional real MODNet download test remains opt-in and was skipped. Coverage includes upload removal/restoration with unsaved edits preserved, 390 px mobile layout, login password controls, paired-domain instructions, stale response protection, client invitations and field permissions, private drafts, public inquiries, publishing, article metadata/figures/PDF controls, selective CV review and a 250-article archive.
 - `npm run build`: passed with Next.js 16.4.3. Browser assertions were updated to the current fixed design, navigation and required-field labels; an isolated client-flow rerun also passed with its setup fixture.
 
-Tests use isolated synthetic data. Production AI extraction, email delivery, malware scanning, TLS issuance, backup restoration and simultaneous traffic across hundreds of portfolios were not established by those tests.
+Tests use isolated synthetic data. Additional real-service verification is recorded below; it does not establish capacity for hundreds of simultaneous active users.
+
+## CI maintenance and editor regression
+
+[GitHub Actions run 82](https://github.com/taharukaiya/Resume-Maker/actions/runs/40079893366) passed both `verify` and `vps-image` for application commit `b6d518c`. It passed 213 unit/integration tests, 29 browser tests (one optional model-download test skipped), TypeScript, the production build, production dependency audit, container startup/migrations and proxy-isolation checks. Earlier failed runs remain in history.
+
+Recent GitHub Actions failures included browser assertions for the retired template picker, outdated labels/navigation, a fixture without its About section, and repeated sign-ins hitting the real login rate limit. Tests now follow the current fixed design and reuse authenticated test sessions while dedicated login tests still exercise authentication. Production rate limits were not disabled. The workflow uses maintained v7 GitHub actions, pins Ubuntu 24.04, checks every VPS shell script and cancels superseded verification runs.
+
+A delayed initial editor response could replace a newer draft under overlapping loads. The editor now ignores responses from a superseded initialization. A browser regression holds the older response until after a biography edit, then verifies that the edited biography survives and is saved. The local regression, all three domain checks and the full multipage editing/publishing/inquiry flow passed in focused runs. TypeScript checking passed after stopping the development server to avoid concurrent changes to generated route types.
 
 ## VPS verification
+
+Latest deployed application image: **`brilliancy:b6d518c6163a`**. Web and worker were running after activation; web health and HTTPS login checks passed, and the existing administrator session still loaded the overview. The live draft and existing uploads were preserved. This includes the final matching serif caption typography and stale editor-response protection.
+
+- An isolated acceptance project used the production image, PostgreSQL, real LibreOffice/PDF extraction, the live AI provider with synthetic documents, and ClamAV. PDF and DOCX both retained the original abstract, two authors, publication date, body headings and separate paragraphs. Figure captions were attached by image ID. Review edits to authors and captions appeared in both website HTML and downloaded PDFs. Extraction did not publish or overwrite an existing draft.
+- Fixed a caption adjacent to an abstract being absorbed into it. Import cleanup removes exact extracted caption lines from the body; it does not strip ordinary references to figures. Both two-page PDFs were rendered and visually inspected, with matching fonts, abstract panel, figure order and reviewed captions. No `about:blank` or `CITE THIS ARTICLE` footer appeared. Previously published immutable releases require a reviewed republish; this deployment does not overwrite manually edited article fields.
+- ClamAV accepted benign content and rejected the standard EICAR test. The worker recovered an expired processing lease and completed publishing. All generated release assets were readable.
+- A synthetic listing benchmark with 400 portfolios and 80,201 article entries completed 40 requests at concurrency 4, p95 **854 ms**. This measures portfolio listing only, not 400 active users, bulk simultaneous extraction or representative stored PDF volume.
+- Added configurable media quotas, upload concurrency limits and minimum free-disk headroom. Removed uploads still count toward quota because removal is recoverable.
+- Installed the nightly local backup timer and verified archive checksums plus restoration into an isolated PostgreSQL container. Both the pre-activation backup, `/var/backups/brilliancy/20261024T075509Z`, and post-activation backup, `/var/backups/brilliancy/20261024T082423Z`, restored successfully and all **109 referenced media/release files** were present. Backups include owned studio routing. **Encrypted off-server storage is not configured.**
+- HTTPS EasyPanel at `https://nxazkl.easypanel.host/` returned 200. Persistent IPv4/IPv6 rules restrict public direct access to port 3000 while preserving the internal proxy route and independent Hostinger console. MFA was explicitly deferred by the user.
+- The authorized recovery request for the designated test account completed through the configured email provider. Inbox receipt remains unconfirmed; no password was changed.
+- All **29 existing researchby sites returned HTTP 200** in bounded read-only checks before and after deployment. This verifies availability, not full content equivalence. Their routes remain on the old platform.
+
+Earlier security deployment evidence:
 
 - Created a consistent database, upload, certificate and configuration backup at `/var/backups/brilliancy/20261024T070153Z`; all four archive checksums passed.
 - Restored the PostgreSQL dump with `--exit-on-error` into a temporary PostgreSQL 17 container with no network and no published ports. The restored portfolio/media counts matched the source (1 portfolio, 7 media records). Removed the temporary container afterward. This verifies this database dump, not a complete disaster recovery of files, routing, credentials and the legacy platform.
@@ -69,13 +91,12 @@ Tests use isolated synthetic data. Production AI extraction, email delivery, mal
 
 ## Outstanding launch gates
 
-1. **Confirm the permanent studio hostname.** The patched build and migration are deployed on the existing demonstration installation. Before relocating authentication, approve the company studio address and verify its DNS, HTTPS, fresh login, invitations and recovery links. Preserve the current database and configuration; do not rerun initial setup.
-2. **Secure management access.** The observed EasyPanel tab uses plain HTTP on public port 3000. Configure an HTTPS management hostname and restrict direct management-port access using a verified recovery path. Enroll the administrator in MFA (the live studio currently offers setup); credential/MFA entry is performed by the account holder. Do not lock out the operator during firewall changes.
-3. **Back up and restore-test both systems.** Preserve the legacy applications, databases, uploads, environment/configuration and router rules. Keep an encrypted off-server backup and prove restoration on an isolated target. A backup command or VPS snapshot without a restoration test is not sufficient evidence.
-4. **Import and review all legacy content.** Obtain exports/original uploads, create each portfolio and assign the correct client. Compare biography, portrait/CV, article counts, authors/dates/abstracts, images/captions, downloads and old URL paths. Preserve manually edited content. Do not fabricate missing author/domain mappings or overwrite reviewed drafts.
-5. **Verify deployed services.** Exercise real PDF and DOCX uploads, extraction and review without auto-publishing; inspect website/PDF output; send a test invitation/recovery email with authorization; verify scanner rejection, worker recovery and persistent storage after restart.
-6. **Size and load-test.** Current allowance is 100 MB of original/extracted media per portfolio, including removed uploads. 200+ PDF articles can exceed this. Measure representative originals, figures, generated releases and backups, choose a quota/storage policy and run realistic concurrent upload/publish/browse tests before promising 300–400 portfolios. Local archive pagination tests are not a production capacity certification.
-7. **Pilot one reviewed portfolio.** Record and back up its exact old router rules, connect/verify the domain, test HTTPS on root and `www`, `/login`, client isolation, links, inquiry form, mobile layout and PDFs. Switch only its explicit host routes. Watch errors and have a tested switch-back procedure before repeating for others.
+1. **Off-server backups and legacy restore.** Configure encrypted off-server storage, then prove restoration of the application and legacy systems, including uploads, credentials/configuration and exact router rules. The verified local new-platform backup does not protect against losing this VPS or certify legacy restore.
+2. **Import and review all legacy content.** Obtain exports/original uploads, create each portfolio and assign the correct client. Compare biography, portrait/CV, article counts, authors/dates/abstracts, images/captions, downloads and old URL paths. Preserve manually edited content. Do not fabricate missing author/domain mappings or overwrite reviewed drafts.
+3. **Representative capacity and storage plan.** The default media allowance remains 100 MB, now configurable through `PORTFOLIO_MEDIA_LIMIT_MB`. Measure representative originals, figures, releases and backup retention before choosing limits. Test realistic upload/publish/browse concurrency before promising 300–400 portfolios. The listing benchmark above does not certify this workload.
+4. **Pilot one reviewed portfolio.** Record and back up its exact old router rules, connect/verify the domain, test HTTPS on root and `www`, `/login`, client isolation, links, inquiry form, mobile layout and PDFs. Switch only its explicit host routes. Watch errors and have a tested switch-back procedure before repeating for others.
+
+Operational follow-up: confirm recovery email inbox delivery. MFA enrollment remains deferred at the user's request; it has not been silently enabled or made a prerequisite for the current testing.
 
 ## Exact domain scope observed in Hostinger
 
