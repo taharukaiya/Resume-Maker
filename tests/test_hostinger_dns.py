@@ -82,6 +82,7 @@ class HostingerSafetyTests(unittest.TestCase):
             self.assertNotIn('private-provider-body', str(raised.exception))
             request = opener.return_value.open.call_args.args[0]
             self.assertEqual(request.full_url, 'https://developers.hostinger.com/api/dns/v1/zones/researchbyexample.com')
+            self.assertEqual(request.get_header('User-agent'), 'Brilliancy-Domain-Setup/1.0')
 
     def test_redirects_cannot_forward_authorization_to_another_host(self):
         self.assertIsNone(dns.NoRedirect().redirect_request(None,None,302,'',{},'https://attacker.example'))

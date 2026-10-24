@@ -45,7 +45,7 @@ def request(root, method='GET', payload=None):
         raise ValueError('Invalid DNS zone.')
     req = urllib.request.Request('https://developers.hostinger.com/api/dns/v1/zones/' + root,
         method=method, data=json.dumps(payload).encode() if payload is not None else None,
-        headers={'Authorization': 'Bearer ' + read_token(), 'Content-Type': 'application/json', 'Accept': 'application/json'})
+        headers={'Authorization': 'Bearer ' + read_token(), 'Content-Type': 'application/json', 'Accept': 'application/json', 'User-Agent': 'Brilliancy-Domain-Setup/1.0'})
     try:
         with urllib.request.build_opener(NoRedirect).open(req, timeout=20) as response:
             data = response.read(2 * 1024 * 1024 + 1)
