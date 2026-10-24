@@ -672,6 +672,16 @@ small {
   gap: 10px;
   padding: 0 19px 19px;
 }
+.portfolio-list-progress { margin: 12px 0; font-size: 12px; }
+.portfolio-list-progress span { color: var(--muted); font-size: 11px; }
+.portfolio-list-progress progress { display: block; width: 100%; height: 7px; margin-top: 8px; accent-color: #1b4ee8; border: 0; border-radius: 99px; overflow: hidden; }
+.portfolio-list-progress progress::-webkit-progress-bar { background: #e9edf5; }
+.portfolio-list-progress progress::-webkit-progress-value { background: #1b4ee8; }
+.portfolio-list-progress progress::-moz-progress-bar { background: #1b4ee8; }
+.portfolio-list-missing { padding: 0 19px 16px; font-size: 12px; }
+.portfolio-list-missing summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.portfolio-list-missing ul { list-style: none; padding: 0; margin: 4px 0 0; }
+.portfolio-list-missing a { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
 .portfolio-thumb {
   height: 120px;
   background: #eeeeee;

@@ -204,6 +204,16 @@ describe.sequential(
       const result = await request("sites", "GET", undefined, clientCookie);
       expect(result.data.sites).toHaveLength(1);
       expect(result.data.sites[0].id).toBe(siteId);
+      expect(result.data.sites[0].completion).toMatchObject({
+        percentage: 11,
+        completed: 1,
+        total: 9,
+      });
+      expect(result.data.sites[0].completion.missing).toContainEqual({
+        id: "education",
+        label: "Education",
+      });
+      expect(result.data.sites[0]).not.toHaveProperty("draft");
       expect(
         (await request(`sites/${secondSiteId}`, "GET", undefined, clientCookie))
           .status,

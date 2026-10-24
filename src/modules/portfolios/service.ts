@@ -3,6 +3,11 @@ import { invariant } from "@/lib/errors";
 import { audit, siteAccess, type User } from "@/modules/auth/service";
 import { randomUUID } from "node:crypto";
 import {
+  completionSummary,
+  type CompletionSummary,
+} from "./profile-completion";
+import type { Sql } from "@/lib/db";
+import {
   canEditDocument,
   collectAssetIds,
   documentSchema,
@@ -23,6 +28,24 @@ export type Site = {
   client_name?: string;
   publishedUrl?: string | null;
 };
+export type ListedSite = Omit<
+  Site,
+  "draft" | "editable_fields" | "client_id"
+> & { completion?: CompletionSummary };
+
+/** Only pass IDs from the caller's authorized site list. Bound draft memory per batch. */
+export async function listCompletion(database: Sql, ids: string[]) {
+  const summaries = new Map<string, CompletionSummary>();
+  for (let offset = 0; offset < ids.length; offset += 8) {
+    const batch = await database.query<Pick<Site, "id" | "draft">>(
+      "SELECT id,draft FROM sites WHERE id = ANY($1::uuid[])",
+      [ids.slice(offset, offset + 8)],
+    );
+    for (const site of batch)
+      summaries.set(site.id, completionSummary(site.draft));
+  }
+  return summaries;
+}
 export async function getSite(user: User, id: string) {
   await siteAccess(user, id);
   const [site] = await (

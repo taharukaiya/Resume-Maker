@@ -21,6 +21,19 @@ const core = {
   articles: "Articles",
 } as const;
 
+export function completionSummary(document: PortfolioDocument) {
+  const result = profileCompletion(document);
+  return {
+    percentage: result.percentage,
+    completed: result.completed,
+    total: result.checks.length,
+    missing: result.checks
+      .filter((check) => !check.complete)
+      .map(({ id, label }) => ({ id, label })),
+  };
+}
+export type CompletionSummary = ReturnType<typeof completionSummary>;
+
 function entryMissing(entry: Entry, type: Section["type"]): string[] {
   const missing = !filled(entry.title) ? ["title"] : [];
   if (type === "education" || type === "experience") {

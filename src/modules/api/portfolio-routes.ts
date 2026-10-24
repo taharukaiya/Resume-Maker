@@ -16,7 +16,12 @@ import {
   emptyDocument,
   publicationIssues,
 } from "@/modules/portfolios/schema";
-import { getSite, saveDocument, type Site } from "@/modules/portfolios/service";
+import {
+  getSite,
+  saveDocument,
+  listCompletion,
+  type Site,
+} from "@/modules/portfolios/service";
 import { syncCustomDomains } from "@/modules/publishing/cdn";
 import { renderPortfolio } from "@/modules/publishing/render";
 import { shibaDocument } from "@/modules/publishing/shiba";
@@ -48,9 +53,14 @@ export async function portfolioRoutes(
       `SELECT s.id,s.name,s.slug,s.revision,s.status,s.published_release_id,s.updated_at,s.created_at,u.name AS client_name,r.manifest->>'baseUrl' AS "publishedUrl" FROM sites s LEFT JOIN users u ON s.client_id=u.id LEFT JOIN releases r ON r.id=s.published_release_id AND r.site_id=s.id ${user.role === "client" ? "WHERE s.client_id=$1" : ""} ORDER BY s.updated_at DESC`,
       user.role === "client" ? [user.id] : [],
     );
+    const completion = await listCompletion(
+      database,
+      sites.map((site) => site.id),
+    );
     return json({
       sites: sites.map((site) => ({
         ...site,
+        completion: completion.get(site.id),
         publishedUrl: publishedAddress(site.publishedUrl),
       })),
     });

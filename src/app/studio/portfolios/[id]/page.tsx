@@ -25,9 +25,18 @@ export async function generateMetadata({
 }
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ complete?: string | string[] }>;
 }) {
   const { id } = await params;
-  return <PortfolioEditor key={id} id={id} />;
+  const { complete } = await searchParams;
+  return (
+    <PortfolioEditor
+      key={id}
+      id={id}
+      completionKey={typeof complete === "string" ? complete : undefined}
+    />
+  );
 }

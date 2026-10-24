@@ -4,7 +4,10 @@ import {
   emptyEntry,
   type Section,
 } from "../src/modules/portfolios/schema";
-import { profileCompletion } from "../src/modules/portfolios/profile-completion";
+import {
+  profileCompletion,
+  completionSummary,
+} from "../src/modules/portfolios/profile-completion";
 
 function section(type: Section["type"]): Section {
   return {
@@ -43,6 +46,21 @@ function completeDocument() {
   ];
   return doc;
 }
+it("returns compact list summaries using exactly the editor score", () => {
+  const doc = completeDocument();
+  expect(completionSummary(doc)).toEqual({
+    percentage: 100,
+    completed: 9,
+    total: 9,
+    missing: [],
+  });
+  doc.sections[3].entries[0].authors = "";
+  const summary = completionSummary(doc);
+  expect(summary.percentage).toBe(profileCompletion(doc).percentage);
+  expect(summary.missing).toEqual([{ id: "articles", label: "Articles" }]);
+  expect(JSON.stringify(summary)).not.toContain("Article paragraphs");
+  expect(JSON.stringify(summary)).not.toContain("Abstract");
+});
 it("requires the whole portfolio instead of just profile basics", () => {
   const doc = completeDocument();
   expect(profileCompletion(doc).percentage).toBe(100);

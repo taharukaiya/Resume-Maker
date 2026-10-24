@@ -505,3 +505,88 @@ test("completion links open the right editors and keep unsaved changes", async (
     fullPage: false,
   });
 });
+
+test("portfolio cards show saved completion and open missing sections", async ({
+  page,
+}) => {
+  await signInAdmin(page);
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "List completion", slug: `list-completion-${Date.now()}` },
+  });
+  const { id } = await created.json();
+  const fetched = await page.request.get(`/api/sites/${id}`);
+  const { site } = await fetched.json();
+  const { emptyEntry } = await import("../../src/modules/portfolios/schema");
+  site.draft.sections = [
+    {
+      id: "50a6c00d-6bf9-4833-850c-38cd4b5381ba",
+      type: "education",
+      title: "Degrees",
+      visible: true,
+      intro: "",
+      entries: [emptyEntry()],
+    },
+  ];
+  const saved = await page.request.put(`/api/sites/${id}`, {
+    headers,
+    data: { document: site.draft, revision: site.revision },
+  });
+  expect(saved.ok()).toBe(true);
+  await page.goto("/studio/portfolios");
+  await page.getByLabel("Search portfolios").fill("List completion");
+  const card = page.getByRole("article", {
+    name: "List completion",
+    exact: true,
+  });
+  await expect(card.getByRole("progressbar")).toHaveAttribute("value", "11");
+  await card.getByText("What’s missing (8)", { exact: true }).click();
+  await page.screenshot({
+    path: ".test-data/portfolio-list-completion.png",
+    fullPage: false,
+  });
+  await card.getByRole("link", { name: "Education", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`${id}\\?complete=education`));
+  await expect(
+    page.locator(
+      "#edit-section-50a6c00d-6bf9-4833-850c-38cd4b5381ba > summary",
+    ),
+  ).toBeFocused();
+  await page.getByRole("tab", { name: "Profile", exact: true }).click();
+  await page
+    .getByLabel("Biography", { exact: true })
+    .fill("New saved biography.");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(
+    page.getByText("Unsaved changes", { exact: true }),
+  ).not.toBeVisible();
+  await page.getByRole("link", { name: "All portfolios", exact: true }).click();
+  await page.getByLabel("Search portfolios").fill("List completion");
+  await expect(card.getByRole("progressbar")).toHaveAttribute("value", "22");
+  await page.getByLabel("Filter portfolio status").selectOption("incomplete");
+  await expect(card).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(
+    () =>
+      (document.querySelector("aside")?.getBoundingClientRect().right ?? 0) <=
+      0,
+  );
+  await card.getByText("What’s missing (7)", { exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".test-data/portfolio-list-completion-mobile.png",
+    fullPage: false,
+  });
+  await card.getByRole("link", { name: "Experience", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Add section", exact: true }),
+  ).toBeFocused();
+  await page.goto(`/studio/portfolios/${id}?complete=unknown-section`);
+  await expect(page.getByLabel("Biography", { exact: true })).toHaveValue(
+    "New saved biography.",
+  );
+});

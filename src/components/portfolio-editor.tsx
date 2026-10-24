@@ -33,7 +33,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { portfolioSeo, portfolioTabTitle } from "@/modules/portfolios/seo";
 import { publicationIssues, sectionTypes } from "@/modules/portfolios/schema";
 import { replaceSectionGroup } from "@/modules/portfolios/structure";
@@ -45,7 +45,10 @@ import { socialPlatforms } from "@/modules/portfolios/social-profiles";
 import { PersonalityEditor } from "./personality-editor";
 import { PortraitEditor } from "./portrait-editor";
 import { ProfileCompletion } from "./profile-completion";
-import type { CompletionTarget } from "@/modules/portfolios/profile-completion";
+import {
+  profileCompletion,
+  type CompletionTarget,
+} from "@/modules/portfolios/profile-completion";
 import { AiProgress, useDocumentAi } from "./use-document-ai";
 import { SectionsEditor } from "./section-editor";
 import { PagePlanner } from "./page-planner";
@@ -94,7 +97,13 @@ type Revision = {
   created_at: string;
   author: string;
 };
-export function PortfolioEditor({ id }: { id: string }) {
+export function PortfolioEditor({
+  id,
+  completionKey,
+}: {
+  id: string;
+  completionKey?: string;
+}) {
   const confirm = useConfirmation();
   const router = useRouter();
   const ai = useDocumentAi();
@@ -106,6 +115,7 @@ export function PortfolioEditor({ id }: { id: string }) {
   const [addressDirty, setAddressDirty] = useState(false);
   const [completionTarget, setCompletionTarget] =
     useState<CompletionTarget | null>(null);
+  const openedCompletion = useRef<string | undefined>(undefined);
   const [importCleanupReady, setImportCleanupReady] = useState(false);
   const user = useUser(),
     admin = user.role === "admin",
@@ -312,6 +322,22 @@ export function PortfolioEditor({ id }: { id: string }) {
         ?.focus();
     }
   }, [tab, invalidLink]);
+  useEffect(() => {
+    if (
+      !document ||
+      !completionKey ||
+      openedCompletion.current === completionKey
+    )
+      return;
+    openedCompletion.current = completionKey;
+    // Resolve only known checklist IDs against this portfolio, never trust URL targets.
+    const check = profileCompletion(document).checks.find(
+      (item) => item.id === completionKey,
+    );
+    if (!check || (!admin && check.target.tab === "pages")) return;
+    setCompletionTarget(check.target);
+    setTab(check.target.tab);
+  }, [document, completionKey, admin]);
   useEffect(() => {
     if (!completionTarget || completionTarget.tab !== tab) return;
     const dom = window.document;

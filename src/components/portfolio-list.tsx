@@ -1,5 +1,5 @@
 "use client";
-import type { Site } from "@/modules/portfolios/service";
+import type { ListedSite } from "@/modules/portfolios/service";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -39,18 +39,18 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
   const user = useUser(),
     router = useRouter(),
     feedback = useFeedback();
-  const [sites, setSites] = useState<Site[]>([]),
+  const [sites, setSites] = useState<ListedSite[]>([]),
     [loading, setLoading] = useState(true),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [creating, setCreating] = useState(false),
-    [deleteTarget, setDeleteTarget] = useState<Site | null>(null),
+    [deleteTarget, setDeleteTarget] = useState<ListedSite | null>(null),
     [name, setName] = useState(""),
     [slug, setSlug] = useState(""),
     [clientId, setClientId] = useState(""),
     [clients, setClients] = useState<Client[]>([]);
   useEffect(() => {
-    api<{ sites: Site[] }>("sites")
+    api<{ sites: ListedSite[] }>("sites")
       .then((data) => setSites(data.sites))
       .catch((e) => feedback.setError(e.message))
       .finally(() => setLoading(false));
@@ -70,7 +70,10 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
     (s) =>
       (s.name.toLowerCase().includes(search.toLowerCase()) ||
         s.slug.includes(search.toLowerCase())) &&
-      (filter === "all" || s.status === filter),
+      (filter === "all" ||
+        (filter === "incomplete"
+          ? (s.completion?.percentage ?? 100) < 100
+          : s.status === filter)),
   );
   const metrics = [
     {
@@ -210,6 +213,7 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
               onChange={(e) => setFilter(e.target.value)}
             >
               <option value="all">All portfolios</option>
+              <option value="incomplete">Needs work</option>
               <option value="published">Published</option>
               <option value="review">Awaiting review</option>
               <option value="draft">Draft</option>
@@ -253,12 +257,52 @@ export function PortfolioList({ overview = false }: { overview?: boolean }) {
                 <div className="portfolio-card-content">
                   <h3>{site.name}</h3>
                   <p>{site.publishedUrl || `/portfolio/${site.slug}`}</p>
+                  {site.completion && (
+                    <div className="portfolio-list-progress">
+                      <div className="spread wrap">
+                        <strong>{site.completion.percentage}% complete</strong>
+                        <span>Saved draft</span>
+                      </div>
+                      <progress
+                        aria-label={`Completion for ${site.name}`}
+                        max={100}
+                        value={site.completion.percentage}
+                      />
+                    </div>
+                  )}
                   <div className="card-bottom">
                     <span>Updated {dateTime(site.updated_at)}</span>
                     <ArrowUpRight size={14} />
                   </div>
                 </div>
               </NavigationLink>
+              {user.role === "admin" && site.completion && (
+                <div className="portfolio-list-missing">
+                  {site.completion.missing.length ? (
+                    <details>
+                      <summary>
+                        What’s missing ({site.completion.missing.length})
+                      </summary>
+                      <ul>
+                        {site.completion.missing.map((item) => (
+                          <li key={item.id}>
+                            <NavigationLink
+                              href={`/studio/portfolios/${site.id}?complete=${encodeURIComponent(item.id)}`}
+                              prefetchOnIntent
+                            >
+                              {item.label} <span aria-hidden="true">→</span>
+                            </NavigationLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : (
+                    <span>
+                      All content areas complete · Publishing is separate
+                    </span>
+                  )}
+                </div>
+              )}
               {user.role === "admin" && (
                 <div className="portfolio-card-actions">
                   <NavigationLink
