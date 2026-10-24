@@ -23,8 +23,10 @@ def check(domain):
         return {'domain': domain, 'error': str(error)}
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-    result = list(pool.map(check, domains))
+    result = list(pool.map(check, [host for domain in domains for host in (domain, 'www.' + domain)]))
 target = root / '.test-data' / pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'legacy-health.json').name
 target.parent.mkdir(exist_ok=True)
 target.write_text(json.dumps(result, indent=2))
 print(json.dumps({'checked': len(result), 'http_success': sum(200 <= item.get('status', 0) < 400 for item in result), 'output': str(target)}, indent=2))
+if any(not 200 <= item.get('status', 0) < 400 for item in result):
+    sys.exit(1)

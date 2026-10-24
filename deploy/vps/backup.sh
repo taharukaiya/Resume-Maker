@@ -26,6 +26,13 @@ tar -czf "$target/config.tar.gz" .env compose.yaml compose.existing.yaml compose
 if [[ -f /etc/easypanel/traefik/config/brilliancy-host-routing.yaml ]]; then
   tar -czf "$target/studio-routing.tar.gz" -C /etc/easypanel/traefik/config brilliancy-host-routing.yaml
 fi
+repairs=()
+for file in shaila-www-repair.yaml legacy-www-repairs.yaml; do
+  if [[ -f "/etc/easypanel/traefik/config/$file" ]]; then repairs+=("$file"); fi
+done
+if ((${#repairs[@]})); then
+  tar -czf "$target/legacy-www-routing.tar.gz" -C /etc/easypanel/traefik/config "${repairs[@]}"
+fi
 sha256sum "$target"/* > "$target/SHA256SUMS"
 touch "$target/COMPLETE"
 printf 'Backup saved to %s\nCopy it off the VPS using encrypted backup storage and test restoration.\n' "$target"

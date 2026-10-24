@@ -3,9 +3,9 @@
 # Never loads backed-up environment variables or modifies live Docker volumes.
 set -euo pipefail
 backup=$(realpath -e "${1:?Pass an existing backup directory}")
-case "$backup" in /var/backups/brilliancy/*) ;; *) printf 'Unexpected backup location.\n'; exit 1;; esac
+case "$backup" in /var/backups/brilliancy/*|/var/tmp/brilliancy-offsite-restore.*/var/backups/brilliancy/*) ;; *) printf 'Unexpected backup location.\n'; exit 1;; esac
 for file in database.dump files.tar.gz config.tar.gz certificates.tar.gz SHA256SUMS; do test -s "$backup/$file"; done
-(cd "$backup" && sha256sum -c SHA256SUMS)
+python3 "$(dirname "$0")/verify-backup-files.py" "$backup"
 python3 - "$backup" <<'PY'
 import pathlib, shutil, sys, tarfile
 root = pathlib.Path(sys.argv[1])

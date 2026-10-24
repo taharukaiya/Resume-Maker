@@ -1,0 +1,20 @@
+[Unit]
+Description=Encrypted off-server copy of completed Brilliancy backup
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/brilliancy-backup.env
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/brilliancy/deploy/vps/offsite-backup.sh
+UMask=0077
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=25%
+MemoryMax=512M
+TimeoutStartSec=6h
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/cache/brilliancy-restic /var/lib/brilliancy-backup /var/lock

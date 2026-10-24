@@ -4,7 +4,7 @@ Review date: 24 October 2026. This is a scoped engineering review, not a penetra
 
 ## Decision
 
-**Do not switch the existing researchby domains yet.** The application and permanent studio have passed the checks below, but off-server backup storage and reviewed legacy replacements are still required. No existing portfolio domain routes, apex/www records, mail records or portfolio content were migrated. Only the approved studio subdomain and its old-address redirect were configured.
+**Do not switch the existing researchby domains yet.** The application and permanent studio have passed the checks below, but off-server backup storage and reviewed legacy replacements are still required. No existing portfolio domain routes, apex/www records, mail records or portfolio content were migrated. The approved studio subdomain and its old-address redirect were configured. A subsequent outage investigation added exact-host www-to-root HTTPS redirects for five legacy sites; their original backends and root addresses remain unchanged. See [backup and capacity follow-up](BACKUPS_AND_CAPACITY.md).
 
 The signed-in live studio at `studio.brilliancy-research.com` lists only **Rukaiya Taha**, a draft. It does not contain reviewed replacements for the 29 domains listed below. Changing routing now could replace working sites with missing or incorrect content.
 
@@ -79,7 +79,7 @@ Latest deployed application image: **`brilliancy:b6d518c6163a`**. Web and worker
 - Installed the nightly local backup timer and verified archive checksums plus restoration into an isolated PostgreSQL container. Both the pre-activation backup, `/var/backups/brilliancy/20261024T075509Z`, and post-activation backup, `/var/backups/brilliancy/20261024T082423Z`, restored successfully and all **109 referenced media/release files** were present. Backups include owned studio routing. **Encrypted off-server storage is not configured.**
 - HTTPS EasyPanel at `https://nxazkl.easypanel.host/` returned 200. Persistent IPv4/IPv6 rules restrict public direct access to port 3000 while preserving the internal proxy route and independent Hostinger console. MFA was explicitly deferred by the user.
 - The authorized recovery request for the designated test account completed through the configured email provider. Inbox receipt remains unconfirmed; no password was changed.
-- All **29 existing researchby sites returned HTTP 200** in bounded read-only checks before and after deployment. This verifies availability, not full content equivalence. Their routes remain on the old platform.
+- All **29 existing researchby root addresses returned HTTP 200** in bounded read-only checks before and after deployment. Those earlier checks did not include www. The subsequent expanded check found five missing www HTTPS routes; after narrow redirects to the existing roots, **58/58 root and www addresses passed**. This verifies availability, not full content equivalence. Their backends remain on the old platform.
 
 Earlier security deployment evidence:
 
@@ -93,7 +93,7 @@ Earlier security deployment evidence:
 
 1. **Off-server backups and legacy restore.** Configure encrypted off-server storage, then prove restoration of the application and legacy systems, including uploads, credentials/configuration and exact router rules. The verified local new-platform backup does not protect against losing this VPS or certify legacy restore.
 2. **Import and review all legacy content.** Obtain exports/original uploads, create each portfolio and assign the correct client. Compare biography, portrait/CV, article counts, authors/dates/abstracts, images/captions, downloads and old URL paths. Preserve manually edited content. Do not fabricate missing author/domain mappings or overwrite reviewed drafts.
-3. **Representative capacity and storage plan.** The default media allowance remains 100 MB, now configurable through `PORTFOLIO_MEDIA_LIMIT_MB`. Measure representative originals, figures, releases and backup retention before choosing limits. Test realistic upload/publish/browse concurrency before promising 300–400 portfolios. The listing benchmark above does not certify this workload.
+3. **Representative capacity and storage plan.** The default media allowance remains 100 MB, now configurable through `PORTFOLIO_MEDIA_LIMIT_MB`. Measure representative originals, figures, releases and backup retention before choosing limits. Test realistic upload/publish/browse concurrency before promising 300–400 portfolios. The listing benchmark above does not certify this workload. A later isolated local baseline successfully loaded 400 portfolios with 220 articles each and published all 220 PDFs for one portfolio; measured results and remaining staging/storage gates are in [BACKUPS_AND_CAPACITY.md](BACKUPS_AND_CAPACITY.md).
 4. **Pilot one reviewed portfolio.** Record and back up its exact old router rules, connect/verify the domain, test HTTPS on root and `www`, `/login`, client isolation, links, inquiry form, mobile layout and PDFs. Switch only its explicit host routes. Watch errors and have a tested switch-back procedure before repeating for others.
 
 Operational follow-up: confirm recovery email inbox delivery. MFA enrollment remains deferred at the user's request; it has not been silently enabled or made a prerequisite for the current testing.
