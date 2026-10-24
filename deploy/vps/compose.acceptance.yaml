@@ -46,6 +46,7 @@ services:
       SESSION_SECRET: ${ACCEPTANCE_SESSION_SECRET:?Set a temporary session secret}
       SETUP_TOKEN: ${ACCEPTANCE_SETUP_TOKEN:?Set a temporary setup token}
       RUN_WORKER: "false"
+      XDG_CACHE_HOME: /tmp/.cache
       CLAMAV_HOST: brilliancy-scanner-1
       EMAIL_PROVIDER: ses
       EMAIL_FROM: acceptance@example.test
