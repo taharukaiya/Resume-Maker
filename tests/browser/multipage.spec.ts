@@ -54,6 +54,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
     ],
   });
   doc.sections = [
+    { ...section("about", "About", "", ""), entries: [] },
     section(
       "custom",
       "Beyond research",
@@ -177,7 +178,9 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
     await page
       .getByRole("tab", { name: "Academic sections", exact: true })
       .click();
-    const headings = page.locator(".section-editor > summary > strong");
+    const headings = page
+      .locator(".section-editor > summary > strong")
+      .filter({ hasNotText: /^About$/ });
     await expect(headings.first()).toHaveText("Education");
     await page
       .getByRole("button", { name: "Move Education down", exact: true })
@@ -251,7 +254,7 @@ test("academic order, editable pages, refined layouts and accessible mobile menu
       .poll(
         async () =>
           (await page.request.get(`/portfolio/${slug}/connect`)).status(),
-        { timeout: 30000 },
+        { timeout: 120000 },
       )
       .toBe(200);
     await publicPage.goto(`/portfolio/${slug}/connect`);

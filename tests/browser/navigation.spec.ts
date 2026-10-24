@@ -48,6 +48,7 @@ test("navigation stays responsive while routes and data are slow", async ({
       navigation.getByRole("link", { name: "Settings & security" }),
     ).toBeVisible();
     releaseRoute();
+    await page.waitForURL("**/studio/inbox", { timeout: 60000 });
     await expect(
       page.getByRole("heading", { name: "Your inbox." }),
     ).toBeVisible();

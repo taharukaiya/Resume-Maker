@@ -3,6 +3,61 @@ import { signInAdmin } from "./admin-session";
 
 const headers = { origin: "http://localhost:3100" };
 
+test("a stale initial editor response cannot replace a newer edit", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await signInAdmin(page);
+  const created = await page.request.post("/api/sites", {
+    headers,
+    data: { name: "Delayed editor", slug: `delayed-editor-${Date.now()}` },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requests = 0;
+  let oldFinished!: () => void;
+  const finished = new Promise<void>((resolve) => {
+    oldFinished = resolve;
+  });
+  await page.route(`**/api/sites/${id}`, async (route) => {
+    if (route.request().method() !== "GET" || ++requests !== 1) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    await gate;
+    await route.fulfill({ response });
+    oldFinished();
+  });
+  try {
+    await page.goto(`/studio/portfolios/${id}`);
+    // Strict Mode starts a second initial load; let it finish before the old one.
+    const biography = page.getByLabel("Biography", { exact: true });
+    await biography.fill("Keep my latest biography.");
+    await expect(
+      page.getByText("Unsaved changes", { exact: true }),
+    ).toBeVisible();
+    release();
+    await finished;
+    await page
+      .getByRole("tab", { name: "Website address", exact: true })
+      .click();
+    await expect(page.getByLabel("Domain name", { exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: "Profile", exact: true }).click();
+    await expect(biography).toHaveValue("Keep my latest biography.");
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+    const saved = await (await page.request.get(`/api/sites/${id}`)).json();
+    expect(saved.site.draft.profile.bio).toBe("Keep my latest biography.");
+  } finally {
+    release();
+  }
+});
+
 test("admin can add a root domain while preserving an unsaved portfolio draft", async ({
   page,
 }) => {

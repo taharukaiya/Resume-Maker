@@ -126,8 +126,10 @@ export function PortfolioEditor({ id }: { id: string }) {
     "articles" | "publications"
   >("articles");
   const load = useCallback(
-    async (replace = false) => {
+    async (replace = false, isCurrent: () => boolean = () => true) => {
       const result = await api<EditorData>(`sites/${id}`);
+      // A superseded initial load must not replace the active editing draft.
+      if (!isCurrent()) return;
       // A job refresh must not advance the revision of the local editing draft.
       setData((previous) =>
         replace || !previous
@@ -178,12 +180,14 @@ export function PortfolioEditor({ id }: { id: string }) {
     [id, admin],
   );
   useEffect(() => {
+    let active = true;
     void feedback.run(async () => {
       await Promise.all([
-        load(true),
+        load(true, () => active),
         api<{ ai: boolean; aiProvider?: string; demo?: boolean }>(
           "integrations",
         ).then((integrations) => {
+          if (!active) return;
           setAiEnabled(integrations.ai);
           setBrowserAi(integrations.aiProvider === "huggingface-browser");
           setAiProvider(integrations.aiProvider || "openai");
@@ -191,6 +195,9 @@ export function PortfolioEditor({ id }: { id: string }) {
         }),
       ]);
     });
+    return () => {
+      active = false;
+    };
   }, [load]);
   const hasJobs = data?.jobs.some((j) =>
     ["queued", "running"].includes(j.status),
